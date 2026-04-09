@@ -2,6 +2,8 @@
 node_modules/
 *backup*/
 Danprel_Backup/
+Backup_Danprel.bat
+*.bat
 .DS_Store
 dist/
 build/
