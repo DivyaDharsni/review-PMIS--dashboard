@@ -48,6 +48,66 @@
             --shadow-lg: 0 25px 40px -12px rgba(0, 0, 0, 0.15);
         }
 
+        /* PREMIUM EXPORT DROPDOWN */
+        .premium-export-dropdown {
+            border-radius: 20px !important;
+            padding: 8px !important;
+            border: none !important;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12) !important;
+            min-width: 210px !important;
+            background: #ffffff !important;
+        }
+
+        .premium-export-item {
+            display: flex !important;
+            align-items: center !important;
+            gap: 12px !important;
+            padding: 10px 14px !important;
+            border-radius: 12px !important;
+            transition: all 0.2s ease !important;
+            margin-bottom: 2px !important;
+            border: 1px solid transparent !important;
+            text-decoration: none !important;
+        }
+
+        .premium-export-item:last-child {
+            margin-bottom: 0 !important;
+        }
+
+        .premium-export-item:hover {
+            background: #f8fafc !important;
+            transform: translateX(3px);
+            border-color: #f1f5f9 !important;
+        }
+
+        .export-icon-box {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+
+        .export-icon-pdf {
+            background: #fff1f2;
+            color: #e11d48;
+        }
+
+        .export-icon-excel {
+            background: #f0fdf4;
+            color: #16a34a;
+        }
+
+        .export-title {
+            font-weight: 800;
+            font-size: 0.92rem;
+            color: #1e293b;
+            line-height: 1;
+        }
+
         body {
             font-family: 'Inter', sans-serif;
             background: radial-gradient(circle at 10% 20%, #f1f5fc, #eef2f9);
@@ -1425,16 +1485,23 @@
                     aria-expanded="false" style="background: linear-gradient(135deg, #0B2B4A, #1A3F5F); border: none;">
                     <i class="bi bi-download"></i> Export
                 </button>
-                <ul class="dropdown-menu dropdown-menu-end shadow border-0"
-                    style="border-radius: 16px; padding: 10px; min-width: 180px;">
+                <ul class="dropdown-menu dropdown-menu-end premium-export-dropdown shadow-lg border-0">
                     <li>
-                        <h6 class="dropdown-header text-uppercase small fw-800 tracking-wider opacity-50 mb-1">Select
-                            Format</h6>
+                        <a class="dropdown-item premium-export-item" href="javascript:void(0)" onclick="exportToPDF()">
+                            <div class="export-icon-box export-icon-pdf">
+                                <i class="bi bi-file-earmark-pdf-fill"></i>
+                            </div>
+                            <span class="export-title">Export as PDF</span>
+                        </a>
                     </li>
-                    <li><a class="dropdown-item py-2 rounded-3 fw-bold" href="#" onclick="exportToPDF()"><i
-                                class="bi bi-file-earmark-pdf me-2 text-danger"></i>PDF Report</a></li>
-                    <li><a class="dropdown-item py-2 rounded-3 fw-bold" href="#" onclick="exportToExcel()"><i
-                                class="bi bi-file-earmark-excel me-2 text-success"></i>Excel Sheet</a></li>
+                    <li>
+                        <a class="dropdown-item premium-export-item" href="javascript:void(0)" onclick="exportToExcel()">
+                            <div class="export-icon-box export-icon-excel">
+                                <i class="bi bi-file-earmark-spreadsheet-fill"></i>
+                            </div>
+                            <span class="export-title">Export as Excel Lite</span>
+                        </a>
+                    </li>
                 </ul>
             </div>
         </div>
@@ -1508,8 +1575,26 @@
                             style="opacity: 0.8;"></button>
                     </h5>
                 </div>
-                <div class="modal-body p-4 pt-5" style="background: #fff;">
+                <div class="modal-body p-4 pt-4" style="background: #fff;">
                     <input type="hidden" id="mRescheduleId">
+
+                    <!-- COMPARISON SECTION -->
+                    <div class="mb-4 px-2">
+                        <div class="p-3" style="background: #f8fafc; border-radius: 20px; border: 1.5px dashed #e2e8f0;">
+                            <div class="section-lbl text-center mb-2" style="font-size: 0.65rem;">Current Active Plan</div>
+                            <div class="d-flex justify-content-center align-items-center gap-3">
+                                <div class="text-center">
+                                    <div style="font-size: 0.75rem; font-weight: 800; color: #64748b;" id="mCurrentStartDisplay">---</div>
+                                    <div style="font-size: 0.6rem; color: #94a3b8; text-transform: uppercase;">START</div>
+                                </div>
+                                <i class="bi bi-arrow-right text-muted"></i>
+                                <div class="text-center">
+                                    <div style="font-size: 0.75rem; font-weight: 800; color: #64748b;" id="mCurrentEndDisplay">---</div>
+                                    <div style="font-size: 0.6rem; color: #94a3b8; text-transform: uppercase;">END</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                     <div class="row g-4 px-2">
                         <div class="col-6 text-start">
@@ -2150,6 +2235,14 @@
                     });
                 }
 
+                // Revision Spacers for non-date columns 
+                let revisionSideSpacers = '';
+                if (hasRevisions) {
+                    activeRevisions.forEach(() => {
+                        revisionSideSpacers += `<div class="revision-stack"><div class="revision-row"></div><div style="height: 14px; margin-top: -8px; margin-bottom: 4px;"></div></div>`;
+                    });
+                }
+
                 // Check for PENDING requests from MongoDB
                 const pendingReq = (project.revision_requests || []).find(r => r.phaseId === ph.id && r.status === 'pending');
                 if (pendingReq) {
@@ -2160,20 +2253,9 @@
                     nextEndDisplay += `<div class="revision-stack">${pendingBadge(formatDate(pendingReq.newEnd))}<div style="height:6px;"></div></div>`;
                     nextDaysDisplay += `<div class="revision-stack">${pendingBadge(pDays)}<div style="height:6px;"></div></div>`;
                     
-                    // Add extra spacer for side columns
+                    // Add extra spacer
                     revisionSideSpacers += `<div class="revision-stack"><div class="revision-row"></div><div style="height: 14px; margin-top: -8px; margin-bottom: 4px;"></div></div>`;
                 }
-
-                // Revision Spacers for non-date columns to maintain alignment
-                let revisionSideSpacers = '';
-                if (hasRevisions) {
-                    activeRevisions.forEach(() => {
-                        revisionSideSpacers += `<div class="revision-stack"><div class="revision-row"></div><div style="height: 14px; margin-top: -8px; margin-bottom: 4px;"></div></div>`;
-                    });
-                }
-
-                const planAssigned = data.plan_start && data.plan_end;
-                const isPlanEditable = !isParent && !isExcluded && !planAssigned;
 
                 const planStatus = project.plan_status || 'pending';
                 const isPlanLocked = planStatus === 'submitted';
@@ -2181,13 +2263,14 @@
                 // Fixed spacer for original row - Tightened
                 const originalRowSpacer = `<div style="height: 10px; margin-top: -6px; margin-bottom: 2px;"></div>`;
 
+
                 const planStartInput = !isPlanLocked && !isParent && !isExcluded ?
                     `<div class="revision-stack"><div class="revision-row"><input type="date" class="inline-date ${hasRevisions ? 'old-date-strike' : ''}" value="${data.plan_start || ''}" ${minAttr} onchange="saveInlineField('${ph.id}', 'plan_start', this.value, this)" onkeydown="if(event.key==='Enter') syncProject(this)"></div>${originalRowSpacer}${nextStartDisplay}</div>` :
-                    `<div class="revision-stack"><div class="revision-row"><div class="inline-date d-flex align-items-center justify-content-center assigned-date ${hasRevisions ? 'old-date-strike' : ''}" style="cursor:default; background: ${data.plan_start ? '#edf2f7' : '#fff'}; border-color: ${data.plan_start ? '#cbd5e1' : '#e2e8f0'};">${formatDate(data.plan_start)}</div></div>${originalRowSpacer}${nextStartDisplay}</div>`;
+                    `<div class="revision-stack"><div class="revision-row"><div><div class="inline-date d-flex align-items-center justify-content-center assigned-date ${hasRevisions ? 'old-date-strike' : ''}" style="cursor:default; background: ${data.plan_start ? '#edf2f7' : '#fff'}; border-color: ${data.plan_start ? '#cbd5e1' : '#e2e8f0'};">${formatDate(data.plan_start)}</div></div></div>${originalRowSpacer}${nextStartDisplay}</div>`;
 
                 const planEndInput = !isPlanLocked && !isParent && !isExcluded ?
                     `<div class="revision-stack"><div class="revision-row"><input type="date" class="inline-date ${hasRevisions ? 'old-date-strike' : ''}" value="${data.plan_end || ''}" ${minAttr} onchange="saveInlineField('${ph.id}', 'plan_end', this.value, this)" onkeydown="if(event.key==='Enter') syncProject(this)"></div>${originalRowSpacer}${nextEndDisplay}</div>` :
-                    `<div class="revision-stack"><div class="revision-row"><div class="inline-date d-flex align-items-center justify-content-center assigned-date ${hasRevisions ? 'old-date-strike' : ''}" style="cursor:default; background: ${data.plan_end ? '#edf2f7' : '#fff'}; border-color: ${data.plan_end ? '#cbd5e1' : '#e2e8f0'};">${formatDate(data.plan_end)}</div></div>${originalRowSpacer}${nextEndDisplay}</div>`;
+                    `<div class="revision-stack"><div class="revision-row"><div><div class="inline-date d-flex align-items-center justify-content-center assigned-date ${hasRevisions ? 'old-date-strike' : ''}" style="cursor:default; background: ${data.plan_end ? '#edf2f7' : '#fff'}; border-color: ${data.plan_end ? '#cbd5e1' : '#e2e8f0'};">${formatDate(data.plan_end)}</div></div></div>${originalRowSpacer}${nextEndDisplay}</div>`;
 
                 const respValue = data.responsibility || '';
                 const respInput = isParent ? `` : `
@@ -2517,9 +2600,13 @@
             document.getElementById('mRescheduleId').value = phaseId;
             document.getElementById('modalTitle').innerText = 'Reschedule: ' + ph.name;
 
-            // Show the last revision by default in inputs
-            document.getElementById('mRescheduleStart').value = latest ? latest.start : (data.plan_start || '');
-            document.getElementById('mRescheduleEnd').value = latest ? latest.end : (data.plan_end || '');
+            // Show comparison info
+            document.getElementById('mCurrentStartDisplay').innerText = formatDate(data.plan_start || 'N/A');
+            document.getElementById('mCurrentEndDisplay').innerText = formatDate(data.plan_end || 'N/A');
+
+            // Show current values in inputs to start editing from
+            document.getElementById('mRescheduleStart').value = data.plan_start || '';
+            document.getElementById('mRescheduleEnd').value = data.plan_end || '';
             document.getElementById('mRescheduleRemark').value = '';
 
             // Reset validation states

@@ -596,7 +596,7 @@
         .hist-table td {
             padding: 14px 12px;
             font-size: 0.82rem;
-            vertical-align: middle;
+            vertical-align: top;
             border-bottom: 1px solid #edf2f9;
             text-align: center;
         }
@@ -800,6 +800,66 @@
             border-radius: 40px !important;
             border: none !important;
             padding: 20px !important;
+        }
+
+        /* PREMIUM EXPORT DROPDOWN */
+        .premium-export-dropdown {
+            border-radius: 20px !important;
+            padding: 8px !important;
+            border: none !important;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12) !important;
+            min-width: 210px !important;
+            background: #ffffff !important;
+        }
+
+        .premium-export-item {
+            display: flex !important;
+            align-items: center !important;
+            gap: 12px !important;
+            padding: 10px 14px !important;
+            border-radius: 12px !important;
+            transition: all 0.2s ease !important;
+            margin-bottom: 2px !important;
+            border: 1px solid transparent !important;
+            text-decoration: none !important;
+        }
+
+        .premium-export-item:last-child {
+            margin-bottom: 0 !important;
+        }
+
+        .premium-export-item:hover {
+            background: #f8fafc !important;
+            transform: translateX(3px);
+            border-color: #f1f5f9 !important;
+        }
+
+        .export-icon-box {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+
+        .export-icon-pdf {
+            background: #fff1f2;
+            color: #e11d48;
+        }
+
+        .export-icon-excel {
+            background: #f0fdf4;
+            color: #16a34a;
+        }
+
+        .export-title {
+            font-weight: 800;
+            font-size: 0.92rem;
+            color: #1e293b;
+            line-height: 1;
         }
 
         .delete-icon-box {
@@ -1108,13 +1168,22 @@
                         style="background:#0f172a; color:white; border:none; height: 44px; font-size: 0.85rem;">
                         <i class="bi bi-download me-1"></i> Export
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 py-2">
-                        <li><a class="dropdown-item" href="javascript:void(0)" onclick="exportToPDF()">
-                                <i class="bi bi-file-earmark-pdf-fill text-danger"></i> Export as PDF</a>
+                    <ul class="dropdown-menu dropdown-menu-end premium-export-dropdown shadow-lg border-0">
+                        <li>
+                            <a class="dropdown-item premium-export-item" href="javascript:void(0)" onclick="exportToPDF()">
+                                <div class="export-icon-box export-icon-pdf">
+                                    <i class="bi bi-file-earmark-pdf-fill"></i>
+                                </div>
+                                <span class="export-title">Export as PDF</span>
+                            </a>
                         </li>
-                        <li><a class="dropdown-item" href="javascript:void(0)" onclick="exportToExcel()">
-                                <i class="bi bi-file-earmark-spreadsheet-fill text-success"></i> Export as Excel
-                                Lite</a>
+                        <li>
+                            <a class="dropdown-item premium-export-item" href="javascript:void(0)" onclick="exportToExcel()">
+                                <div class="export-icon-box export-icon-excel">
+                                    <i class="bi bi-file-earmark-spreadsheet-fill"></i>
+                                </div>
+                                <span class="export-title">Export as Excel Lite</span>
+                            </a>
                         </li>
                     </ul>
                 </div>
@@ -1573,20 +1642,22 @@
                             
                             ${m.revisions && m.revisions.length > 0 && m.revisions.filter(r => r.date).length > 0 ? (() => {
                                 const revisionsWithDates = m.revisions.filter(r => r.date);
-                                const lastRev = revisionsWithDates[revisionsWithDates.length - 1];
-                                return `
-                                    <div class="mt-1">
-                                        <!-- Compact Revised Date Pill -->
-                                        <div class="d-inline-flex align-items-center gap-1 px-1 py-1" 
-                                             style="border: 1px solid #bae6fd; border-radius: 6px; background: #f0f9ff; color: #0284c7; font-weight: 800; font-size: 0.78rem;">
-                                            <i class="bi bi-arrow-return-right" style="font-size: 9px; opacity: 0.8;"></i>
-                                            R${revisionsWithDates.length}: ${formatDate(lastRev.date)}
+                                return revisionsWithDates.map((rev, rIdx) => {
+                                    const isLatest = rIdx === revisionsWithDates.length - 1;
+                                    return `
+                                        <div class="mt-1" style="${!isLatest ? 'opacity: 0.7; transform: scale(0.95); transform-origin: left;' : ''}">
+                                            <!-- Compact Revised Date Pill -->
+                                            <div class="d-inline-flex align-items-center gap-1 px-1 py-1" 
+                                                 style="border: 1px solid ${isLatest ? '#bae6fd' : '#e2e8f0'}; border-radius: 6px; background: ${isLatest ? '#f0f9ff' : '#f8fafc'}; color: ${isLatest ? '#0284c7' : '#64748b'}; font-weight: 800; font-size: 0.75rem;">
+                                                <i class="bi bi-arrow-return-right" style="font-size: 9px; opacity: 0.8;"></i>
+                                                R${rIdx + 1}: ${formatDate(rev.date)}
+                                            </div>
+                                            <div style="font-size: 0.65rem; color: #64748b; margin-top: 1px; font-style: italic; line-height: 1.2; padding-left: 2px; max-width: 170px; ${!isLatest ? 'text-decoration: line-through; opacity: 0.6;' : ''}">
+                                                "${rev.remark}"
+                                            </div>
                                         </div>
-                                        <div style="font-size: 0.68rem; color: #64748b; margin-top: 2px; font-style: italic; line-height: 1.2; padding-left: 2px; max-width: 170px;">
-                                            "${lastRev.remark}"
-                                        </div>
-                                    </div>
-                                `;
+                                    `;
+                                }).join('');
                             })() : ''}
 
                             ${isOverdue ? '<div class="small fw-800 text-danger mt-2 ps-1" style="font-size: 0.65rem;"><i class="bi bi-exclamation-triangle"></i> OVERDUE</div>' : ''}

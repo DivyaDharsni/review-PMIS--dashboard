@@ -51,6 +51,68 @@
             min-height: 100vh;
         }
 
+        /* PREMIUM EXPORT DROPDOWN */
+        .premium-export-dropdown {
+            border-radius: 20px !important;
+            padding: 8px !important;
+            border: none !important;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12) !important;
+            min-width: 210px !important;
+            background: #ffffff !important;
+        }
+
+        .premium-export-item {
+            display: flex !important;
+            align-items: center !important;
+            gap: 12px !important;
+            padding: 10px 14px !important;
+            border-radius: 12px !important;
+            transition: all 0.2s ease !important;
+            margin-bottom: 2px !important;
+            border: 1px solid transparent !important;
+            text-decoration: none !important;
+            color: #1e293b !important;
+        }
+
+        .premium-export-item:last-child {
+            margin-bottom: 0 !important;
+        }
+
+        .premium-export-item:hover {
+            background: #f8fafc !important;
+            transform: translateX(3px);
+            border-color: #f1f5f9 !important;
+            color: #0b2b4a !important;
+        }
+
+        .export-icon-box {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+
+        .export-icon-pdf {
+            background: #fff1f2;
+            color: #e11d48;
+        }
+
+        .export-icon-excel {
+            background: #f0fdf4;
+            color: #16a34a;
+        }
+
+        .export-title {
+            font-weight: 800;
+            font-size: 0.92rem;
+            color: #1e293b;
+            line-height: 1;
+        }
+
         /* ── SIDEBAR ────────────────────────────────────────── */
         .sidebar {
             position: fixed;
@@ -1662,14 +1724,25 @@
                         style="border: 1.5px solid rgba(255,255,255,0.3); font-size: 0.75rem;">
                         <i class="bi bi-download me-1"></i> EXPORT
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 mt-2"
-                        style="border-radius: 12px; min-width: 180px;">
-                        <li><a class="dropdown-item py-2 fw-bold" href="javascript:void(0)"
-                                onclick="exportMasterToPDF()"><i class="bi bi-file-earmark-pdf me-2 text-danger"></i>
-                                Export as PDF</a></li>
-                        <li><a class="dropdown-item py-2 fw-bold" href="javascript:void(0)"
-                                onclick="exportMasterToExcel()"><i
-                                    class="bi bi-file-earmark-excel me-2 text-success"></i> Export as Excel</a></li>
+                    <ul class="dropdown-menu dropdown-menu-end premium-export-dropdown shadow-lg border-0">
+                        <li>
+                            <a class="dropdown-item premium-export-item" href="javascript:void(0)"
+                                onclick="exportMasterToPDF()">
+                                <div class="export-icon-box export-icon-pdf">
+                                    <i class="bi bi-file-earmark-pdf-fill"></i>
+                                </div>
+                                <span class="export-title">Export as PDF</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item premium-export-item" href="javascript:void(0)"
+                                onclick="exportMasterToExcel()">
+                                <div class="export-icon-box export-icon-excel">
+                                    <i class="bi bi-file-earmark-spreadsheet-fill"></i>
+                                </div>
+                                <span class="export-title">Export as Excel Lite</span>
+                            </a>
+                        </li>
                     </ul>
                 </div>
             </div>
@@ -1831,7 +1904,7 @@
                             <i class="bi bi-arrow-left me-1"></i>Back
                         </button>
                     </div>
-                    <div id="revisionList" class="p-3">
+                    <div id="hubRevisionList" class="p-3">
                         <!-- Revision requests injected here -->
                     </div>
                 </div>
@@ -1932,7 +2005,7 @@
         <span id="statusMsg">Building PDF report...</span>
     </div>
 
-    <!-- ===== REVISION REQUESTS MODAL ===== -->
+    <!-- ===== REVISION REQUESTS MODAL (DEDICATED) ===== -->
     <div id="revisionModal" class="modal fade" tabindex="-1">
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content"
@@ -1966,6 +2039,7 @@
                 const response = await fetch('/api/projects');
                 projects = await response.json();
                 renderProjects();
+                renderRevisions(); // Populate notification badges
             } catch (err) {
                 console.error('Error fetching data:', err);
             }
@@ -2394,14 +2468,25 @@
         }
 
         // --- REVISION CENTER LOGIC ---
+        function openRevisionRequests() {
+            // Open Dedicated Revision Modal (No PIN required)
+            const revModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('revisionModal'));
+            revModal.show();
+            renderRevisions();
+        }
+
         function openRevisionCenter() {
             switchHubView('revision');
             renderRevisions();
         }
 
         function renderRevisions() {
-            const list = document.getElementById('revisionList');
-            list.innerHTML = '';
+            const hubList = document.getElementById('hubRevisionList');
+            const mainList = document.getElementById('revisionList');
+            if(!hubList && !mainList) return;
+            
+            if(hubList) hubList.innerHTML = '';
+            if(mainList) mainList.innerHTML = '';
             
             let pendingCount = 0;
             projects.forEach(p => {
@@ -2409,10 +2494,7 @@
                     p.revision_requests.forEach(req => {
                         if (req.status === 'pending') {
                             pendingCount++;
-                            const card = document.createElement('div');
-                            card.className = 'ui-card mb-3 p-3 border';
-                            card.style.borderRadius = '20px';
-                            card.innerHTML = `
+                            const cardContent = `
                                 <div class="d-flex justify-content-between align-items-start mb-2">
                                     <div>
                                         <div class="fw-900 text-navy">${p.code} | ${p.name}</div>
@@ -2439,29 +2521,55 @@
                                     <button class="btn btn-sm btn-success flex-fill rounded-pill fw-bold" onclick="approveRevision('${p._id}', '${req.id}')">Approve</button>
                                 </div>
                             `;
-                            list.appendChild(card);
+
+                            if (hubList) {
+                                const card = document.createElement('div');
+                                card.className = 'ui-card mb-3 p-3 border';
+                                card.style.borderRadius = '20px';
+                                card.innerHTML = cardContent;
+                                hubList.appendChild(card);
+                            }
+
+                            if (mainList) {
+                                const card = document.createElement('div');
+                                card.className = 'ui-card mb-3 p-3 border shadow-sm';
+                                card.style.borderRadius = '20px';
+                                card.style.background = 'white';
+                                card.innerHTML = cardContent;
+                                mainList.appendChild(card);
+                            }
                         }
                     });
                 }
             });
 
-            if (pendingCount === 0) {
-                list.innerHTML = `<div class="text-center p-5 text-muted">
+            const emptyMsg = `<div class="text-center p-5 text-muted">
                     <i class="bi bi-check-circle-fill" style="font-size:2rem; color:#0d9488;"></i>
                     <div class="mt-2 fw-bold">All clear! No pending requests.</div>
                 </div>`;
+
+            if (pendingCount === 0) {
+                if(hubList) hubList.innerHTML = emptyMsg;
+                if(mainList) mainList.innerHTML = emptyMsg;
             }
             
-            // Update hub badge
-            const badge = document.getElementById('revHubBadge');
-            if (badge) {
-                if (pendingCount > 0) {
-                    badge.innerText = pendingCount;
-                    badge.style.display = 'block';
-                } else {
-                    badge.style.display = 'none';
-                }
+            // Update all badges and labels
+            if (document.getElementById('revCountLabel')) {
+                document.getElementById('revCountLabel').innerText = `${pendingCount} Pending Requests`;
             }
+
+            const badges = ['revBadge', 'revHubBadge'];
+            badges.forEach(id => {
+                const b = document.getElementById(id);
+                if (b) {
+                    if (pendingCount > 0) {
+                        b.innerText = pendingCount;
+                        b.style.display = 'block';
+                    } else {
+                        b.style.display = 'none';
+                    }
+                }
+            });
         }
 
         async function approveRevision(projId, reqId) {
