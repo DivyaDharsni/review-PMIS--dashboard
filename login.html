@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Danprel Engineering Automation</title>
+    <link rel="icon" type="image/png" href="asset/image.png">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+    <style>
+        :root {
+            --navy-deep: #00264d;
+            --navy-prime: #003366;
+            --brand-navy: #001f3f;
+            --teal-accent: #14b8a6;
+            --bg-dark: #001529;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at center, #002b5c 0%, #001529 100%);
+            background-color: var(--bg-dark);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Subtle Grid Pattern */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 30px 30px;
+            pointer-events: none;
+        }
+
+        .login-card {
+            background: #ffffff;
+            width: 100%;
+            max-width: 440px;
+            padding: 50px 40px 30px;
+            border-radius: 50px;
+            box-shadow: 0 40px 80px rgba(0, 0, 0, 0.4);
+            text-align: center;
+            position: relative;
+            z-index: 10;
+        }
+
+        .logo-box {
+            width: 75px;
+            height: 75px;
+            margin: 0 auto 15px;
+            background: white;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .logo-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .brand-name {
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: var(--brand-navy);
+            letter-spacing: -0.5px;
+            margin-bottom: 0px;
+        }
+
+        .brand-sub {
+            font-size: 0.75rem;
+            font-weight: 800;
+            color: var(--teal-accent);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 20px;
+        }
+
+        .pmis-title {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: var(--navy-prime);
+            margin-bottom: 25px;
+            line-height: 1.3;
+            text-transform: capitalize;
+        }
+
+        .input-wrap {
+            position: relative;
+            margin-top: 15px;
+            margin-bottom: 25px;
+        }
+
+        .form-label-floating {
+            position: absolute;
+            left: 55px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #94a3b8;
+            pointer-events: none;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 10;
+            padding: 0 5px;
+            background: transparent;
+        }
+
+        .input-wrap i.field-icon {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+            font-size: 1.25rem;
+            z-index: 5;
+            transition: color 0.3s;
+        }
+
+        .form-control-custom {
+            width: 100%;
+            padding: 18px 20px 18px 55px;
+            border-radius: 20px;
+            border: 1px solid #eef2f6;
+            background: #f8fafc;
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--brand-navy);
+            transition: all 0.3s;
+            height: 62px;
+        }
+
+        .form-control-custom:focus,
+        .form-control-custom:not(:placeholder-shown) {
+            outline: none;
+            border-color: #cbd5e1;
+            background: #fff;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Floating Animation - Moving OUTSIDE the box */
+        .form-control-custom:focus~.form-label-floating,
+        .form-control-custom:not(:placeholder-shown)~.form-label-floating {
+            top: 0;
+            left: 45px;
+            font-size: 0.75rem;
+            font-weight: 900;
+            color: var(--brand-navy);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            background: #fff;
+            /* Cuts through the top border */
+        }
+
+        .form-control-custom:focus~.field-icon {
+            color: var(--teal-accent);
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #94a3b8;
+            font-size: 1.2rem;
+            transition: color 0.3s;
+        }
+
+        .toggle-password:hover {
+            color: var(--brand-navy);
+        }
+
+        .form-check-label {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #64748b;
+            cursor: pointer;
+        }
+
+        .btn-signin {
+            background: #003366;
+            color: white;
+            border: none;
+            width: 100%;
+            padding: 20px;
+            border-radius: 20px;
+            font-weight: 900;
+            font-size: 1.1rem;
+            margin-top: 30px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .btn-signin:hover {
+            background: #00264d;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 51, 102, 0.2);
+        }
+
+        .btn-signin i {
+            font-size: 1.3rem;
+            transition: transform 0.3s;
+        }
+
+        .btn-signin:hover i {
+            transform: translateX(5px);
+        }
+
+        .footer-copyright {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #f1f5f9;
+            font-size: 0.75rem;
+            color: #94a3b8;
+            font-weight: 600;
+        }
+
+        .error-msg {
+            color: #ef4444;
+            font-size: 0.8rem;
+            font-weight: 700;
+            margin-top: 10px;
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="login-card">
+        <!-- Logo -->
+        <div class="logo-box">
+            <img src="asset/image.png" alt="Danprel Logo">
+        </div>
+
+        <!-- Branding -->
+        <h1 class="brand-name">DANPREL</h1>
+        <p class="brand-sub">Engineering Automation Pvt Ltd</p>
+
+        <h2 class="pmis-title">Project Management Information System (PMIS)</h2>
+
+        <!-- Form -->
+        <div class="mb-3">
+            <div class="input-wrap">
+                <i class="bi bi-person field-icon"></i>
+                <input type="text" id="username" class="form-control-custom" placeholder=" " autocomplete="off">
+                <label class="form-label-floating">USERNAME</label>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <div class="input-wrap">
+                <i class="bi bi-lock field-icon"></i>
+                <input type="password" id="password" class="form-control-custom" placeholder=" ">
+                <label class="form-label-floating">PASSWORD</label>
+                <i class="bi bi-eye toggle-password" id="togglePass"></i>
+            </div>
+        </div>
+
+        <div class="text-start mb-2">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="remember">
+                <label class="form-check-label" for="remember">Remember Me</label>
+            </div>
+        </div>
+
+        <button class="btn-signin" onclick="login()">
+            Sign In <i class="bi bi-arrow-right"></i>
+        </button>
+
+        <div id="error" class="error-msg">
+            Invalid Credentials. Please try again.
+        </div>
+
+        <!-- Footer -->
+        <div class="footer-copyright">
+            &copy; 2026 Danprel Engineering Automation Pvt Ltd.
+        </div>
+    </div>
+
+    <script>
+        // Password Toggle Logic
+        const togglePass = document.getElementById('togglePass');
+        const passwordInput = document.getElementById('password');
+
+        togglePass.addEventListener('click', () => {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            togglePass.classList.toggle('bi-eye');
+            togglePass.classList.toggle('bi-eye-slash');
+        });
+
+        function login() {
+            const u = document.getElementById('username').value.trim();
+            const p = document.getElementById('password').value.trim();
+            const err = document.getElementById('error');
+            const btn = document.querySelector('.btn-signin');
+
+            let role = '';
+            if (u === 'review@danprel' && p === 'danprel@2026') {
+                role = 'admin';
+            } else if (u === 'review@project' && p === 'project@2026') {
+                role = 'pm';
+            }
+
+            if (role) {
+                localStorage.setItem('danprel_auth', 'true');
+                localStorage.setItem('danprel_role', role);
+
+                btn.innerHTML = 'Authenticating...';
+                btn.disabled = true;
+
+                setTimeout(() => {
+                    window.location.href = 'project_review.html';
+                }, 800);
+            } else {
+                err.style.display = 'block';
+                setTimeout(() => { err.style.display = 'none'; }, 4000);
+            }
+        }
+
+        document.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') login();
+        });
+    </script>
+</body>
+
+</html>

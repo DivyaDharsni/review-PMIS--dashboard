@@ -1,0 +1,3499 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Danprel Engineering Automation Pvt Ltd</title>
+    <link rel="icon" type="image/png" href="asset/image.png">
+    <script>
+        if (localStorage.getItem('danprel_auth') !== 'true') {
+            window.location.replace('login.html');
+        }
+    </script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800;14..32,900&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <!-- Export Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-deep: #f0f4fc;
+            --card-white: #ffffff;
+            --navy-prime: #0B2B4A;
+            --navy-glow: #1A3F5F;
+            --teal-accent: #2C7A6E;
+            --teal-bright: #3D9B8C;
+            --teal-light: #5FB3A3;
+            --blue-accent: #2D68C4;
+            --blue-sky: #5893DF;
+            --gray-soft: #EFF3F8;
+            --border-light: #E3EAF2;
+            --text-primary: #1F2A44;
+            --text-secondary: #4A5B6E;
+            --success-emerald: #2B8C5E;
+            --warning-amber: #E5A23B;
+            --shadow-sm: 0 8px 20px -6px rgba(0, 0, 0, 0.08);
+            --shadow-md: 0 20px 30px -12px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 25px 40px -12px rgba(0, 0, 0, 0.15);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at 10% 20%, #f1f5fc, #eef2f9);
+            color: var(--text-primary);
+            padding: 28px 32px;
+            padding-bottom: 70px;
+            position: relative;
+        }
+
+        /* Animated gradient header */
+        .app-header {
+            background: linear-gradient(135deg, #001f3f 0%, #0A2F4F 50%, #003366 100%);
+            border-radius: 28px;
+            padding: 12px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            transition: all 0.3s ease;
+            backdrop-filter: blur(2px);
+        }
+
+        .brand-logo-wrap {
+            width: 52px;
+            height: 52px;
+            background: linear-gradient(145deg, #ffffff, #f8fafc);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px;
+            box-shadow: 0 12px 20px -10px rgba(0, 0, 0, 0.25);
+            transition: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+        }
+
+        .brand-logo-wrap:hover {
+            box-shadow: 0 18px 28px -12px rgba(0, 0, 0, 0.3);
+        }
+
+        .brand-logo-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .brand-name {
+            font-size: 1.3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #FFFFFF, #D4E4FF);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            letter-spacing: -0.3px;
+        }
+
+        .brand-sub {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--teal-light);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-back {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(8px);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            padding: 0 26px;
+            border-radius: 40px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            text-decoration: none;
+            transition: all 0.25s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            height: 46px;
+        }
+
+        .btn-back:hover {
+            background: white;
+            color: var(--navy-prime);
+            border-color: white;
+        }
+
+        .btn-review-special {
+            background: linear-gradient(135deg, rgba(61, 155, 140, 0.4), rgba(44, 122, 110, 0.3));
+            border-color: rgba(61, 155, 140, 0.7);
+        }
+
+        /* Info Banner – Glassmorphic Premium */
+        .info-card {
+            background: rgba(255, 255, 255, 0.96);
+            backdrop-filter: blur(2px);
+            border-radius: 20px;
+            padding: 16px 28px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s;
+        }
+
+        .project-badge {
+            background: linear-gradient(135deg, #EFF6FF, #E6F0FA);
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: 800;
+            font-size: 0.65rem;
+            color: var(--blue-accent);
+            display: inline-block;
+            margin-bottom: 6px;
+            border: 1px solid rgba(45, 104, 196, 0.2);
+        }
+
+        /* Table wrapper – sleek and modern */
+        .table-wrap {
+            background: var(--card-white);
+            border-radius: 32px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-light);
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+
+        .table-wrap:hover {
+            box-shadow: var(--shadow-lg);
+        }
+
+        .table {
+            margin-bottom: 0;
+        }
+
+        .table thead tr th {
+            text-align: center;
+        }
+
+        .table thead tr th:first-child {
+            text-align: left;
+            padding-left: 32px;
+        }
+
+        .table thead tr:last-child th {
+            background: #F1F5F9;
+            color: #334155;
+            font-size: 0.7rem;
+            font-weight: 800;
+            padding: 12px 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 2px solid #E2E8F0;
+        }
+
+        .table thead tr:first-child th {
+            padding: 20px;
+            font-weight: 800;
+            letter-spacing: 0.1em;
+            font-size: 0.85rem;
+        }
+
+        .th-plan {
+            background: #0B2B4A !important;
+            color: #ffffff !important;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+        }
+
+        .th-actual {
+            background: #14b8a6 !important;
+            /* Teal Green */
+            color: #ffffff !important;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .table tbody td {
+            vertical-align: middle;
+            font-size: 0.85rem;
+            padding: 16px 14px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            border-bottom: 1px solid #F0F5FC;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .table tbody td:first-child {
+            text-align: left;
+        }
+
+        .tr-parent {
+            background-color: #f8fafc !important;
+            /* Neutral Light Grey/White */
+            cursor: pointer;
+            border-left: 5px solid var(--navy-prime) !important;
+        }
+
+
+
+        .phase-name {
+            font-weight: 800;
+            color: #0b2b4a;
+            /* Navbar color */
+            letter-spacing: -0.2px;
+            font-size: 0.95rem;
+        }
+
+        .sub-phase-container {
+            display: flex;
+            align-items: center;
+            padding-left: 35px;
+            position: relative;
+        }
+
+        .sub-phase-container::before {
+            content: "";
+            position: absolute;
+            left: 18px;
+            top: -24px;
+            bottom: 50%;
+            width: 1.5px;
+            background: #CBD5E1;
+        }
+
+        .sub-phase-container::after {
+            content: "";
+            position: absolute;
+            left: 18px;
+            top: 50%;
+            width: 12px;
+            height: 1.5px;
+            background: #CBD5E1;
+        }
+
+        .sub-phase-name {
+            font-weight: 600;
+            color: #334155;
+            font-size: 0.82rem;
+            padding-left: 10px;
+            line-height: 1.4;
+        }
+
+        .tr-sub {
+            background-color: #FFFFFF;
+        }
+
+        .tr-sub:hover {
+            background-color: #F8FAFC !important;
+        }
+
+        .phase-excluded {
+            background-color: #f1f5f9 !important;
+            /* Light Dim Grey */
+            opacity: 0.6;
+            cursor: not-allowed;
+            pointer-events: none;
+            filter: grayscale(0.5);
+            /* Desaturate slightly */
+        }
+
+        .phase-excluded td {
+            color: #94a3b8 !important;
+            /* Muted text color */
+        }
+
+        .phase-excluded .total-days,
+        .phase-excluded .action-btn-pill,
+        .phase-excluded .prog-val,
+        .phase-excluded .progress-track,
+        .phase-excluded input,
+        .phase-excluded select {
+            background: #E2E8F0 !important;
+            background-image: none !important;
+            /* Remove any gradients */
+            color: #94A3B8 !important;
+            border-color: #CBD5E1 !important;
+            box-shadow: none !important;
+            filter: grayscale(1) !important;
+            opacity: 0.8;
+            pointer-events: none !important;
+            /* Ensure no interaction */
+            transform: none !important;
+            /* Prevent hover jumps */
+        }
+
+        .phase-excluded .action-btn-pill:hover {
+            transform: none !important;
+            box-shadow: none !important;
+            background: #E2E8F0 !important;
+        }
+
+        .phase-excluded .progress-fill {
+            background-color: #CBD5E1 !important;
+        }
+
+        .phase-excluded .exclusion-check {
+            pointer-events: auto !important;
+            opacity: 1 !important;
+            filter: none !important;
+            transform: none !important;
+        }
+
+        .exclusion-check {
+            cursor: pointer;
+            width: 16px;
+            height: 16px;
+            margin-right: 8px;
+            accent-color: var(--navy-prime);
+            border: 1px solid var(--navy-prime);
+        }
+
+        .expand-icon {
+            display: inline-flex;
+            width: 28px;
+            height: 28px;
+            background: #F0F4FA;
+            border-radius: 12px;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            font-size: 0.8rem;
+            color: #5C6F8C;
+            transition: all 0.3s;
+        }
+
+        .tr-parent[aria-expanded="true"] .expand-icon {
+            transform: rotate(90deg);
+            background: var(--navy-prime);
+            color: white;
+            box-shadow: 0 4px 12px rgba(11, 43, 74, 0.3);
+        }
+
+        .btn-assign {
+            background: #F0F4FA;
+            color: var(--blue-accent);
+            border: 1px solid #DAE4F0;
+            padding: 7px 20px;
+            border-radius: 40px;
+            font-weight: 800;
+            font-size: 0.73rem;
+            transition: all 0.25s;
+        }
+
+        .btn-assign:hover {
+            background: var(--blue-accent);
+            color: white;
+            border-color: var(--blue-accent);
+        }
+
+        .btn-visualize {
+            background: linear-gradient(135deg, #0B2B4A, #1A3F5F);
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 40px;
+            font-weight: 800;
+            font-size: 0.85rem;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 8px 20px rgba(11, 43, 74, 0.15);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-visualize::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: 0.5s;
+        }
+
+        .btn-visualize:hover {
+            color: white;
+            background: linear-gradient(135deg, #163a5d, #25517a);
+        }
+
+        .btn-visualize:hover::after {
+            left: 100%;
+        }
+
+        .total-days {
+            font-weight: 800;
+            color: var(--navy-prime);
+            background: linear-gradient(135deg, #F5F9FF, #F0F5FC);
+            padding: 5px 14px;
+            border-radius: 40px;
+            font-size: 0.75rem;
+            display: inline-block;
+            border: 1px solid #E2EBF5;
+        }
+
+        .total-days:empty {
+            display: none !important;
+        }
+
+        .progress-track {
+            height: 6px;
+            background: #E8F0F8;
+            border-radius: 20px;
+            overflow: hidden;
+            width: 100px;
+            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 20px;
+            transition: width 0.6s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+        }
+
+        .prog-val {
+            font-weight: 800;
+            font-size: 0.75rem;
+        }
+
+        .inline-date,
+        .inline-input {
+            border: 1.5px solid #E9F0F8;
+            border-radius: 24px;
+            padding: 0 14px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            background: #FFFFFF;
+            transition: all 0.2s;
+            width: 130px;
+            color: var(--text-primary);
+            height: 38px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .inline-input.prog-input {
+            width: 70px;
+            text-align: center;
+        }
+
+        .inline-input.remark-input {
+            width: 100%;
+            min-width: 160px;
+            border-radius: 20px;
+        }
+
+        .inline-date:hover,
+        .inline-input:hover {
+            border-color: var(--navy-prime);
+            background: #F9FBFF;
+            box-shadow: 0 2px 8px rgba(11, 43, 74, 0.1);
+        }
+
+        .inline-date-actual:hover {
+            border-color: var(--teal-accent) !important;
+            background: #F9FFFE !important;
+            box-shadow: 0 2px 8px rgba(20, 184, 166, 0.1) !important;
+        }
+
+        .inline-date:focus,
+        .inline-input:focus {
+            outline: none;
+            border-color: var(--blue-accent);
+            box-shadow: 0 0 0 4px rgba(45, 104, 196, 0.12);
+        }
+
+        .inline-date:disabled,
+        .inline-input:disabled {
+            background: #ffffff;
+            border-color: #E9F0F8;
+            color: #0F172A !important;
+            font-weight: 800;
+            cursor: not-allowed;
+            opacity: 1;
+            -webkit-text-fill-color: #0F172A;
+            /* Fix for some browsers to keep it dark */
+        }
+
+        .action-btn-pill {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #f4f7fa;
+            border: 1px solid #e2e8f0;
+            transition: all 0.2s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+            font-size: 1rem;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02);
+        }
+
+        .action-btn-pill:hover {
+            background: #ffffff;
+            border-color: #cbd5e1;
+        }
+
+        .action-btn-save-text {
+            width: auto;
+            min-width: 70px;
+            height: 34px;
+            padding: 0 16px;
+            border-radius: 40px;
+            background: #0B2B4A;
+            color: white;
+            font-weight: 800;
+            font-size: 0.75rem;
+            border: none;
+            transition: all 0.2s;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(11, 43, 74, 0.2);
+            text-transform: uppercase;
+        }
+
+        .action-btn-save-text:hover {
+            background: #1A3F5F;
+        }
+
+        .action-btn-save-text:disabled {
+            background: #cbd5e1;
+            box-shadow: none;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .responsibility-col {
+            display: none !important;
+        }
+
+        .actual-action-col {
+            display: none !important;
+        }
+
+        .show-responsibility .responsibility-col {
+            display: table-cell !important;
+        }
+
+        .show-actual-actions .actual-action-col {
+            display: table-cell !important;
+        }
+
+        .action-btn-save {
+            color: #1E293B;
+        }
+
+        .action-btn-edit {
+            color: #2563EB;
+        }
+
+        .action-btn-delete {
+            color: #E11D48;
+        }
+
+        .save-toast {
+            position: fixed;
+            bottom: 32px;
+            right: 32px;
+            transform: translateY(120px);
+            background: #0B2B4A;
+            color: white;
+            padding: 14px 28px;
+            border-radius: 60px;
+            font-weight: 800;
+            font-size: 0.95rem;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+            opacity: 0;
+            pointer-events: none;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .save-toast.active {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .save-toast i {
+            font-size: 1.2rem;
+            color: #10b981;
+        }
+
+        .action-btn-view {
+            color: #0F766E;
+        }
+
+        .badge-finalized {
+            background: linear-gradient(135deg, #E8F3EC, #D9EBDD);
+            color: #1E6F4C;
+            padding: 6px 16px;
+            border-radius: 40px;
+            font-weight: 800;
+            font-size: 0.7rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .row-disabled {
+            background: #f8fafc !important;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .row-disabled td {
+            opacity: 0.35 !important;
+            filter: grayscale(1) blur(0.2px) !important;
+            pointer-events: none !important;
+            border-color: #f1f5f9 !important;
+        }
+
+        .row-disabled .exclusion-cell {
+            opacity: 1 !important;
+            filter: none !important;
+            pointer-events: auto !important;
+        }
+
+        .row-disabled .exclusion-check {
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+            transform: scale(1.1);
+        }
+
+        .empty-date {
+            color: #A0B3C9;
+            font-style: italic;
+            font-weight: 500;
+        }
+
+        .remarks-col {
+            display: none !important;
+        }
+
+        .show-responsibility .responsibility-col,
+        .show-responsibility .remarks-col {
+            display: table-cell !important;
+        }
+
+        /* Modern Modal */
+        .modal-content {
+            border-radius: 36px;
+            border: none;
+            overflow: hidden;
+            box-shadow: 0 35px 60px -20px rgba(0, 0, 0, 0.35);
+        }
+
+        .modal-hdr {
+            background: linear-gradient(115deg, var(--navy-prime), var(--navy-glow));
+            color: white;
+            padding: 22px 32px;
+        }
+
+        .section-lbl {
+            font-size: 0.7rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--blue-accent);
+            margin-bottom: 8px;
+        }
+
+        .form-control {
+            border-radius: 20px;
+            font-size: 0.9rem;
+            padding: 12px 18px;
+            border: 1.5px solid #E8F0F8;
+            transition: 0.2s;
+        }
+
+        .form-control:focus {
+            border-color: var(--teal-accent);
+            box-shadow: 0 0 0 4px rgba(44, 122, 110, 0.15);
+        }
+
+
+        footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 0.7rem;
+            color: #8A9BB0;
+            opacity: 0.7;
+        }
+
+        /* Custom scroll */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #EFF3F8;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--teal-accent);
+            border-radius: 10px;
+        }
+
+        /* Animation for toast-like feedback */
+        @keyframes pulseSave {
+            0% {
+                background-color: #ffffff;
+            }
+
+            50% {
+                background-color: #E8F5E9;
+            }
+
+            100% {
+                background-color: #ffffff;
+            }
+        }
+
+        .saved-flash {
+            animation: pulseSave 0.4s ease;
+        }
+
+        /* Gantt Chart Styles */
+        .gantt-wrapper {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            border: 1px solid #E2EBF5;
+            border-radius: 16px;
+            overflow-x: auto;
+            background: #fff;
+            position: relative;
+        }
+
+        .gantt-sidebar {
+            background: #F8FBFE;
+            border-right: 1px solid #E2EBF5;
+            position: sticky;
+            left: 0;
+            z-index: 5;
+        }
+
+        .gantt-header-container {
+            display: flex;
+            flex-direction: column;
+            min-width: 1200px;
+        }
+
+        .gantt-month-row {
+            display: flex;
+            background: #0B2B4A;
+            color: white;
+            text-align: center;
+            font-size: 0.75rem;
+            font-weight: 800;
+            height: 40px;
+            align-items: center;
+        }
+
+        .gantt-month-cell {
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            padding: 0 10px;
+        }
+
+        .gantt-week-row {
+            display: flex;
+            background: #FBFDFF;
+            text-align: center;
+            border-bottom: 2px solid #EAF0F6;
+            height: 60px;
+        }
+
+        .gantt-week-cell {
+            border-right: 1px solid #EAF0F6;
+            padding: 8px 4px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-width: 80px;
+        }
+
+        .gantt-week-cell .w-label {
+            font-weight: 800;
+            color: #0B2B4A;
+            font-size: 0.7rem;
+            margin-bottom: 2px;
+        }
+
+        .gantt-week-cell .w-date {
+            font-size: 0.65rem;
+            color: #3D9B8C;
+            font-weight: 600;
+        }
+
+        .gantt-week-cell .w-day {
+            font-size: 0.6rem;
+            color: #2C7A6E;
+            font-weight: 700;
+            text-transform: uppercase;
+            opacity: 0.8;
+        }
+
+        .gantt-body {
+            position: relative;
+            min-width: 1200px;
+        }
+
+        .gantt-row {
+            display: flex;
+            grid-column: span 2;
+            border-bottom: 1px solid #F0F5FC;
+            height: 90px;
+            background: white;
+        }
+
+        .gantt-row:nth-child(even) {
+            background: #FAFBFE;
+        }
+
+        .gantt-row-label-cell {
+            width: 280px;
+            padding: 15px 24px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            background: inherit;
+            border-right: 1px solid #E2EBF5;
+            position: sticky;
+            left: 0;
+            z-index: 4;
+        }
+
+        .gantt-row-label-cell .phase-title {
+            font-weight: 800;
+            color: #0B2B4A;
+            font-size: 0.85rem;
+            margin-bottom: 2px;
+        }
+
+        .gantt-row-label-cell .phase-sub {
+            font-size: 0.65rem;
+            color: #6B8BA4;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .gantt-timeline-cell {
+            flex-grow: 1;
+            position: relative;
+            background-image: linear-gradient(to right, #F0F5FC 1px, transparent 1px);
+            background-size: 80px 100%;
+        }
+
+        .gantt-bar {
+            position: absolute;
+            height: 12px;
+            border-radius: 12px;
+            left: 0;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+        }
+
+        .gantt-bar:hover {
+            height: 14px;
+            margin-top: -1px;
+            filter: brightness(1.1) drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
+            z-index: 5;
+            cursor: pointer;
+        }
+
+        .gantt-bar-planned {
+            background: linear-gradient(90deg, #3b82f6, #2563eb);
+            top: 28px;
+            z-index: 1;
+            border: 1px solid rgba(37, 99, 235, 0.2);
+        }
+
+        .gantt-bar-actual {
+            background: linear-gradient(90deg, #10b981, #059669);
+            top: 50px;
+            z-index: 2;
+            border: 1px solid rgba(5, 150, 105, 0.2);
+        }
+
+        .gantt-bar-actual.completed {
+            background: linear-gradient(90deg, #059669, #047857);
+            box-shadow: 0 4px 10px rgba(5, 150, 101, 0.3);
+        }
+
+        .gantt-bar-label {
+            position: absolute;
+            font-size: 0.65rem;
+            font-weight: 700;
+            white-space: nowrap;
+            transition: all 0.3s;
+            pointer-events: none;
+        }
+
+        .gantt-row:hover .gantt-bar-label {
+            font-size: 0.7rem;
+            color: #0b2b4a;
+        }
+
+        .planned-label {
+            top: 12px;
+            color: #64748b;
+        }
+
+        .actual-label {
+            top: 68px;
+            color: #334155;
+        }
+
+
+
+        .modal-fullscreen .modal-content {
+            border-radius: 0;
+            background: #F0F4FC;
+        }
+
+        .gantt-card {
+            background: white;
+            border-radius: 28px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.05);
+            padding: 30px;
+            margin: 20px;
+            border: 1px solid #E3EAF2;
+        }
+
+        /* SIDEBAR STYLES */
+        .sidebar {
+            position: fixed;
+            left: -280px;
+            top: 0;
+            width: 280px;
+            height: 100vh;
+            background: linear-gradient(180deg, #0B2B4A 0%, #1A3F5F 100%);
+            color: #fff;
+            padding: 32px 24px;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 2000;
+            box-shadow: 10px 0 50px rgba(0, 0, 0, 0.03);
+            overflow-y: auto;
+        }
+
+        .sidebar.active {
+            left: 0;
+        }
+
+        .sidebar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar-section-title {
+            font-size: 0.6rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #94a3b8;
+            margin: 20px 0 8px 0;
+            padding: 0 5px;
+        }
+
+        .sidebar-btn {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 14px 20px;
+            color: #cbd5e1;
+            text-decoration: none !important;
+            font-weight: 700;
+            font-size: 0.9rem;
+            border-radius: 16px;
+            margin-bottom: 6px;
+            transition: all 0.25s;
+            cursor: pointer;
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+        }
+
+        .sidebar-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: white;
+            transform: translateX(5px);
+        }
+
+        .sidebar-btn .sb-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+
+        .sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 31, 63, 0.6);
+            backdrop-filter: blur(4px);
+            display: none;
+            z-index: 1090;
+        }
+
+        .sidebar-overlay.active {
+            display: block;
+        }
+
+        .menu-toggle {
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #0B2B4A;
+            cursor: pointer;
+            transition: 0.2s;
+            font-size: 1.25rem;
+        }
+
+        .menu-toggle:hover {
+            background: #e2e8f0;
+            transform: scale(1.05);
+        }
+
+        /* Export Toast Styles */
+        #exportToast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #0B2B4A;
+            color: white;
+            padding: 16px 24px;
+            border-radius: 12px;
+            display: none;
+            align-items: center;
+            gap: 12px;
+            z-index: 9999;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+            animation: slideUpToast 0.3s ease;
+        }
+
+        @keyframes slideUpToast {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .spinner-s {
+            width: 18px;
+            height: 18px;
+            border: 2.5px solid rgba(255, 255, 255, 0.2);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spinS 0.8s linear infinite;
+        }
+
+        @keyframes spinS {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .phase-excluded {
+            opacity: 0.55;
+            filter: grayscale(0.85);
+            background: #f1f5f9 !important;
+            pointer-events: none;
+        }
+
+        .assigned-date {
+            background: #fff;
+            color: #0F172A;
+            font-weight: 800;
+            opacity: 1;
+        }
+
+        .phase-excluded .assigned-date {
+            background: #f3f4f6 !important;
+            color: #cbd5e1 !important;
+            font-weight: 500 !important;
+            opacity: 0.7 !important;
+        }
+
+        .phase-excluded td {
+            background: #fdfefe !important;
+            color: #d1d5db !important;
+        }
+
+        .phase-excluded .inline-date,
+        .phase-excluded .inline-date-actual {
+            background: #f3f4f6 !important;
+            color: #cbd5e1 !important;
+            border: 1px solid #e5e7eb !important;
+            box-shadow: none !important;
+            opacity: 0.7;
+        }
+
+        .phase-excluded .phase-name,
+        .phase-excluded .sub-phase-name {
+            color: #cbd5e1 !important;
+            font-weight: 500 !important;
+        }
+
+        .phase-excluded .total-days {
+            background: #f9fafb !important;
+            color: #cbd5e1 !important;
+            border: 1px solid #f3f4f6 !important;
+            opacity: 0.6;
+        }
+
+        .phase-excluded .action-btn-save-text,
+        .phase-excluded .action-btn-pill {
+            background: #f3f4f6 !important;
+            color: #cbd5e1 !important;
+            border: none !important;
+            cursor: default;
+        }
+
+        /* Revision Display Styling */
+        .revision-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .old-date-strike {
+            text-decoration: line-through;
+            color: #475569 !important; /* Darker Slate */
+            font-size: 0.72rem;
+            opacity: 0.85; /* Increased opacity for better readability */
+            font-weight: 700;
+        }
+
+        .rev-remark-small {
+            font-size: 0.65rem;
+            color: #64748b;
+            font-style: italic;
+            text-align: center;
+            max-width: 130px;
+            line-height: 1.25;
+            word-wrap: break-word;
+            padding: 2px 4px;
+            display: block;
+        }
+
+        .rev-active-badge {
+            background: #e0f2fe !important;
+            border: 1.2px solid #bae6fd !important;
+            color: #0369a1 !important;
+            padding: 4px 12px;
+            border-radius: 40px;
+            font-size: 0.75rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 3px 8px rgba(14, 165, 233, 0.1);
+            line-height: normal;
+        }
+
+        .rev-pending-badge {
+            background: #fffbeb !important;
+            border: 1.2px dashed #fcd34d !important;
+            color: #92400e !important;
+            padding: 4px 12px;
+            border-radius: 40px;
+            font-size: 0.75rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 3px 8px rgba(245, 158, 11, 0.08);
+            line-height: normal;
+            opacity: 0.9;
+        }
+
+        .rev-label-tag {
+            background: #0ea5e9;
+            color: white;
+            padding: 1px 6px;
+            border-radius: 6px;
+            font-size: 0.6rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            flex-shrink: 0;
+        }
+
+        .revision-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 40px; /* Reduced from 48px */
+            width: 100%;
+            padding: 0;
+            gap: 8px;
+        }
+
+        .rev-active-badge {
+            background: #e0f2fe !important;
+            border: 1.2px solid #bae6fd !important;
+            color: #0369a1 !important;
+            padding: 0 12px;
+            height: 34px;
+            border-radius: 40px;
+            font-size: 0.75rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 3px 8px rgba(14, 165, 233, 0.1);
+            line-height: normal;
+            margin: 0 auto;
+        }
+
+        .rev-remark-small {
+            font-size: 0.6rem;
+            color: #64748b;
+            font-style: italic;
+            margin-top: -2px;
+            max-width: 130px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            text-align: center;
+        }
+
+        .exclusion-check {
+            pointer-events: auto !important;
+            cursor: pointer;
+        }
+
+        /* Modal Input Hover/Focus Effects */
+        .modal-body .form-control:hover {
+            border-color: #0b2b4a !important;
+            box-shadow: 0 4px 8px rgba(11, 43, 74, 0.05) !important;
+        }
+
+        .modal-body .form-control:focus {
+            border-color: #0b2b4a !important;
+            box-shadow: 0 0 0 4px rgba(11, 43, 74, 0.1) !important;
+            outline: none !important;
+        }
+
+        .modal-body textarea.form-control:focus {
+            background: #fff !important;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ===== SIDEBAR ===== -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="d-flex align-items-center gap-3">
+                <div class="brand-logo-wrap" style="width: 40px; height: 40px;">
+                    <img src="asset/image.png" alt="Logo">
+                </div>
+                <div>
+                    <div style="font-weight: 900; font-size: 1.1rem; color: white;">DANPREL</div>
+                    <div style="font-size: 0.6rem; color: #94a3b8; text-transform: uppercase;">Engineering Automation
+                        Pvt Ltd
+                    </div>
+                </div>
+            </div>
+            <button class="btn-close btn-close-white" onclick="toggleSidebar()"></button>
+        </div>
+
+        <div class="sidebar-section-title">Navigation</div>
+
+        <a href="project_review.html" class="sidebar-btn">
+            <div class="sb-icon"><i class="bi bi-speedometer2"></i></div>
+            Project Dashboard
+        </a>
+
+        <a href="resource_hub.html" class="sidebar-btn">
+            <div class="sb-icon"><i class="bi bi-people-fill"></i></div>
+            Resource Hub
+        </a>
+
+        <div class="sidebar-section-title" style="margin-top: 30px;">Account</div>
+        <button class="sidebar-btn" onclick="performLogout()">
+            <div class="sb-icon"><i class="bi bi-box-arrow-right"></i></div>
+            Logout
+        </button>
+
+        <!-- Feedback Section -->
+        <div class="sidebar-section-title" style="margin-top: 30px;">Share Feedback</div>
+        <div class="px-3 pb-4">
+            <textarea id="feedbackText" class="form-control mb-3" rows="4"
+                placeholder="Suggest features or report issues..."
+                style="border-radius: 16px; font-size: 0.9rem; border: none; padding: 15px; resize: none;"></textarea>
+            <button class="btn w-100 fw-800" onclick="submitFeedback()"
+                style="background: #14b8a6; color: white; border-radius: 16px; height: 54px; font-size: 1rem; box-shadow: 0 8px 16px rgba(20, 184, 166, 0.2);">Submit
+                Feedback</button>
+        </div>
+    </div>
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <header class="app-header">
+        <div class="d-flex align-items-center gap-3">
+            <button class="menu-toggle" onclick="toggleSidebar()">
+                <i class="bi bi-list"></i>
+            </button>
+            <div class="brand-logo-wrap d-none d-sm-flex">
+                <img src="asset/image.png" alt="Logo">
+            </div>
+            <div>
+                <div class="brand-name">DANPREL</div>
+                <div class="brand-sub">Engineering Automation Pvt Ltd</div>
+            </div>
+        </div>
+        <div class="d-flex gap-2 align-items-center">
+            <a id="reviewMeetingBtn" href="#" class="btn-back btn-review-special">
+                <i class="bi bi-camera-reels-fill me-1"></i>Review Meeting
+            </a>
+            <a href="project_review.html" class="btn-back"><i class="bi bi-grid-3x3-gap-fill"></i> Dashboard</a>
+        </div>
+    </header>
+
+    <div class="info-card">
+        <div>
+            <span class="project-badge" id="pCode">---</span>
+            <h2 class="mb-0 fw-extrabold" id="pName"
+                style="color: var(--navy-prime); font-weight: 800; letter-spacing: -0.02em; font-size: 1.4rem;">
+                Loading...</h2>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+
+            <button class="btn-visualize" onclick="openGanttModal()">
+                <i class="bi bi-bar-chart-steps"></i> Visualize
+            </button>
+
+            <div class="dropdown">
+                <button class="btn-visualize dropdown-toggle" type="button" data-bs-toggle="dropdown"
+                    aria-expanded="false" style="background: linear-gradient(135deg, #0B2B4A, #1A3F5F); border: none;">
+                    <i class="bi bi-download"></i> Export
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow border-0"
+                    style="border-radius: 16px; padding: 10px; min-width: 180px;">
+                    <li>
+                        <h6 class="dropdown-header text-uppercase small fw-800 tracking-wider opacity-50 mb-1">Select
+                            Format</h6>
+                    </li>
+                    <li><a class="dropdown-item py-2 rounded-3 fw-bold" href="#" onclick="exportToPDF()"><i
+                                class="bi bi-file-earmark-pdf me-2 text-danger"></i>PDF Report</a></li>
+                    <li><a class="dropdown-item py-2 rounded-3 fw-bold" href="#" onclick="exportToExcel()"><i
+                                class="bi bi-file-earmark-excel me-2 text-success"></i>Excel Sheet</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-wrap">
+        <div class="table-responsive">
+            <table class="table mb-0">
+                <thead>
+                    <tr>
+                        <th id="thPlanGroup" colspan="5" class="th-plan" style="padding: 12px 24px;">
+                            <div
+                                style="display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; width: 100%;">
+                                <div></div> <!-- Left Spacer -->
+                                <div class="text-center fw-900" style="letter-spacing: 0.1em; font-size: 0.85rem;">
+                                    <i class="bi bi-calendar-check me-2"></i>PLAN
+                                </div>
+                                <div id="planHeaderActions" class="d-flex gap-2 justify-content-end">
+                                    <!-- Dynamic controls injected via renderPlanHeader() -->
+                                </div>
+                            </div>
+                        </th>
+                        <th id="thActualGroup" colspan="6" class="text-center th-actual"
+                            style="font-size: 0.85rem; padding: 12px 24px;">
+                            <div
+                                style="display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; width: 100%;">
+                                <div></div> <!-- Left Spacer -->
+                                <div class="text-center fw-900" style="letter-spacing: 0.1em;">
+                                    <i class="bi bi-graph-up me-2"></i>ACTUAL
+                                </div>
+                                <div class="d-flex gap-2 justify-content-end">
+                                    <button class="btn btn-sm fw-800 rounded-pill px-3 shadow-sm"
+                                        style="background: #0B2B4A; border: none; color: #ffffff; box-shadow: 0 4px 12px rgba(11, 43, 74, 0.2); font-size: 0.68rem;"
+                                        onclick="syncProject(this)">
+                                        <i class="bi bi-cloud-arrow-up-fill me-2"></i>SAVE
+                                    </button>
+                                </div>
+                            </div>
+                        </th>
+                    </tr>
+                    <tr>
+                        <th style="min-width: 260px; padding-left: 24px;">Workstream / Phase</th>
+                        <th style="min-width: 140px;">Start Date</th>
+                        <th style="min-width: 90px; text-align: center;">Total Days</th>
+                        <th style="min-width: 140px;">End Date</th>
+                        <th class="responsibility-col" style="min-width: 126px;">Responsibility</th>
+                        <th style="min-width: 120px; text-align: center; border-right: 2px solid #EAF0F6;">ACTIONS</th>
+                        <th style="min-width: 140px;">Actual Start</th>
+                        <th style="min-width: 140px;">Estimated End</th>
+                        <th style="min-width: 140px;">Actual End Date</th>
+                        <th style="min-width: 100px;">Delay Days</th>
+                        <th style="min-width: 150px;">Progress</th>
+                        <th class="remarks-col" style="min-width: 160px;">Remarks</th>
+                    </tr>
+                </thead>
+                <tbody id="phasesTbody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- UPDATE MODAL (RESCHEDULE) -->
+    <div class="modal fade" id="updateModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 480px;">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 40px !important; overflow: hidden;">
+                <div class="modal-hdr" style="background: #0B2B4A; padding: 24px 32px; border: none;">
+                    <h5 class="fw-bold mb-0 d-flex justify-content-between align-items-center text-white"
+                        style="font-size: 1.25rem;">
+                        <span><i class="bi bi-calendar-event me-2 text-white"></i><span id="modalTitle">Reschedule
+                                Phase</span></span>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                            style="opacity: 0.8;"></button>
+                    </h5>
+                </div>
+                <div class="modal-body p-4 pt-5" style="background: #fff;">
+                    <input type="hidden" id="mRescheduleId">
+
+                    <div class="row g-4 px-2">
+                        <div class="col-6 text-start">
+                            <label class="section-lbl mb-2 ms-2 ps-1"
+                                style="color: #475569; font-weight: 800; font-size: 0.85rem;">Start Date</label>
+                            <input type="date" id="mRescheduleStart" class="form-control fw-bold border-1 py-3 px-4"
+                                onchange="calcReassignDays()"
+                                style="border-radius: 100px; border-color: #e2e8f0; background: #fff; font-size: 0.9rem; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
+                        </div>
+                        <div class="col-6 text-start">
+                            <label class="section-lbl mb-2 ms-2 ps-1"
+                                style="color: #475569; font-weight: 800; font-size: 0.85rem;">End Date</label>
+                            <input type="date" id="mRescheduleEnd" class="form-control fw-bold border-1 py-3 px-4"
+                                onchange="calcReassignDays()"
+                                style="border-radius: 100px; border-color: #e2e8f0; background: #fff; font-size: 0.9rem; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
+                        </div>
+
+                        <div class="col-12 text-start">
+                            <label class="section-lbl mb-2 ms-2 ps-1"
+                                style="color: #475569; font-weight: 800; font-size: 0.85rem;">Total Days</label>
+                            <input type="number" id="mRescheduleDays" class="form-control fw-900 py-3 px-4 text-center"
+                                onchange="updateEndFromReassignDays()"
+                                style="border-radius: 100px; border: 1.5px solid #e2e8f0; color: #1e293b; background: #f8fafc; font-size: 1rem;"
+                                placeholder="Enter days...">
+                        </div>
+
+                        <div class="col-12 text-start">
+                            <label class="section-lbl mb-2 ms-2 ps-1"
+                                style="color: #475569; font-weight: 800; font-size: 0.85rem;">Reason for
+                                Rescheduling</label>
+                            <textarea id="mRescheduleRemark" class="form-control fw-bold border-1 px-4 py-3" rows="3"
+                                placeholder="Input your remarks here..."
+                                style="border-radius: 24px; border-color: #e2e8f0; background: #fff; font-size: 0.88rem; resize: none; line-height: 1.5;"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-3 px-2 mt-5">
+                        <button class="btn btn-light flex-fill rounded-pill fw-800 py-3 border-0"
+                            style="background: #f8fafc; color: #1e293b; font-size: 0.95rem;"
+                            data-bs-dismiss="modal">Cancel</button>
+                        <button class="btn flex-fill rounded-pill fw-800 py-3 text-white shadow-sm"
+                            style="background: #0B2B4A; font-size: 0.95rem;" onclick="saveRescheduleData()">Save
+                            Reschedule</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ACTUAL PROGRESS MODAL -->
+    <div class="modal fade" id="actualModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-hdr">
+                    <h5 class="fw-bold mb-0 d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-graph-up me-2"></i><span id="actualModalTitle">Update
+                                Progress</span></span>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </h5>
+                </div>
+                <div class="modal-body p-4">
+                    <input type="hidden" id="mActualId">
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label class="small fw-bold text-muted">Actual Start</label>
+                            <input type="date" class="form-control" id="mActualStart">
+                        </div>
+                        <div class="col-6">
+                            <label class="small fw-bold text-muted">Actual End</label>
+                            <input type="date" class="form-control" id="mActualEnd">
+                        </div>
+                        <div class="col-12">
+                            <label class="small fw-bold text-muted">Progress (%)</label>
+                            <input type="number" class="form-control" id="mProgress" min="0" max="100">
+                        </div>
+                        <div class="col-12">
+                            <label class="small fw-bold text-muted">Remarks</label>
+                            <textarea class="form-control" id="mRemarks" rows="3"></textarea>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-3 mt-4">
+                        <button class="btn btn-light flex-fill rounded-pill" data-bs-dismiss="modal">Cancel</button>
+                        <button class="btn text-white flex-fill rounded-pill" style="background: #0B2B4A;"
+                            onclick="saveActualData()">Save Progress</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- GANTT MODAL -->
+    <div class="modal fade" id="ganttModal" tabindex="-1">
+        <div class="modal-dialog modal-fullscreen">
+            <div class="modal-content">
+                <div class="modal-header border-0 bg-white px-4 py-3 shadow-sm" style="z-index: 10;">
+                    <div class="d-flex align-items-center gap-3">
+                        <div
+                            style="width: 45px; height: 45px; background: #0B2B4A; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white;">
+                            <i class="bi bi-calendar3 fs-5"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-800 text-navy mb-0"
+                                style="color: #0B2B4A; font-weight: 800; font-size: 1.25rem;">Timeline Visualization
+                            </h5>
+                            <span id="ganttProjectName" class="text-secondary small fw-bold">Project Name</span>
+                        </div>
+                    </div>
+                    <div class="ms-auto d-flex gap-2 align-items-center">
+                        <button class="btn btn-navy rounded-pill px-4 py-2 fw-800 shadow-sm"
+                            onclick="exportGanttToPDF()"
+                            style="background: #0B2B4A; color: white; border: none; font-size: 0.85rem;">
+                            <i class="bi bi-file-earmark-pdf-fill me-2 text-danger-emphasis"></i>Export PDF
+                        </button>
+
+                        <div class="vr mx-2" style="height: 24px;"></div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="gantt-card">
+                        <div id="ganttContainer" class="gantt-wrapper">
+                            <!-- Gantt content injected by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- SUBMISSION CONFIRMATION MODAL -->
+    <div class="modal fade" id="submitConfirmModal" tabindex="-1" style="backdrop-filter: blur(10px); background: rgba(11, 43, 74, 0.45);">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 420px;">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 36px; overflow: hidden; background: #fff;">
+                <div class="modal-body p-5 text-center" style="background: radial-gradient(circle at 50% 0%, #fff 0%, #fcfdfe 100%);">
+                    <div class="mb-4"
+                        style="background: #FFF5F1; color: #EA580C; width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto; font-size: 2.5rem; border: 5px solid #fff; box-shadow: 0 15px 30px rgba(234, 88, 12, 0.15);">
+                        <i class="bi bi-exclamation-octagon-fill"></i>
+                    </div>
+                    <h4 class="fw-900 mb-2" style="color: #0B2B4A; letter-spacing: -0.5px;">Finalize Baseline?</h4>
+                    <p class="text-muted mb-4" style="line-height: 1.6; font-size: 0.9rem;">Once submitted, the baseline
+                        plan will be <b>locked</b>. Any future changes will be tracked as <b>revisions (R1, R2,
+                            etc.)</b> to maintain accountability.</p>
+
+                    <div class="d-flex gap-3">
+                        <button class="btn btn-light flex-fill rounded-pill fw-800 py-3 border-0"
+                            data-bs-dismiss="modal"
+                            style="background: #F1F5F9; color: #64748B; font-size: 0.85rem;">Discard</button>
+                        <button class="btn flex-fill rounded-pill fw-800 py-3 text-white shadow-sm"
+                            style="background: #0B2B4A; font-size: 0.85rem;" onclick="confirmSubmitBaseline()">Submit &
+                            Lock</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- EXCLUSION CONFIRMATION MODAL -->
+    <div class="modal fade" id="exclusionConfirmModal" tabindex="-1" style="backdrop-filter: blur(10px); background: rgba(11, 43, 74, 0.45);">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 420px;">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 36px; overflow: hidden; background: #fff;">
+                <div class="modal-body p-5 text-center" style="background: radial-gradient(circle at 50% 0%, #fff 0%, #fff9f6 100%);">
+                    <div class="mb-4"
+                        style="background: #FFF5F1; color: #EA580C; width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto; font-size: 2.5rem; border: 5px solid #fff; box-shadow: 0 15px 30px rgba(234, 88, 12, 0.15);">
+                        <i class="bi bi-eye-slash-fill"></i>
+                    </div>
+                    <h4 class="fw-900 mb-2" style="color: #0B2B4A; letter-spacing: -0.5px;">Disable Phase?</h4>
+                    <p class="text-muted mb-4" style="line-height: 1.6; font-size: 0.9rem;">This entire phase (and its
+                        sub-phases if any) will be <b>disabled</b> and hidden from the visual timeline. <br>Do you want
+                        to proceed?</p>
+
+                    <div class="d-flex gap-3">
+                        <button class="btn btn-light flex-fill rounded-pill fw-800 py-3 border-0"
+                            data-bs-dismiss="modal"
+                            style="background: #F1F5F9; color: #64748B; font-size: 0.85rem;">Cancel</button>
+                        <button class="btn flex-fill rounded-pill fw-800 py-3 text-white shadow-sm"
+                            style="background: #EA580C; font-size: 0.85rem;" id="btnConfirmExclude">Disable Now</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RESCHEDULE CONFIRMATION MODAL -->
+    <div class="modal fade" id="rescheduleConfirmModal" tabindex="-1" style="backdrop-filter: blur(10px); background: rgba(11, 43, 74, 0.45);">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 440px;">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 36px; overflow: hidden; background: #fff; box-shadow: 0 40px 80px -20px rgba(0,0,0,0.3) !important;">
+                <div class="modal-body p-5 text-center" style="background: radial-gradient(circle at 50% 0%, #fff 0%, #f7fbff 100%);">
+                    <div class="mb-4"
+                        style="background: #E0F2FE; color: #0EA5E9; width: 84px; height: 84px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto; font-size: 2.5rem; border: 6px solid #fff; box-shadow: 0 20px 40px rgba(14, 165, 233, 0.15);">
+                        <i class="bi bi-calendar-event-fill"></i>
+                    </div>
+                    <h4 class="fw-900 mb-2" style="color: #0B2B4A; letter-spacing: -0.5px; font-size: 1.4rem;">Confirm Reschedule?</h4>
+                    <p class="text-muted mb-4" style="line-height: 1.6; font-size: 0.95rem;">Are you sure you want to request a reschedule for <b id="reschedulePhaseNameDisplay">this phase</b>?<br><br>This request will be sent to <b>Top Management</b> for final approval.</p>
+
+                    <div class="d-flex gap-3">
+                        <button class="btn btn-light flex-fill rounded-pill fw-800 py-3 border-0"
+                            data-bs-dismiss="modal"
+                            style="background: #F1F5F9; color: #64748B; font-size: 0.85rem; letter-spacing: 0.3px;">Cancel</button>
+                        <button class="btn flex-fill rounded-pill fw-800 py-3 text-white shadow-sm"
+                            style="background: #0B2B4A; font-size: 0.85rem; letter-spacing: 0.3px;" onclick="confirmRescheduleSubmission()">Confirm & Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SAVE TOAST -->
+    <div id="saveToast" class="save-toast">
+        <i class="bi bi-check-circle-fill"></i>
+        <span>Details saved successfully!</span>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const projectId = urlParams.get('id');
+        let project = null;
+
+        async function fetchProjectData() {
+            try {
+                const res = await fetch(`/api/projects/${projectId}`);
+                project = await res.json();
+                if (!project) {
+                    alert('Project not found!');
+                    window.location.href = 'project_review.html';
+                }
+                initProjectData();
+                renderTable();
+            } catch (err) {
+                console.error('Error fetching project:', err);
+            }
+        }
+
+        function initProjectData() {
+            if (!project.detailed_phases) project.detailed_phases = {};
+            if (!project.revision_requests) project.revision_requests = [];
+            defaultPhases.forEach(ph => {
+                if (!project.detailed_phases[ph.id]) {
+                    project.detailed_phases[ph.id] = { plan_start: '', plan_end: '', responsibility: '', actual_start: '', actual_end: '', progress: 0, remarks: '', locked: false };
+                }
+            });
+            document.getElementById('pName').innerText = project.name;
+            document.getElementById('pCode').innerText = project.code;
+            document.getElementById('reviewMeetingBtn').href = 'phase_review_meeting.html?id=' + encodeURIComponent(projectId);
+        }
+
+        const defaultPhases = [
+            { id: 'kickoff', name: 'Kickoff', type: 'parent' },
+            { id: 'kickoff_1', name: 'PO receipt & acknowledgement', type: 'sub', parent: 'kickoff' },
+            { id: 'kickoff_2', name: 'Knowledge transfer from tech sales to project team', type: 'sub', parent: 'kickoff' },
+            { id: 'design', name: 'Design', type: 'parent' },
+            { id: 'design_1', name: 'Concept Design', type: 'sub', parent: 'design' },
+            { id: 'design_2', name: 'Detailed Design', type: 'sub', parent: 'design' },
+            { id: 'design_critical_approval', name: 'Critical Elements Approval', type: 'sub', parent: 'design' },
+            { id: 'design_3', name: 'Pre-DAP', type: 'sub', parent: 'design' },
+            { id: 'design_4', name: 'Final DAP schedule with mom updation', type: 'sub', parent: 'design' },
+            { id: 'design_5', name: 'Standard parts(mech & elect) release to purchase', type: 'sub', parent: 'design' },
+            { id: 'design_6', name: 'Fabrication parts release to purchase', type: 'sub', parent: 'design' },
+            { id: 'purchase', name: 'Purchase', type: 'parent' },
+            { id: 'purchase_1', name: 'Standard parts receipt', type: 'sub', parent: 'purchase' },
+            { id: 'purchase_2', name: 'Fabrication parts receipt', type: 'sub', parent: 'purchase' },
+            { id: 'mech_assembly', name: 'Machine Assembly', type: 'parent' },
+            { id: 'mech_assembly_1', name: 'mechanical assembly', type: 'sub', parent: 'mech_assembly' },
+            { id: 'mech_assembly_2', name: 'electrical integration', type: 'sub', parent: 'mech_assembly' },
+            { id: 'program', name: 'Programming', type: 'parent' },
+            { id: 'prog_plc_offline', name: 'PLC-offline programming', type: 'sub', parent: 'program' },
+            { id: 'prog_plc', name: 'PLC-online programming, IO checking and manual mode', type: 'sub', parent: 'program' },
+            { id: 'prog_robot', name: 'Robot programming', type: 'sub', parent: 'program' },
+            { id: 'prog_labview', name: 'LabVIEW programming', type: 'sub', parent: 'program' },
+            { id: 'inhouse', name: 'Inhouse trails', type: 'parent' },
+            { id: 'inhouse_1', name: 'Automated testing(dry run)', type: 'sub', parent: 'inhouse' },
+            { id: 'inhouse_2', name: 'Machine trails-with customer components', type: 'sub', parent: 'inhouse' },
+            { id: 'mq1_fat', name: 'MQ1/FAT (machine Qualification)', type: 'parent' },
+            { id: 'mq1_fat_1', name: 'Customer factor visit for MQ1', type: 'sub', parent: 'mq1_fat' },
+            { id: 'mq1_fat_2', name: 'MQ1 points updation', type: 'sub', parent: 'mq1_fat' },
+            { id: 'mq1_fat_3', name: 'Customer acceptance for dispatch', type: 'sub', parent: 'mq1_fat' },
+            { id: 'dispatch_parent', name: 'Machine dispatch', type: 'parent' },
+            { id: 'dispatch_1', name: 'Machine packaging and dispatch', type: 'sub', parent: 'dispatch_parent' },
+            { id: 'dispatch_2', name: 'Transportation &machine delivery at customer site', type: 'sub', parent: 'dispatch_parent' },
+            { id: 'inc_parent', name: 'Installation &commissioning', type: 'parent' },
+            { id: 'inc_1', name: 'Machine unloading,positioning & power on', type: 'sub', parent: 'inc_parent' },
+            { id: 'inc_2', name: 'MQ2/SAT', type: 'sub', parent: 'inc_parent' },
+            { id: 'inc_3', name: 'Training to customer', type: 'sub', parent: 'inc_parent' },
+            { id: 'inc_4', name: 'Sign off and handover', type: 'sub', parent: 'inc_parent' }
+        ];
+
+
+        window.onload = fetchProjectData;
+
+        const expandedPhases = new Set();
+        function toggleSubPhases(parentId) {
+            const btn = document.getElementById('tr_' + parentId);
+            const isExpanded = btn ? btn.getAttribute('aria-expanded') === 'true' : expandedPhases.has(parentId);
+
+            if (btn) btn.setAttribute('aria-expanded', !isExpanded);
+
+            if (isExpanded) expandedPhases.delete(parentId);
+            else expandedPhases.add(parentId);
+
+            const subs = document.querySelectorAll('.sub-of-' + parentId);
+            subs.forEach(s => {
+                if (isExpanded) s.classList.add('d-none');
+                else s.classList.remove('d-none');
+            });
+
+            // Refresh Gantt if it's currently rendered
+            const gantt = document.getElementById('ganttContainer');
+            if (gantt && gantt.innerHTML !== '') {
+                renderGantt();
+            }
+
+            updateResponsibilityVisibility();
+        }
+
+        function calcDays(start, end) {
+            if (!start || !end) return '-';
+            const s = new Date(start), e = new Date(end);
+            const days = Math.ceil((e - s) / (1000 * 60 * 60 * 24));
+            return days >= 0 ? days + 'd' : '-';
+        }
+
+        function calcDaysInProgress(actualStart) {
+            if (!actualStart) return '-';
+            const s = new Date(actualStart);
+            const days = Math.floor((new Date() - s) / (1000 * 60 * 60 * 24));
+            return days >= 0 ? days + 'd' : '0d';
+        }
+
+        function calcDelayStatus(planEnd, actualEnd) {
+            if (!planEnd || !actualEnd) return { text: '-', color: 'inherit', weight: '500' };
+            const p = new Date(planEnd);
+            const a = new Date(actualEnd);
+            const diff = Math.ceil((a - p) / (1000 * 60 * 60 * 24));
+
+            if (diff > 0) return { text: '+' + diff + ' Days', color: '#ef4444', weight: '800' };
+            if (diff < 0) return { text: diff + ' Days', color: '#22c55e', weight: '800' };
+            return { text: '0 Days', color: '#64748b', weight: '800' };
+        }
+
+        function formatDate(dt) {
+            if (!dt) return '<span class="empty-date">— Not Set —</span>';
+            const parts = dt.split('-');
+            if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+            const d = new Date(dt);
+            if (isNaN(d.getTime())) return dt;
+            const dd = String(d.getDate()).padStart(2, '0');
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            return `${dd}/${mm}/${d.getFullYear()}`;
+        }
+
+        function getGlobalMinDateString() {
+            if (!project || !project.detailed_phases) return '';
+            const koData = project.detailed_phases['kickoff_1'] || project.detailed_phases['kickoff'];
+            if (koData && koData.plan_start) {
+                const d = new Date(koData.plan_start);
+                d.setDate(d.getDate() - 5);
+                return d.toISOString().split('T')[0];
+            }
+            return '';
+        }
+
+        function getProgColor(val, data = null) {
+            if (Number(val) === 100) return '#22c55e'; // Green
+
+            if (data && data.actual_start) {
+                const start = new Date(data.actual_start);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0); // Normalize to start of day
+                const startDay = new Date(data.actual_start);
+                startDay.setHours(0, 0, 0, 0);
+
+                const daysLive = Math.floor((today - startDay) / (1000 * 60 * 60 * 24));
+
+                // Calculate duration from planning for deadline logic
+                let duration = 0;
+                if (data.plan_start && data.plan_end) {
+                    const s = new Date(data.plan_start);
+                    const e = new Date(data.plan_end);
+                    duration = Math.ceil((e - s) / (1000 * 60 * 60 * 24));
+                }
+
+                if (duration > 0) {
+                    const deadlineDate = new Date(startDay);
+                    deadlineDate.setDate(deadlineDate.getDate() + duration);
+                    const daysToDeadline = Math.ceil((deadlineDate - today) / (1000 * 60 * 60 * 24));
+
+                    // Red logic: 
+                    // 1. Imminent deadline (within 2 days)
+                    // 2. Nearing deadline for a phase that has been active for more than 5 days
+                    if (daysToDeadline <= 2 || (daysToDeadline <= 10 && daysLive > 5)) {
+                        return '#ef4444'; // Red
+                    }
+                }
+
+                // Yellow logic: Active for more than 10 days
+                if (daysLive > 10) return '#eab308'; // Yellow
+
+                // Default starting state
+                return '#3b82f6'; // Blue
+            }
+
+            if (val >= 60) return '#2D68C4';
+            if (val >= 25) return '#E5A23B';
+            return '#C2CFE0';
+        }
+
+        function flashSave(element) {
+            if (element) element.classList.add('saved-flash');
+            setTimeout(() => { if (element) element.classList.remove('saved-flash'); }, 400);
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.getElementById('sidebarOverlay').classList.toggle('active');
+        }
+
+        function submitFeedback() {
+            const txt = document.getElementById('feedbackText').value.trim();
+            if (!txt) { alert('Please write your feedback first.'); return; }
+            alert('✅ Thank you for your feedback! We will review it shortly.');
+            document.getElementById('feedbackText').value = '';
+            toggleSidebar();
+        }
+
+        function performLogout() {
+            localStorage.removeItem('danprel_auth');
+            localStorage.removeItem('danprel_role');
+            window.location.replace('login.html');
+        }
+
+        function updateResponsibilityVisibility() {
+            const table = document.querySelector('.table-wrap table');
+            const thPlan = document.getElementById('thPlanGroup');
+            const thActual = document.getElementById('thActualGroup');
+
+            if (expandedPhases.size > 0) {
+                if (table) {
+                    table.classList.add('show-responsibility');
+                }
+                if (thPlan) thPlan.setAttribute('colspan', '6');
+                if (thActual) thActual.setAttribute('colspan', '6');
+            } else {
+                if (table) {
+                    table.classList.remove('show-responsibility');
+                }
+                if (thPlan) thPlan.setAttribute('colspan', '5');
+                if (thActual) thActual.setAttribute('colspan', '5');
+            }
+        }
+
+        function renderPlanHeader() {
+            const container = document.getElementById('planHeaderActions');
+            if (!container || !project) return;
+
+            const status = project.plan_status || 'pending';
+            container.innerHTML = '';
+
+            if (status === 'pending' || status === 'saved') {
+                container.innerHTML = `
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm fw-800 rounded-pill px-3" onclick="setPlanStatus('saved')" 
+                            style="background: #14b8a6; border: none; color: white; box-shadow: 0 4px 12px rgba(20,184,166,0.3); font-size: 0.68rem;">
+                            <i class="bi bi-cloud-arrow-up-fill me-1"></i>SAVE
+                        </button>
+                        <button class="btn btn-sm fw-800 rounded-pill px-3" onclick="requestSubmitBaseline()" 
+                            style="background: #14b8a6; border: none; color: white; box-shadow: 0 4px 12px rgba(20,184,166,0.3); font-size: 0.68rem;">
+                            <i class="bi bi-send-check-fill me-1"></i>SUBMIT
+                        </button>
+                    </div>
+                `;
+            } else if (status === 'submitted') {
+                container.innerHTML = `
+                    <div class="badge rounded-pill px-3 py-2 fw-800 d-flex align-items-center" style="background: rgba(255,255,255,0.15); color: #fff; font-size: 0.65rem; border: 1px solid rgba(255,255,255,0.2);">
+                        <i class="bi bi-lock-fill me-2 text-warning"></i>BASELINE SUBMITTED & LOCKED
+                    </div>
+                `;
+            }
+        }
+
+        async function setPlanStatus(status) {
+            project.plan_status = status;
+            await syncProject(); // Persist status change
+            renderTable();
+        }
+
+        function requestSubmitBaseline() {
+            new bootstrap.Modal(document.getElementById('submitConfirmModal')).show();
+        }
+
+        function confirmSubmitBaseline() {
+            const m = bootstrap.Modal.getInstance(document.getElementById('submitConfirmModal'));
+            if (m) m.hide();
+            setPlanStatus('submitted');
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('phasesTbody');
+            tbody.innerHTML = '';
+            let totalProg = 0, countProg = 0;
+
+            const globalMin = getGlobalMinDateString();
+            const minAttr = globalMin ? `min="${globalMin}"` : '';
+
+            updateResponsibilityVisibility();
+            renderPlanHeader();
+
+            let parentSerial = 0;
+            let subSerial = 0;
+
+            defaultPhases.forEach((ph, phIdx) => {
+                let serialPrefix = "";
+                if (ph.type === 'parent' || ph.type === 'single') {
+                    parentSerial++;
+                    subSerial = 0;
+                    serialPrefix = parentSerial + ". ";
+                } else if (ph.type === 'sub') {
+                    subSerial++;
+                    serialPrefix = parentSerial + "." + subSerial + " ";
+                }
+                let data = project.detailed_phases[ph.id] || { progress: 0, actual_start: '', plan_start: '', plan_end: '', remarks: '', is_excluded: false };
+                const isExcluded = data.is_excluded === true;
+
+                if (ph.type === 'parent') {
+                    const subs = defaultPhases.filter(s => s.parent === ph.id);
+                    let subTotal = 0;
+                    let subCount = 0;
+                    let pStart = null, pEnd = null, aStart = null;
+
+                    let aEnd = null;
+
+                    subs.forEach(s => {
+                        const sData = project.detailed_phases[s.id] || { progress: 0, plan_start: '', plan_end: '', actual_start: '', is_excluded: false };
+                        if (!sData.is_excluded) {
+                            subTotal += parseInt(sData.progress || 0);
+                            subCount++;
+                        }
+
+                        // Determine effective PLAN start/end for parent sync (Latest revision or original)
+                        let effStart = sData.plan_start;
+                        let effEnd = sData.plan_end;
+                        if (sData.revisions && sData.revisions.length > 0) {
+                            const last = sData.revisions[sData.revisions.length - 1];
+                            if (last.start) effStart = last.start;
+                            if (last.end) effEnd = last.end;
+                        }
+
+                        if (effStart) {
+                            const d = new Date(effStart);
+                            if (!pStart || d < pStart) pStart = d;
+                        }
+                        if (effEnd) {
+                            const d = new Date(effEnd);
+                            if (!pEnd || d > pEnd) pEnd = d;
+                        }
+                        if (sData.actual_start) {
+                            const d = new Date(sData.actual_start);
+                            if (!aStart || d < aStart) aStart = d;
+                        }
+                        if (sData.actual_end) {
+                            const d = new Date(sData.actual_end);
+                            if (!aEnd || d > aEnd) aEnd = d;
+                        }
+                    });
+                    data.progress = subCount ? Math.round(subTotal / subCount) : 0;
+                    if (pStart) data.plan_start = pStart.toISOString().split('T')[0];
+                    if (pEnd) data.plan_end = pEnd.toISOString().split('T')[0];
+                    if (aStart) data.actual_start = aStart.toISOString().split('T')[0];
+                    if (aEnd) data.actual_end = aEnd.toISOString().split('T')[0];
+                }
+
+                if (ph.type !== 'parent' && !isExcluded) {
+                    totalProg += parseInt(data.progress || 0);
+                    countProg++;
+                }
+
+
+                const tr = document.createElement('tr');
+                if (isExcluded) tr.classList.add('row-disabled');
+
+                if (ph.type === 'parent') {
+                    tr.className = 'tr-parent' + (isExcluded ? ' row-disabled' : '');
+                    tr.id = 'tr_' + ph.id;
+                    const isExpanded = expandedPhases.has(ph.id);
+                    tr.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+                    tr.onclick = (e) => {
+                        if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
+                        toggleSubPhases(ph.id);
+                    };
+                } else if (ph.type === 'sub') {
+                    const isExpanded = expandedPhases.has(ph.parent);
+                    tr.className = `tr-sub sub-of-${ph.parent} ${isExpanded ? '' : 'd-none'}${isExcluded ? ' row-disabled' : ''}`;
+                }
+
+                const exclusionCheckbox = `<input type="checkbox" class="form-check-input exclusion-check" ${isExcluded ? 'checked' : ''} onchange="requestToggleExclusion('${ph.id}', this.checked, this)" onclick="event.stopPropagation()" title="Disable phase">`;
+
+                const phaseLabel = ph.type === 'parent' ?
+                    `<div><i class="bi bi-chevron-right expand-icon"></i> <span class="phase-name">${serialPrefix}${ph.name}</span></div>` :
+                    (ph.type === 'sub' ? `<div class="sub-phase-container"><span class="sub-phase-name">${serialPrefix}${ph.name}</span></div>` : `<span class="phase-name" style="padding-left: 24px;">${serialPrefix}${ph.name}</span>`);
+
+                const isParent = ph.type === 'parent';
+                const isLocked = data.locked === true;
+                const dis = (isParent || isExcluded) ? 'disabled' : '';
+
+                const activeRevisions = data.revisions || [];
+                const hasRevisions = activeRevisions.length > 0;
+
+                let nextStartDisplay = '';
+                let nextEndDisplay = '';
+                let nextDaysDisplay = '';
+
+                if (hasRevisions) {
+                    activeRevisions.forEach((rev, idx) => {
+                        const isLatest = idx === activeRevisions.length - 1;
+                        const rDays = calcDays(rev.start, rev.end);
+                        
+                        // Vertical Alignment Spacers (Matched for all columns) - Auto-expanding for multi-line remarks
+                        const spacerHeight = (isLatest && rev.remark) ? '20px' : '6px';
+                        const spacerBase = `<div style="min-height: ${spacerHeight}; display: flex; justify-content: center; margin-top: 2px; margin-bottom: 2px; height: auto;">`;
+                        const remarkContent = (isLatest && rev.remark) ? `<div class="rev-remark-small" title="${rev.remark.replace(/"/g, '&quot;')}">"${rev.remark}"</div>` : '';
+                        
+                        const spacerWithRemark = `${spacerBase}${remarkContent}</div>`;
+                        const spacerEmpty = `${spacerBase}</div>`;
+
+                        nextStartDisplay += `
+                            <div class="revision-stack">
+                                <div class="revision-row">${isLatest ? `<div class="rev-active-badge"><span class="rev-label-tag">${rev.label}</span><span>${formatDate(rev.start)}</span></div>` : `<div class="old-date-strike">${rev.label}: ${formatDate(rev.start)}</div>`}</div>
+                                ${spacerEmpty}
+                            </div>`;
+                        nextEndDisplay += `
+                            <div class="revision-stack">
+                                <div class="revision-row">${isLatest ? `<div class="rev-active-badge"><span class="rev-label-tag">${rev.label}</span><span>${formatDate(rev.end)}</span></div>` : `<div class="old-date-strike">${rev.label}: ${formatDate(rev.end)}</div>`}</div>
+                                ${spacerWithRemark}
+                            </div>`;
+                        nextDaysDisplay += `
+                            <div class="revision-stack">
+                                <div class="revision-row">${isLatest ? `<div class="rev-active-badge"><span class="rev-label-tag">${rev.label}</span><span>${rDays}</span></div>` : `<div class="old-date-strike" style="font-size:0.68rem;">${rev.label}: ${rDays}</div>`}</div>
+                                ${spacerEmpty}
+                            </div>`;
+                    });
+                }
+
+                // Check for PENDING requests from MongoDB
+                const pendingReq = (project.revision_requests || []).find(r => r.phaseId === ph.id && r.status === 'pending');
+                if (pendingReq) {
+                    const pDays = calcDays(pendingReq.newStart, pendingReq.newEnd);
+                    const pendingBadge = (content) => `<div class="revision-row"><div class="rev-pending-badge" title="Waiting for admin approval"><i class="bi bi-clock-history me-1"></i>${content}</div></div>`;
+                    
+                    nextStartDisplay += `<div class="revision-stack">${pendingBadge(formatDate(pendingReq.newStart))}<div style="height:6px;"></div></div>`;
+                    nextEndDisplay += `<div class="revision-stack">${pendingBadge(formatDate(pendingReq.newEnd))}<div style="height:6px;"></div></div>`;
+                    nextDaysDisplay += `<div class="revision-stack">${pendingBadge(pDays)}<div style="height:6px;"></div></div>`;
+                    
+                    // Add extra spacer for side columns
+                    revisionSideSpacers += `<div class="revision-stack"><div class="revision-row"></div><div style="height: 14px; margin-top: -8px; margin-bottom: 4px;"></div></div>`;
+                }
+
+                // Revision Spacers for non-date columns to maintain alignment
+                let revisionSideSpacers = '';
+                if (hasRevisions) {
+                    activeRevisions.forEach(() => {
+                        revisionSideSpacers += `<div class="revision-stack"><div class="revision-row"></div><div style="height: 14px; margin-top: -8px; margin-bottom: 4px;"></div></div>`;
+                    });
+                }
+
+                const planAssigned = data.plan_start && data.plan_end;
+                const isPlanEditable = !isParent && !isExcluded && !planAssigned;
+
+                const planStatus = project.plan_status || 'pending';
+                const isPlanLocked = planStatus === 'submitted';
+
+                // Fixed spacer for original row - Tightened
+                const originalRowSpacer = `<div style="height: 10px; margin-top: -6px; margin-bottom: 2px;"></div>`;
+
+                const planStartInput = !isPlanLocked && !isParent && !isExcluded ?
+                    `<div class="revision-stack"><div class="revision-row"><input type="date" class="inline-date ${hasRevisions ? 'old-date-strike' : ''}" value="${data.plan_start || ''}" ${minAttr} onchange="saveInlineField('${ph.id}', 'plan_start', this.value, this)" onkeydown="if(event.key==='Enter') syncProject(this)"></div>${originalRowSpacer}${nextStartDisplay}</div>` :
+                    `<div class="revision-stack"><div class="revision-row"><div class="inline-date d-flex align-items-center justify-content-center assigned-date ${hasRevisions ? 'old-date-strike' : ''}" style="cursor:default; background: ${data.plan_start ? '#edf2f7' : '#fff'}; border-color: ${data.plan_start ? '#cbd5e1' : '#e2e8f0'};">${formatDate(data.plan_start)}</div></div>${originalRowSpacer}${nextStartDisplay}</div>`;
+
+                const planEndInput = !isPlanLocked && !isParent && !isExcluded ?
+                    `<div class="revision-stack"><div class="revision-row"><input type="date" class="inline-date ${hasRevisions ? 'old-date-strike' : ''}" value="${data.plan_end || ''}" ${minAttr} onchange="saveInlineField('${ph.id}', 'plan_end', this.value, this)" onkeydown="if(event.key==='Enter') syncProject(this)"></div>${originalRowSpacer}${nextEndDisplay}</div>` :
+                    `<div class="revision-stack"><div class="revision-row"><div class="inline-date d-flex align-items-center justify-content-center assigned-date ${hasRevisions ? 'old-date-strike' : ''}" style="cursor:default; background: ${data.plan_end ? '#edf2f7' : '#fff'}; border-color: ${data.plan_end ? '#cbd5e1' : '#e2e8f0'};">${formatDate(data.plan_end)}</div></div>${originalRowSpacer}${nextEndDisplay}</div>`;
+
+                const respValue = data.responsibility || '';
+                const respInput = isParent ? `` : `
+                    <div class="revision-stack">
+                        <div class="revision-row">
+                            <select class="inline-input" style="width: 115px;" onchange="saveInlineField('${ph.id}', 'responsibility', this.value, this)" onkeydown="if(event.key==='Enter') syncProject(this)" ${isPlanLocked || isExcluded ? 'disabled' : ''}>
+                                <option value="" ${respValue === '' ? 'selected' : ''}>Select...</option>
+                                <option value="Danprel" ${respValue === 'Danprel' ? 'selected' : ''}>Danprel</option>
+                                <option value="Customer" ${respValue === 'Customer' ? 'selected' : ''}>Customer</option>
+                                <option value="Both" ${respValue === 'Both' ? 'selected' : ''}>Both</option>
+                            </select>
+                        </div>
+                        ${originalRowSpacer}
+                        ${revisionSideSpacers}
+                    </div>
+                `;
+
+                const actualStartInput = isParent ?
+                    `<div class="inline-date inline-date-actual d-flex align-items-center justify-content-center assigned-date" style="cursor:default; color:var(--teal-accent);">${formatDate(data.actual_start)}</div>` :
+                    `<input type="date" class="inline-date inline-date-actual" value="${data.actual_start || ''}" ${minAttr} onchange="saveInlineField('${ph.id}', 'actual_start', this.value, this)" onkeydown="if(event.key==='Enter') syncProject(this)" ${dis}>`;
+
+                const totalDays = calcDays(data.plan_start, data.plan_end);
+
+                const inProgress = calcDaysInProgress(data.actual_start);
+                const progressValue = data.progress || 0;
+
+                // Calculate "Calculated End" based on actual start + plan duration
+                let calculatedEndStr = '-';
+                if (data.actual_start && data.plan_start && data.plan_end) {
+                    const ps = new Date(data.plan_start);
+                    const pe = new Date(data.plan_end);
+                    const dur = Math.ceil((pe - ps) / (1000 * 60 * 60 * 24));
+                    if (dur >= 0) {
+                        const ce = new Date(data.actual_start);
+                        ce.setDate(ce.getDate() + dur);
+                        calculatedEndStr = formatDate(ce.toISOString().split('T')[0]);
+                    }
+                }
+
+                const progColor = getProgColor(progressValue, data);
+
+                const progressInput = isParent ?
+                    `<span class="prog-val" style="color: ${progColor}; font-weight:800;">${progressValue}%</span>` :
+                    `<input type="number" class="inline-input prog-input" min="0" max="100" value="${progressValue}" onchange="saveInlineField('${ph.id}', 'progress', this.value, this)" onkeydown="if(event.key==='Enter') syncProject(this)" ${dis}> %`;
+
+                const remarksInput = isParent ? `` : `<input type="text" class="inline-input remark-input" value="${escapeHtml(data.remarks || '')}" placeholder="Add note..." onchange="saveInlineField('${ph.id}', 'remarks', this.value, this)" onkeydown="if(event.key==='Enter') syncProject(this)" ${dis}>`;
+
+                const isMain = ph.type === 'parent' || ph.type === 'single';
+                const isSub = ph.type === 'sub';
+
+                let planActionBtn = `
+                    <div class="revision-stack">
+                        <div class="revision-row">
+                            <div class="d-flex align-items-center justify-content-center gap-2">
+                                <div class="me-2" style="transform: scale(1.1); filter: drop-shadow(0 2px 4px rgba(0,0,0,0.05));">${exclusionCheckbox}</div>
+                                ${isSub ? `
+                                <button class="action-btn-pill action-btn-edit" onclick="openRescheduleModal('${ph.id}')" title="Reschedule" ${isExcluded ? 'disabled' : ''}>
+                                    <i class="bi bi-pencil-square"></i>
+                                </button>
+                                ` : ''}
+                            </div>
+                        </div>
+                        ${originalRowSpacer}
+                        ${revisionSideSpacers}
+                    </div>
+                `;
+
+                let actualActionBtn = `
+                    <div class="d-flex align-items-center justify-content-center gap-2">
+                        ${isSub ? `
+                        <button class="action-btn-pill action-btn-edit" onclick="openActualModal('${ph.id}')" title="Update Actuals" ${isExcluded ? 'disabled' : ''}>
+                            <i class="bi bi-pencil-square"></i>
+                        </button>
+                        ` : ''}
+                    </div>
+                `;
+
+                const planBg = isParent ? `#dbeafe` : `#eff6ff`; // Main Phase: Blue-100, Sub-Phase: Blue-50
+                const actualBg = isParent ? `#ccfbf1` : `#f0fdfa`; // Main Phase: Teal-100, Sub-Phase: Teal-50
+                const tdWhiteBg = isParent ? `inherit` : `#FDFEFF`;
+
+                const actualEndInput = isParent ?
+                    `<div><div class="inline-date inline-date-actual d-flex align-items-center justify-content-center assigned-date" style="cursor:default; color:#0f766e;">${formatDate(data.actual_end)}</div></div>` :
+                    `<div><input type="date" class="inline-date inline-date-actual" value="${data.actual_end || ''}" ${minAttr} onchange="saveInlineField('${ph.id}', 'actual_end', this.value, this)" onkeydown="if(event.key==='Enter') syncProject(this)"></div>`;
+
+                // Determine the "Reference Plan End" for delay calculation (Latest revision or original)
+                let refPlanEnd = data.plan_end;
+                if (data.revisions && data.revisions.length > 0) {
+                    refPlanEnd = data.revisions[data.revisions.length - 1].end;
+                }
+
+                const delayInfo = calcDelayStatus(refPlanEnd, data.actual_end);
+
+                const delayDisplay = data.actual_end ?
+                    `<span style="color: ${delayInfo.color}; font-weight: ${delayInfo.weight};">${delayInfo.text}</span>` :
+                    '-';
+
+                tr.innerHTML = `
+                    <td style="border-right: 1px solid #F0F5FC; background: #fff;">
+                        <div class="revision-stack">
+                            <div class="revision-row" style="justify-content: flex-start;">${phaseLabel}</div>
+                            ${originalRowSpacer}
+                            ${revisionSideSpacers}
+                        </div>
+                    </td>
+                    
+                    <!-- PLAN SECTION -->
+                    <td style="background: ${planBg}; border-right: 1px solid #cbd5e1;">${planStartInput}</td>
+                    <td style="background: ${planBg}; border-right: 1px solid #cbd5e1; text-align: center;">
+                        <span class="revision-stack">
+                            <div class="revision-row">
+                                ${(() => {
+                                    let displayDays = '';
+                                    if (data.plan_start && data.plan_end) {
+                                        const s = new Date(data.plan_start);
+                                        const e = new Date(data.plan_end);
+                                        displayDays = Math.ceil((e - s) / (1000 * 60 * 60 * 24));
+                                        if (displayDays < 0) displayDays = 0;
+                                    } else if (data.plan_duration) {
+                                        displayDays = data.plan_duration;
+                                    }
+                                    
+                                    if (!isPlanLocked && !isParent && !isExcluded) {
+                                        return `<input type="number" class="inline-input ${hasRevisions ? 'old-date-strike' : ''}" style="width: 70px; text-align: center; border-radius: 24px; height: 38px;" value="${displayDays}" onchange="updatePlanFromDays('${ph.id}', this.value, this)" placeholder="Days">`;
+                                    } else {
+                                        return `<span class="total-days ${hasRevisions ? 'old-date-strike' : ''}" style="background:white; border:1px solid #cbd5e1; height:38px; width:70px; display:inline-flex; align-items:center; justify-content:center;">${displayDays || '-'}</span>`;
+                                    }
+                                })()}
+                            </div>
+                            <div style="height: 10px; margin-top: -6px; margin-bottom: 2px;"></div>
+                            ${nextDaysDisplay}
+                        </span>
+                    </td>
+                    <td style="background: ${planBg}; border-right: 1px solid #cbd5e1;">${planEndInput}</td>
+                    <td class="responsibility-col" style="background: ${planBg}; border-right: 1px solid #cbd5e1;">${respInput}</td>
+                    <td class="exclusion-cell" style="border-right: 2px solid #e2e8f0; background: ${planBg}; text-align: center;">${planActionBtn}</td>
+                    
+                    <!-- ACTUAL SECTION -->
+                    <td style="background: ${actualBg}; border-right: 1px solid #ccfbf1;">
+                        <div class="revision-stack">
+                            <div class="revision-row">${actualStartInput}</div>
+                            ${originalRowSpacer}
+                            ${revisionSideSpacers}
+                        </div>
+                    </td>
+                    <td style="background: ${actualBg}; border-right: 1px solid #ccfbf1; text-align: center;">
+                        <div class="revision-stack">
+                            <div class="revision-row"><div class="inline-date inline-date-actual d-flex align-items-center justify-content-center assigned-date" style="cursor:default; height:38px; width:130px;">${calculatedEndStr}</div></div>
+                            ${originalRowSpacer}
+                            ${revisionSideSpacers}
+                        </div>
+                    </td>
+                    <td style="background: ${actualBg}; border-right: 1px solid #ccfbf1;">
+                        <div class="revision-stack">
+                            <div class="revision-row">${actualEndInput}</div>
+                            ${originalRowSpacer}
+                            ${revisionSideSpacers}
+                        </div>
+                    </td>
+                    <td style="background: ${actualBg}; border-right: 1px solid #ccfbf1; text-align: center;">
+                        <div class="revision-stack">
+                            <div class="revision-row"><span class="total-days" id="dip_${ph.id}" style="background:white; border:1px solid #ccfbf1; height:38px; display:inline-flex; align-items:center; justify-content:center; padding:0 14px;">${delayDisplay}</span></div>
+                            ${originalRowSpacer}
+                            ${revisionSideSpacers}
+                        </div>
+                    </td>
+                    <td style="background: ${actualBg}; border-right: 1px solid #ccfbf1;">
+                        <div class="revision-stack">
+                            <div class="revision-row">
+                                <div class="d-flex align-items-center gap-2 justify-content-center">
+                                    ${progressInput}
+                                    <div class="progress-track" style="background:white;"><div class="progress-fill" style="width: ${progressValue}%; background: ${progColor};"></div></div>
+                                </div>
+                            </div>
+                            ${originalRowSpacer}
+                            ${revisionSideSpacers}
+                        </div>
+                    </td>
+                    <td class="remarks-col" style="background: ${actualBg}; border-right: 1px solid #ccfbf1;">
+                        <div class="revision-stack">
+                            <div class="revision-row">${remarksInput}</div>
+                            ${originalRowSpacer}
+                            ${revisionSideSpacers}
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // --- Weighted Overall Progress Calculation ---
+            const weights = {
+                'kickoff': 3,
+                'design': 15,
+                'purchase': 15,
+                'mech_assembly': 20,
+                'program': 15,
+                'inhouse': 10,
+                'mq1_fat': 10,
+                'dispatch_parent': 2,
+                'inc_parent': 10
+            };
+
+            let totalWeightedProgress = 0;
+            let totalActiveWeight = 0;
+
+            Object.keys(weights).forEach(mainId => {
+                const detailed = project.detailed_phases || {};
+                const mainData = detailed[mainId] || { progress: 0, is_excluded: false };
+                if (!mainData.is_excluded) {
+                    totalWeightedProgress += (parseInt(mainData.progress || 0) / 100) * weights[mainId];
+                    totalActiveWeight += weights[mainId];
+                }
+            });
+
+            project.overall_progress = totalActiveWeight ? Math.round((totalWeightedProgress / totalActiveWeight) * 100) : 0;
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        async function syncProject(element = null) {
+            try {
+                if (!project || !projectId) {
+                    console.error('Project data or ID missing');
+                    return;
+                }
+
+                syncToDashboardPhases();
+
+                const response = await fetch(`/api/projects/${projectId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        detailed_phases: project.detailed_phases,
+                        phases: project.phases,
+                        overall_progress: project.overall_progress,
+                        start_date: project.start_date,
+                        dispatch_date: project.dispatch_date,
+                        mq2_date: project.mq2_date,
+                        reassign_start_date: project.reassign_start_date,
+                        reassign_dispatch_date: project.reassign_dispatch_date,
+                        reassign_mq2_date: project.reassign_mq2_date,
+                        plan_status: project.plan_status,
+                        revision_requests: project.revision_requests // ADDED THIS
+                    })
+                });
+
+                if (response.ok) {
+                    showSuccessToast();
+                    renderTable();
+                } else {
+                    const error = await response.json();
+                    alert('❌ Save failed: ' + (error.message || 'Server error'));
+                }
+            } catch (err) {
+                console.error('Sync failed:', err);
+                alert('❌ Connection failed. Please check your internet.');
+            }
+        }
+
+        function showSuccessToast() {
+            const t = document.getElementById('saveToast');
+            t.classList.add('active');
+            setTimeout(() => {
+                t.classList.remove('active');
+            }, 3000);
+        }
+
+        function saveInlineField(phaseId, field, value, element) {
+            if (!project.detailed_phases[phaseId]) project.detailed_phases[phaseId] = {};
+            const d = project.detailed_phases[phaseId];
+            if (d.locked) return;
+            d[field] = value;
+
+            // Auto-calculate End Date if Start Date changes and Duration is present
+            if (field === 'plan_start' && value) {
+                const dur = parseInt(d.plan_duration);
+                if (!isNaN(dur) && dur > 0) {
+                    const start = new Date(value);
+                    const end = new Date(start);
+                    end.setDate(end.getDate() + dur);
+                    d.plan_end = end.toISOString().split('T')[0];
+                }
+            }
+            
+            // If manual End Date changed, update the internal duration store
+            if (field === 'plan_end' && value && d.plan_start) {
+                const s = new Date(d.plan_start);
+                const e = new Date(value);
+                const dur = Math.ceil((e - s) / (1000 * 60 * 60 * 24));
+                if (dur >= 0) d.plan_duration = dur;
+            }
+
+            renderTable(); // Update sibling fields on screen
+        }
+
+        function updatePlanFromDays(phaseId, days, element) {
+            const val = parseInt(days);
+            if (isNaN(val) || val < 0) return;
+
+            if (!project.detailed_phases[phaseId]) project.detailed_phases[phaseId] = {};
+            const d = project.detailed_phases[phaseId];
+            d.plan_duration = val;
+
+            if (d.plan_start) {
+                const start = new Date(d.plan_start);
+                const end = new Date(start);
+                end.setDate(end.getDate() + val);
+                d.plan_end = end.toISOString().split('T')[0];
+            }
+            renderTable();
+        }
+
+        function openRescheduleModal(phaseId) {
+            const ph = defaultPhases.find(p => p.id === phaseId);
+            if (!ph) return;
+            const data = project.detailed_phases[phaseId] || {};
+            const revs = data.revisions || [];
+            const latest = revs.length > 0 ? revs[revs.length - 1] : null;
+
+            const globalMin = getGlobalMinDateString();
+            document.getElementById('mRescheduleStart').min = globalMin;
+            document.getElementById('mRescheduleEnd').min = globalMin;
+
+            document.getElementById('mRescheduleId').value = phaseId;
+            document.getElementById('modalTitle').innerText = 'Reschedule: ' + ph.name;
+
+            // Show the last revision by default in inputs
+            document.getElementById('mRescheduleStart').value = latest ? latest.start : (data.plan_start || '');
+            document.getElementById('mRescheduleEnd').value = latest ? latest.end : (data.plan_end || '');
+            document.getElementById('mRescheduleRemark').value = '';
+
+            // Reset validation states
+            document.getElementById('mRescheduleStart').classList.remove('is-invalid');
+            document.getElementById('mRescheduleEnd').classList.remove('is-invalid');
+            document.getElementById('mRescheduleRemark').classList.remove('is-invalid');
+
+            calcReassignDays();
+            new bootstrap.Modal(document.getElementById('updateModal')).show();
+        }
+
+        function openActualModal(phaseId) {
+            const ph = defaultPhases.find(p => p.id === phaseId);
+            if (!ph) return;
+            const data = project.detailed_phases[phaseId] || {};
+
+            const globalMin = getGlobalMinDateString();
+            document.getElementById('mActualStart').min = globalMin;
+            document.getElementById('mActualEnd').min = globalMin;
+
+            document.getElementById('mActualId').value = phaseId;
+            document.getElementById('actualModalTitle').innerText = 'Update Progress: ' + ph.name;
+            document.getElementById('mActualStart').value = data.actual_start || '';
+            document.getElementById('mActualEnd').value = data.actual_end || '';
+            document.getElementById('mProgress').value = data.progress || 0;
+            document.getElementById('mRemarks').value = data.remarks || '';
+            new bootstrap.Modal(document.getElementById('actualModal')).show();
+        }
+
+        function calcReassignDays() {
+            const s = document.getElementById('mRescheduleStart').value;
+            const e = document.getElementById('mRescheduleEnd').value;
+            const disp = document.getElementById('mRescheduleDays');
+            if (s && e) {
+                const diff = Math.ceil((new Date(e) - new Date(s)) / (1000 * 60 * 60 * 24));
+                disp.value = diff >= 0 ? diff : 0;
+            }
+        }
+
+        function updateEndFromReassignDays() {
+            const s = document.getElementById('mRescheduleStart').value;
+            const days = parseInt(document.getElementById('mRescheduleDays').value);
+            const eInp = document.getElementById('mRescheduleEnd');
+            if (s && !isNaN(days)) {
+                const start = new Date(s);
+                const end = new Date(start);
+                end.setDate(end.getDate() + days);
+                eInp.value = end.toISOString().split('T')[0];
+            }
+        }
+
+        async function saveRescheduleData() {
+            const id = document.getElementById('mRescheduleId').value;
+            const ph = defaultPhases.find(p => p.id === id);
+            if (!project.detailed_phases[id]) project.detailed_phases[id] = {};
+            const d = project.detailed_phases[id];
+
+            const startInput = document.getElementById('mRescheduleStart');
+            const endInput = document.getElementById('mRescheduleEnd');
+            const remarkInput = document.getElementById('mRescheduleRemark');
+
+            const newStart = startInput.value;
+            const newEnd = endInput.value;
+            const remarkText = remarkInput.value.trim();
+
+            let hasError = false;
+            
+            if (!newStart) { startInput.classList.add('is-invalid'); hasError = true; } else { startInput.classList.remove('is-invalid'); }
+            if (!newEnd) { endInput.classList.add('is-invalid'); hasError = true; } else { endInput.classList.remove('is-invalid'); }
+            if (!remarkText) { remarkInput.classList.add('is-invalid'); hasError = true; } else { remarkInput.classList.remove('is-invalid'); }
+
+            if (hasError) {
+                // Return gracefully without alert since the fields are highlighted in red
+                return;
+            }
+
+            document.getElementById('reschedulePhaseNameDisplay').innerText = `"${ph.name}"`;
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('rescheduleConfirmModal')).show();
+        }
+
+        async function confirmRescheduleSubmission() {
+            const id = document.getElementById('mRescheduleId').value;
+            const ph = defaultPhases.find(p => p.id === id);
+            const d = project.detailed_phases[id];
+            
+            const newStart = document.getElementById('mRescheduleStart').value;
+            const newEnd = document.getElementById('mRescheduleEnd').value;
+            const remarkText = document.getElementById('mRescheduleRemark').value.trim();
+
+            const cModal = bootstrap.Modal.getInstance(document.getElementById('rescheduleConfirmModal'));
+            const uModal = bootstrap.Modal.getInstance(document.getElementById('updateModal'));
+            if (cModal) cModal.hide();
+            if (uModal) uModal.hide();
+
+            // Create Revision Request in Project Object (Stored in MongoDB Atlas)
+            if (!project.revision_requests) project.revision_requests = [];
+            
+            const newRequest = {
+                id: 'REQ_' + Date.now(),
+                phaseId: id,
+                phaseName: ph.name,
+                oldStart: d.plan_start || '', 
+                oldEnd: d.plan_end || '',
+                newStart: newStart,
+                newEnd: newEnd,
+                reason: remarkText,
+                timestamp: new Date().toISOString(),
+                status: 'pending',
+                requester: localStorage.getItem('danprel_username') || 'User'
+            };
+            
+            project.revision_requests.push(newRequest);
+            
+            // Sync now to MongoDB Atlas
+            await syncProject();
+
+            // Show immediate success notification in bottom right
+            const toastHtml = `
+            <div id="modernToast" style="
+                position: fixed; 
+                bottom: 32px; 
+                right: 32px; 
+                transform: translateY(120px);
+                background: white; 
+                border-radius: 12px; 
+                box-shadow: 0 10px 40px rgba(0,0,0,0.15); 
+                padding: 14px 24px 14px 14px; 
+                z-index: 10000; 
+                display: flex; 
+                align-items: center; 
+                gap: 16px; 
+                border: 1px solid rgba(0,0,0,0.05);
+                transition: transform 0.6s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+                font-family: 'Inter', sans-serif;
+            ">
+                <div style="width: 42px; height: 42px; background: #E8F5E9; color: #10B981; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem;">
+                    <i class="bi bi-send-check-fill"></i>
+                </div>
+                <div style="flex: 1;">
+                    <h6 style="margin: 0; font-weight: 800; color: #0B2B4A; font-size: 0.95rem;">Request Sent!</h6>
+                    <p style="margin: 0; color: #64748B; font-size: 0.78rem; font-weight: 600;">Submitted to Top Management.</p>
+                </div>
+            </div>`;
+            
+            document.body.insertAdjacentHTML('beforeend', toastHtml);
+            const toast = document.getElementById('modernToast');
+            setTimeout(() => { if(toast) toast.style.transform = 'translateY(0)'; }, 100);
+            setTimeout(() => {
+                if(toast) {
+                    toast.style.transform = 'translateY(150px)';
+                    setTimeout(() => toast.remove(), 600);
+                }
+            }, 5000);
+
+            // Trigger Email In Background (Do not await to keep UI fast)
+            (async () => {
+                try {
+                    const empRes = await fetch('/api/employees');
+                    const employees = await empRes.json();
+                    const topManagements = employees.filter(emp => emp.dept === 'Top Management');
+                    const elangovans = employees.filter(emp => (emp.name || '').toLowerCase().includes('elangovan') || (emp.email || '').toLowerCase().includes('elangovan'));
+                    const toEmails = new Set();
+                    topManagements.forEach(emp => { if (emp.email) toEmails.add(emp.email); });
+                    elangovans.forEach(emp => { if (emp.email) toEmails.add(emp.email); });
+                    
+                    if (toEmails.size > 0) {
+                        const toArr = Array.from(toEmails).join(', ');
+                        const emailBody = `Dear Top Management,
+
+A new project schedule revision has been submitted for your approval.
+
+PROJECT DETAILS
+--------------------------------------------------
+Project Title   : ${project.name}
+Project Code    : ${project.code}
+Phase           : ${ph.name}
+
+REVISION SUMMARY
+--------------------------------------------------
+Proposed Start  : ${newStart}
+Proposed End    : ${newEnd}
+Reason/Remark   : "${remarkText}"
+
+ACTION REQUIRED
+--------------------------------------------------
+Please log in to the Project Review Dashboard to approve or reject this request.
+
+Sincerely,
+System Administrator
+Danprel Engineering Automation Pvt Ltd
+
+Note: This is an auto-generated mail. Please do not reply to this mail.`;
+
+                        await fetch('/api/send-email', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ 
+                                to: toArr, 
+                                subject: `🆕 ACTION REQUIRED: Schedule Revision Approval [${project.code}]`, 
+                                body: emailBody 
+                            })
+                        });
+                    }
+                } catch (err) { console.error("BG Email Error:", err); }
+            })();
+        }
+
+        async function saveActualData() {
+            const id = document.getElementById('mActualId').value;
+            if (!project.detailed_phases[id]) project.detailed_phases[id] = {};
+            const d = project.detailed_phases[id];
+            d.actual_start = document.getElementById('mActualStart').value;
+            d.actual_end = document.getElementById('mActualEnd').value;
+            d.progress = parseInt(document.getElementById('mProgress').value || 0);
+            d.remarks = document.getElementById('mRemarks').value;
+            bootstrap.Modal.getInstance(document.getElementById('actualModal')).hide();
+            await syncProject();
+            renderTable();
+        }
+
+        function openGanttModal() {
+            document.getElementById('ganttProjectName').innerText = project.name + " (" + project.code + ")";
+            renderGantt(); // Default render for modal
+            new bootstrap.Modal(document.getElementById('ganttModal')).show();
+        }
+
+        function renderGantt(targetId = 'ganttContainer', forceAll = false) {
+            const container = document.getElementById(targetId);
+            if (!container) return;
+            container.innerHTML = '';
+
+            let minDate = null;
+            let maxDate = null;
+            let hasDates = false;
+
+            defaultPhases.forEach(ph => {
+                const isExcluded = project.detailed_phases[ph.id] && project.detailed_phases[ph.id].is_excluded;
+                if (isExcluded) return;
+
+                const data = project.detailed_phases[ph.id];
+                if (!data) return;
+
+                const dates = [data.plan_start, data.plan_end, data.actual_start, data.actual_end]
+                    .filter(d => d && d !== '')
+                    .map(d => new Date(d));
+
+                if (data.revisions) {
+                    data.revisions.forEach(rev => {
+                        if (rev.start) dates.push(new Date(rev.start));
+                        if (rev.end) dates.push(new Date(rev.end));
+                    });
+                }
+
+                if (dates.length > 0) {
+                    hasDates = true;
+                    dates.forEach(d => {
+                        if (!minDate || d < minDate) minDate = new Date(d);
+                        if (!maxDate || d > maxDate) maxDate = new Date(d);
+                    });
+                }
+            });
+
+            if (!hasDates) {
+                minDate = new Date();
+                maxDate = new Date();
+                maxDate.setMonth(maxDate.getMonth() + 3);
+            } else {
+                // Buffer and Align to Monday
+                minDate.setDate(minDate.getDate() - 7);
+                const day = minDate.getDay();
+                const diff = minDate.getDate() - day + (day === 0 ? -6 : 1);
+                minDate = new Date(minDate.setDate(diff));
+                maxDate.setDate(maxDate.getDate() + 14);
+            }
+
+            // Align to first Monday of the year if needed, or just keep Jan 1st
+            // The image showed 01 Jan as W1, so let's stick to Jan 1st
+
+            const weeks = [];
+            let current = new Date(minDate);
+            while (current <= maxDate || weeks.length < 12) {
+                weeks.push(new Date(current));
+                current.setDate(current.getDate() + 7);
+            }
+
+            const weekWidth = 80;
+            const totalWidth = weeks.length * weekWidth;
+
+            const sideHeader = document.createElement('div');
+            sideHeader.className = 'gantt-sidebar';
+            sideHeader.innerHTML = `
+                <div class="gantt-month-row"></div>
+                <div class="gantt-week-row" style="display:flex; align-items:center; padding-left:24px; color:#0B2B4A; font-weight:800; font-size:0.75rem;">WEEK / START</div>
+            `;
+
+            const mainHeader = document.createElement('div');
+            mainHeader.className = 'gantt-header-container';
+            mainHeader.style.minWidth = totalWidth + 'px';
+
+            const monthRow = document.createElement('div');
+            monthRow.className = 'gantt-month-row';
+            let currentMonth = -1, monthSpan = 0, monthLabel = "";
+
+            weeks.forEach((w, i) => {
+                const m = w.getMonth();
+                if (m !== currentMonth) {
+                    if (currentMonth !== -1) {
+                        const mCell = document.createElement('div');
+                        mCell.className = 'gantt-month-cell';
+                        mCell.style.width = (monthSpan * weekWidth) + 'px';
+                        mCell.innerText = monthLabel;
+                        monthRow.appendChild(mCell);
+                    }
+                    currentMonth = m;
+                    monthSpan = 1;
+                    monthLabel = w.toLocaleDateString('en-GB', { month: 'short' }).toUpperCase();
+                } else { monthSpan++; }
+                if (i === weeks.length - 1) {
+                    const mCell = document.createElement('div');
+                    mCell.className = 'gantt-month-cell';
+                    mCell.style.width = (monthSpan * weekWidth) + 'px';
+                    mCell.innerText = monthLabel;
+                    monthRow.appendChild(mCell);
+                }
+            });
+            mainHeader.appendChild(monthRow);
+
+            const weekRow = document.createElement('div');
+            weekRow.className = 'gantt-week-row';
+            weeks.forEach((w, i) => {
+                const wCell = document.createElement('div');
+                wCell.className = 'gantt-week-cell';
+                wCell.style.width = weekWidth + 'px';
+                wCell.innerHTML = `
+                    <span class="w-label">W${i + 1}</span>
+                    <span class="w-date">${w.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</span>
+                    <span class="w-day">${w.toLocaleDateString('en-GB', { weekday: 'short' })}</span>
+                `;
+                weekRow.appendChild(wCell);
+            });
+            mainHeader.appendChild(weekRow);
+
+            container.appendChild(sideHeader);
+            container.appendChild(mainHeader);
+
+            defaultPhases.forEach(ph => {
+                const ex = project.detailed_phases[ph.id] || {};
+                if (ex.is_excluded) return;
+
+                // If forceAll is true, show everything. Otherwise respect expandedPhases
+                if (!forceAll && ph.type === 'sub' && !expandedPhases.has(ph.parent)) {
+                    return;
+                }
+
+                const row = document.createElement('div');
+                row.className = 'gantt-row';
+
+                const isExp = expandedPhases.has(ph.id);
+                // Apply a professional color to Main Phases
+                if (ph.type === 'parent') {
+                    row.style.background = isExp ? '#edf2f7' : '#f8fafc';
+                    row.style.borderLeft = '4px solid #001f3f';
+                }
+
+                const labelCell = document.createElement('div');
+                labelCell.className = 'gantt-row-label-cell';
+
+                if (ph.type === 'parent') {
+                    labelCell.innerHTML = `
+                        <div class="d-flex align-items-center gap-2" style="cursor:pointer; width: 100%;" onclick="toggleSubPhases('${ph.id}')">
+                            <i class="bi bi-chevron-${isExp ? 'down' : 'right'} text-primary" style="font-size: 0.85rem; font-weight: 900;"></i>
+                            <span class="phase-title" style="font-size: 0.9rem; letter-spacing: -0.01em;">${ph.name}</span>
+                        </div>
+                    `;
+                } else {
+                    const indent = ph.type === 'sub' ? 'padding-left: 28px;' : '';
+                    labelCell.innerHTML = `
+                        <span class="phase-title" style="${indent} font-size: 0.82rem; font-weight: 600; color: #4a5568;">${ph.name}</span>
+                    `;
+                }
+                row.appendChild(labelCell);
+
+                const timelineCell = document.createElement('div');
+                timelineCell.className = 'gantt-timeline-cell';
+                timelineCell.style.minWidth = totalWidth + 'px';
+
+                const data = project.detailed_phases[ph.id];
+                if (data) {
+                    if (data.plan_start && data.plan_end) {
+                        const start = new Date(data.plan_start), end = new Date(data.plan_end);
+                        const left = ((start - minDate) / (1000 * 60 * 60 * 24 * 7)) * weekWidth;
+                        const width = ((end - start) / (1000 * 60 * 60 * 24 * 7)) * weekWidth;
+                        if (width > 0) {
+                            const bar = document.createElement('div');
+                            bar.className = 'gantt-bar gantt-bar-planned';
+                            bar.style.left = left + 'px'; bar.style.width = width + 'px';
+                            const label = document.createElement('div');
+                            label.className = 'gantt-bar-label planned-label';
+                            label.style.left = left + 'px';
+                            label.innerText = 'PLAN: ' + formatDatePlain(start) + '-' + formatDatePlain(end);
+                            timelineCell.appendChild(bar); timelineCell.appendChild(label);
+                        }
+                    }
+                    if (data.actual_start) {
+                        const start = new Date(data.actual_start);
+                        let end = data.actual_end ? new Date(data.actual_end) : new Date();
+                        const left = ((start - minDate) / (1000 * 60 * 60 * 24 * 7)) * weekWidth;
+                        const width = ((end - start) / (1000 * 60 * 60 * 24 * 7)) * weekWidth;
+                        if (width >= 0) {
+                            const bar = document.createElement('div');
+                            bar.className = 'gantt-bar gantt-bar-actual' + (data.progress === 100 ? ' completed' : '');
+                            bar.style.left = left + 'px'; bar.style.width = Math.max(width, 10) + 'px';
+                            const label = document.createElement('div');
+                            label.className = 'gantt-bar-label actual-label';
+                            label.style.left = left + 'px';
+                            label.innerText = 'ACTUAL: ' + data.progress + '%';
+                            timelineCell.appendChild(bar); timelineCell.appendChild(label);
+                        }
+                    }
+                }
+                row.appendChild(timelineCell);
+                container.appendChild(row);
+            });
+        }
+
+        function formatDatePlain(date) {
+            return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+        }
+
+        function syncToDashboardPhases() {
+            if (!project) return;
+            if (!project.detailed_phases) project.detailed_phases = {};
+            const d = project.detailed_phases;
+
+            const calcAvg = (ids) => {
+                let total = 0, count = 0;
+                ids.forEach(id => {
+                    const data = d[id] || { progress: 0, is_excluded: false };
+                    if (!data.is_excluded) {
+                        total += parseInt(data.progress || 0);
+                        count++;
+                    }
+                });
+                return count ? Math.round(total / count) : 0;
+            };
+
+            // Recursively calculate parent dates from sub-phases to ensure aggregate accuracy before sync
+            const syncParentDates = (parentId) => {
+                const subs = defaultPhases.filter(s => s.parent === parentId);
+                let pStart = null, pEnd = null, rStart = null, rEnd = null, aStart = null, aEnd = null;
+
+                subs.forEach(s => {
+                    const sData = d[s.id] || {};
+                    if (sData.is_excluded) return;
+
+                    // Base Plan
+                    if (sData.plan_start) {
+                        const dt = new Date(sData.plan_start);
+                        if (!pStart || dt < pStart) pStart = dt;
+                    }
+                    if (sData.plan_end) {
+                        const dt = new Date(sData.plan_end);
+                        if (!pEnd || dt > pEnd) pEnd = dt;
+                    }
+
+                    // Actuals
+                    if (sData.actual_start) {
+                        const dt = new Date(sData.actual_start);
+                        if (!aStart || dt < aStart) aStart = dt;
+                    }
+                    if (sData.actual_end) {
+                        const dt = new Date(sData.actual_end);
+                        if (!aEnd || dt > aEnd) aEnd = dt;
+                    }
+
+                    // Revisions
+                    if (sData.revisions && sData.revisions.length > 0) {
+                        const last = sData.revisions[sData.revisions.length - 1];
+                        if (last.start) {
+                            const dt = new Date(last.start);
+                            if (!rStart || dt < rStart) rStart = dt;
+                        }
+                        if (last.end) {
+                            const dt = new Date(last.end);
+                            if (!rEnd || dt > rEnd) rEnd = dt;
+                        }
+                    } else {
+                        if (sData.plan_start) {
+                            const dt = new Date(sData.plan_start);
+                            if (!rStart || dt < rStart) rStart = dt;
+                        }
+                        if (sData.plan_end) {
+                            const dt = new Date(sData.plan_end);
+                            if (!rEnd || dt > rEnd) rEnd = dt;
+                        }
+                    }
+                });
+
+                if (!d[parentId]) d[parentId] = {};
+                if (pStart) d[parentId].plan_start = pStart.toISOString().split('T')[0];
+                if (pEnd) d[parentId].plan_end = pEnd.toISOString().split('T')[0];
+
+                if (aStart) d[parentId].actual_start = aStart.toISOString().split('T')[0];
+                if (aEnd) d[parentId].actual_end = aEnd.toISOString().split('T')[0];
+
+                // Baseline fallback from revisions
+                if (!d[parentId].plan_start && rStart) d[parentId].plan_start = rStart.toISOString().split('T')[0];
+                if (!d[parentId].plan_end && rEnd) d[parentId].plan_end = rEnd.toISOString().split('T')[0];
+
+                if (rStart) d[parentId].reassign_start = rStart.toISOString().split('T')[0];
+                if (rEnd) d[parentId].reassign_end = rEnd.toISOString().split('T')[0];
+            };
+
+            // Trigger aggregate sync for ALL relevant parent phases to ensure timeline integrity
+            syncParentDates('kickoff');
+            syncParentDates('design');
+            syncParentDates('purchase');
+            syncParentDates('mech_assembly');
+            syncParentDates('program');
+            syncParentDates('inhouse');
+            syncParentDates('mq1_fat');
+            syncParentDates('dispatch_parent');
+            syncParentDates('inc_parent');
+
+            // Recalculate averages for workstreams
+            const kickoffAvg = calcAvg(['kickoff_1', 'kickoff_2']);
+            const designAvg = calcAvg(['design_1', 'design_2', 'design_critical_approval', 'design_3', 'design_4', 'design_5', 'design_6']);
+            const purchaseAvg = calcAvg(['purchase_1', 'purchase_2']);
+            const machineAssemblyAvg = calcAvg(['mech_assembly_1', 'mech_assembly_2']);
+            const progAvg = calcAvg(['prog_plc_offline', 'prog_plc', 'prog_robot', 'prog_labview']);
+            const inhouseAvg = calcAvg(['inhouse_1', 'inhouse_2']);
+            const mq1Avg = calcAvg(['mq1_fat_1', 'mq1_fat_2', 'mq1_fat_3']);
+            const dispatchAvg = calcAvg(['dispatch_1', 'dispatch_2']);
+            const incAvg = calcAvg(['inc_1', 'inc_2', 'inc_3', 'inc_4']);
+
+            // Sync the 9-Phase array used by the Main Dashboard for progress bars
+            project.phases = [
+                { name: 'Phase 1: Project Kick Off', progress: kickoffAvg },
+                { name: 'Phase 2: Design', progress: designAvg },
+                { name: 'Phase 3: Purchase', progress: purchaseAvg },
+                { name: 'Phase 4: Machine Assembly', progress: machineAssemblyAvg },
+                { name: 'Phase 5: Programming', progress: progAvg },
+                { name: 'Phase 6: Inhouse trails', progress: inhouseAvg },
+                { name: 'Phase 7: MQ1/FAT (Machine Qualification)', progress: mq1Avg },
+                { name: 'Phase 8: Machine dispatch', progress: dispatchAvg },
+                { name: 'Phase 9: Installation & commissioning', progress: incAvg }
+            ];
+
+            // Update parent row progress in detailed_phases for UI consistency in dashboard
+            d['kickoff'].progress = kickoffAvg;
+            d['design'].progress = designAvg;
+            d['purchase'].progress = purchaseAvg;
+            d['mech_assembly'].progress = machineAssemblyAvg;
+            d['program'].progress = progAvg;
+            d['inhouse'].progress = inhouseAvg;
+            d['mq1_fat'].progress = mq1Avg;
+            d['dispatch_parent'].progress = dispatchAvg;
+            d['inc_parent'].progress = incAvg;
+
+            // Auto-sync top-level dates for dashboard from mapped parent phases
+            const kickoffData = d['kickoff'] || {};
+            project.start_date = kickoffData.reassign_start || kickoffData.plan_start || '';
+            project.reassign_start_date = (kickoffData.reassign_start && kickoffData.reassign_start !== kickoffData.plan_start) ? kickoffData.reassign_start : '';
+
+            const dispatchData = d['dispatch_parent'] || {};
+            project.dispatch_date = dispatchData.reassign_end || dispatchData.plan_end || '';
+            project.reassign_dispatch_date = (dispatchData.reassign_end && dispatchData.reassign_end !== dispatchData.plan_end) ? dispatchData.reassign_end : '';
+
+            const incData = d['inc_parent'] || {};
+            project.mq2_date = incData.reassign_end || incData.plan_end || '';
+            project.reassign_mq2_date = (incData.reassign_end && incData.reassign_end !== incData.plan_end) ? incData.reassign_end : '';
+
+            // --- Weighted Overall Progress Calculation ---
+            const weights = {
+                'kickoff': 3,
+                'design': 15,
+                'purchase': 15,
+                'mech_assembly': 20,
+                'program': 15,
+                'inhouse': 10,
+                'mq1_fat': 10,
+                'dispatch_parent': 2,
+                'inc_parent': 10
+            };
+
+            let totalWeightedProgress = 0;
+            let totalActiveWeight = 0;
+
+            Object.keys(weights).forEach(mainId => {
+                const mainData = d[mainId] || { progress: 0, is_excluded: false };
+                if (!mainData.is_excluded) {
+                    totalWeightedProgress += (parseInt(mainData.progress || 0) / 100) * weights[mainId];
+                    totalActiveWeight += weights[mainId];
+                }
+            });
+
+            project.overall_progress = totalActiveWeight ? Math.round((totalWeightedProgress / totalActiveWeight) * 100) : 0;
+        }
+
+        let pendingExclusionData = null;
+
+        function requestToggleExclusion(phaseId, isExcluded, checkbox) {
+            if (isExcluded) {
+                // Show modal only when disabling
+                pendingExclusionData = { phaseId, isExcluded, checkbox };
+                document.getElementById('btnConfirmExclude').onclick = function () {
+                    const m = bootstrap.Modal.getInstance(document.getElementById('exclusionConfirmModal'));
+                    if (m) m.hide();
+                    toggleExclusion(pendingExclusionData.phaseId, true);
+                    pendingExclusionData = null;
+                };
+                checkbox.checked = false; // Revert until confirmed
+                new bootstrap.Modal(document.getElementById('exclusionConfirmModal')).show();
+            } else {
+                // If enabling, just do it
+                toggleExclusion(phaseId, false);
+            }
+        }
+
+        function toggleExclusion(phaseId, isExcluded) {
+            if (!project.detailed_phases[phaseId]) project.detailed_phases[phaseId] = {};
+            project.detailed_phases[phaseId].is_excluded = isExcluded;
+
+            // If parent is excluded, cascade that state to all sub-phases
+            const ph = defaultPhases.find(p => p.id === phaseId);
+            if (ph && ph.type === 'parent') {
+                const subs = defaultPhases.filter(s => s.parent === ph.id);
+                subs.forEach(s => {
+                    if (!project.detailed_phases[s.id]) project.detailed_phases[s.id] = {};
+                    project.detailed_phases[s.id].is_excluded = isExcluded;
+                });
+            }
+
+            syncProject(); // Save the exclusion state
+            renderTable();
+        }
+
+
+
+        // --- Export Functions ---
+        function showExportStatus(msg) {
+            const t = document.getElementById('exportToast');
+            document.getElementById('exportMsg').innerText = msg;
+            t.style.display = 'flex';
+        }
+        function hideExportStatus() { document.getElementById('exportToast').style.display = 'none'; }
+
+        function exportToPDF() {
+            showExportStatus('Generating Phase Performance Report...');
+
+            const pdfHtml = `
+                <div id="pdf-container" style="padding: 30px; font-family: 'Inter', sans-serif; background: #fff; width: 1400px; margin: 0 auto;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #011f3f; padding-bottom: 20px; margin-bottom: 20px;">
+                        <div style="display: flex; align-items: center; gap: 20px;">
+                            <img src="asset/image.png" style="height: 70px; width: auto;" alt="Logo" onerror="this.src='https://via.placeholder.com/70x70?text=LOGO'">
+                            <div>
+                                <h1 style="margin: 0; color: #011f3f; font-size: 28px; font-weight: 900; letter-spacing: 1px;">DANPREL</h1>
+                                <p style="margin: 0; color: #475569; font-size: 13px; font-weight: 700;">Engineering Automation Pvt Ltd</p>
+                            </div>
+                        </div>
+                        <div style="text-align: right; line-height: 1.5;">
+                            <h2 style="margin: 0; color: #011f3f; font-size: 18px; font-weight: 800; text-transform: uppercase;">Performance Report</h2>
+                            <p style="margin: 5px 0 0; color: #64748b; font-size: 11px; font-weight: 700;">Project: <span style="color: #011f3f;">${project.name} (${project.code})</span></p>
+                            <p style="margin: 0; color: #64748b; font-size: 11px; font-weight: 700;">Customer: <span style="color: #011f3f;">${project.customer_name || 'N/A'}</span></p>
+                            <p style="margin: 0; color: #64748b; font-size: 11px; font-weight: 700;">SAT Location: <span style="color: #011f3f;">${project.sat_location || 'N/A'}</span></p>
+                            <p style="margin: 2px 0 0; color: #64748b; font-size: 10px; font-weight: 800;">Generated Date: <span style="color: #011f3f;">${new Date().toLocaleDateString('en-GB')}</span></p>
+                        </div>
+                    </div>
+
+                    <table style="width: 100%; border-collapse: collapse; font-size: 9px; table-layout: fixed;">
+                        <thead>
+                            <tr style="background: #011f3f; color: #ffffff;">
+                                <th colspan="5" style="padding: 10px;text-align: center; font-size: 11px; letter-spacing: 1px; border-right: 2px solid white;">PLAN SUMMARY</th>
+                                <th colspan="5" style="padding: 10px;text-align: center; font-size: 11px; letter-spacing: 1px; background: #0d9488;">ACTUAL EXECUTION</th>
+                            </tr>
+                            <tr style="background: #f1f5f9; color: #011f3f;">
+                                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #011f3f; border-right: 1px solid #cbd5e1; width: 52%;">Workstream / Phase</th>
+                                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #011f3f; border-right: 1px solid #cbd5e1; width: 6%;">Plan Start</th>
+                                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #011f3f; border-right: 1px solid #cbd5e1; width: 4%;">Total Days</th>
+                                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #011f3f; border-right: 2px solid #011f3f; width: 6%;">Plan End</th>
+                                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #011f3f; border-right: 2px solid #011f3f; width: 4%;">Resp.</th>
+                                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #0d9488; border-right: 1px solid #cbd5e1; width: 5%;">Act. Start</th>
+                                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #0d9488; border-right: 1px solid #cbd5e1; width: 5%;">Est. End</th>
+                                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #0d9488; border-right: 1px solid #cbd5e1; width: 5%;">Actual End</th>
+                                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #0d9488; border-right: 1px solid #cbd5e1; width: 6%;">Delay Days</th>
+                                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #0d9488; width: 7%;">Progress</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${(() => {
+                    let pSer = 0; let sSer = 0;
+                    return defaultPhases.filter(ph => !(project.detailed_phases[ph.id]?.is_excluded)).map(ph => {
+                        let ser = "";
+                        if (ph.type === 'parent' || ph.type === 'single') { pSer++; sSer = 0; ser = pSer + ". "; }
+                        else if (ph.type === 'sub') { sSer++; ser = pSer + "." + sSer + " "; }
+
+                        const data = project.detailed_phases[ph.id] || {};
+                        if (ph.type === 'parent') {
+                            const subs = defaultPhases.filter(s => s.parent === ph.id);
+                            let pStart = null, pEnd = null, aStart = null, aEnd = null, subTotal = 0;
+                            subs.forEach(s => {
+                                const sd = project.detailed_phases[s.id] || {};
+                                subTotal += parseInt(sd.progress || 0);
+                                if (sd.plan_start) { const d = new Date(sd.plan_start); if (!pStart || d < pStart) pStart = d; }
+                                if (sd.plan_end) { const d = new Date(sd.plan_end); if (!pEnd || d > pEnd) pEnd = d; }
+                                if (sd.actual_start) { const d = new Date(sd.actual_start); if (!aStart || d < aStart) aStart = d; }
+                                if (sd.actual_end) { const d = new Date(sd.actual_end); if (!aEnd || d > aEnd) aEnd = d; }
+                            });
+                            if (pStart) data.plan_start = pStart.toISOString().split('T')[0];
+                            if (pEnd) data.plan_end = pEnd.toISOString().split('T')[0];
+                            if (aStart) data.actual_start = aStart.toISOString().split('T')[0];
+                            if (aEnd) data.actual_end = aEnd.toISOString().split('T')[0];
+                            data.progress = subs.length ? Math.round(subTotal / subs.length) : 0;
+                        }
+
+                        const duration = calcDays(data.plan_start, data.plan_end);
+                        const prog = data.progress || 0;
+                        const progCol = getProgColor(prog, data);
+                        const isParent = ph.type === 'parent';
+
+                        return `
+                                <tr style="border-bottom: 1px solid #e2e8f0; background: ${isParent ? '#f8fafc' : '#ffffff'};">
+                                    <td style="padding: 10px; color: #011f3f; font-weight: ${isParent ? '800' : '500'}; padding-left: ${ph.type === 'sub' ? '25px' : '10px'}; border-right: 1px solid #e2e8f0; line-height: 1.4;">${ser}${ph.name}</td>
+                                    <td style="padding: 8px; text-align: center; border-right: 1px solid #e2e8f0;">${data.plan_start ? formatDate(data.plan_start) : '-'}</td>
+                                    <td style="padding: 8px; text-align: center; font-weight: 800; border-right: 1px solid #e2e8f0; color: #011f3f;">${duration}</td>
+                                    <td style="padding: 8px; text-align: center; border-right: 2px solid #011f3f;">${data.plan_end ? formatDate(data.plan_end) : '-'}</td>
+                                    <td style="padding: 8px; text-align: center; border-right: 2px solid #011f3f; font-weight: 700;">${data.responsibility || '-'}</td>
+                                    <td style="padding: 8px; text-align: center; border-right: 1px solid #e2e8f0;">${data.actual_start ? formatDate(data.actual_start) : '-'}</td>
+                                    <td style="padding: 8px; text-align: center; border-right: 1px solid #e2e8f0;">${(() => {
+                                if (data.actual_start && data.plan_start && data.plan_end) {
+                                    const ps = new Date(data.plan_start); const pe = new Date(data.plan_end);
+                                    const dur = Math.ceil((pe - ps) / (1000 * 60 * 60 * 24));
+                                    if (dur >= 0) { const ce = new Date(data.actual_start); ce.setDate(ce.getDate() + dur); return formatDate(ce.toISOString().split('T')[0]); }
+                                }
+                                return '-';
+                            })()}</td>
+                                    <td style="padding: 8px; text-align: center; border-right: 1px solid #e2e8f0;">${data.actual_end ? formatDate(data.actual_end) : '-'}</td>
+                                    <td style="padding: 8px; text-align: center; border-right: 1px solid #e2e8f0; color: ${(() => {
+                                let refE = data.plan_end;
+                                if (data.revisions?.length > 0) refE = data.revisions[data.revisions.length - 1].end;
+                                const dStat = calcDelayStatus(refE, data.actual_end);
+                                return data.actual_end ? dStat.color : 'inherit';
+                            })()}; font-weight: 800;">${(() => {
+                                let refE = data.plan_end;
+                                if (data.revisions?.length > 0) refE = data.revisions[data.revisions.length - 1].end;
+                                const dStat = calcDelayStatus(refE, data.actual_end);
+                                return data.actual_end ? dStat.text : '-';
+                            })()}</td>
+                                    <td style="padding: 8px; text-align: center;">
+                                        <div style="display: flex; align-items: center; gap: 4px;">
+                                            <span style="font-weight: 800; color: ${progCol}; width: 22px; font-size: 8px;">${prog}%</span>
+                                            <div style="flex: 1; height: 4px; background: #e2e8f0; border-radius: 2px; overflow: hidden;"><div style="width: ${prog}%; height: 100%; background: ${progCol};"></div></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `;
+                    }).join('');
+                })()}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            const opt = {
+                margin: [0.2, 0.2, 0.2, 0.2],
+                filename: `DANPREL_Project_Report_${project.code}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true, logging: false },
+                jsPDF: { unit: 'in', format: 'a3', orientation: 'landscape' }
+            };
+
+            html2pdf().from(pdfHtml).set(opt).save().then(() => {
+                hideExportStatus();
+            }).catch(err => {
+                console.error('PDF Catch:', err);
+                hideExportStatus();
+            });
+        }
+
+        function exportGanttToPDF() {
+            showExportStatus('Preparing Performance Report...');
+
+            // Create a temporary hidden container for full render
+            const printArea = document.getElementById('printArea');
+            // Initial render to measure content
+            printArea.innerHTML = '<div id="exportGanttTarget" class="gantt-wrapper" style="background:white; width: max-content; padding: 20px;"></div>';
+            
+            // Force render all phases for export
+            renderGantt('exportGanttTarget', true);
+            
+            const container = document.getElementById('exportGanttTarget');
+            const ganttWidth = container.scrollWidth;
+            const ganttHeight = container.scrollHeight;
+            
+            // Calculate total document dimensions
+            const calcWidth = Math.max(1400, ganttWidth + 200);
+            const calcHeight = 400 + ganttHeight + 150; 
+            
+            const genDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+            const pdfHtml = `
+                <div style="width: ${calcWidth}px; padding: 60px; font-family: 'Inter', sans-serif; background: #fff; color: #1e293b; min-height: ${calcHeight}px;">
+                    <!-- STYLIZED HEADER (MATCHING IMAGE) -->
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 50px; padding-bottom: 30px; border-bottom: 3px solid #001f3f;">
+                        <div style="display: flex; align-items: center; gap: 25px;">
+                             <img src="asset/image.png" style="height: 85px; width: auto; object-fit: contain;" onerror="this.src='https://via.placeholder.com/85x85?text=LOGO'">
+                             <div>
+                                <h1 style="margin: 0; font-size: 52px; color: #001f3f; font-weight: 900; letter-spacing: 0.5px; line-height: 1;">DANPREL</h1>
+                                <div style="font-size: 18px; color: #475569; font-weight: 700; margin-top: 5px;">Engineering Automation Pvt Ltd</div>
+                             </div>
+                        </div>
+                        <div style="text-align: right; line-height: 1.7;">
+                             <h2 style="margin: 0 0 10px 0; color: #001f3f; font-size: 34px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px;">PERFORMANCE REPORT</h2>
+                             <div style="font-size: 16px; color: #64748b; font-weight: 700;">Project: <span style="color: #0f172a; font-weight: 900;">${project.name} (${project.code})</span></div>
+                             <div style="font-size: 16px; color: #64748b; font-weight: 700;">Customer: <span style="color: #0f172a; font-weight: 900;">${project.customer_name || '—'}</span></div>
+                             <div style="font-size: 16px; color: #64748b; font-weight: 700;">SAT Location: <span style="color: #0f172a; font-weight: 900;">${project.sat_location || '—'}</span></div>
+                             <div style="font-size: 16px; color: #64748b; font-weight: 700;">Generated Date: <span style="color: #0f172a; font-weight: 900;">${genDate}</span></div>
+                        </div>
+                    </div>
+
+                    <!-- GANTT VISUALIZATION BLOCK -->
+                    <div style="border: 2px solid #e2e8f0; border-radius: 20px; overflow: visible; background: white; padding: 25px; box-shadow: 0 15px 50px rgba(0,0,0,0.05);">
+                        <div style="width: 100%; overflow: visible; background: #fff;">
+                            ${container.outerHTML}
+                        </div>
+                    </div>
+
+                    <!-- FOOTER -->
+                    <div style="margin-top: 60px; padding-top: 30px; border-top: 1px solid #e2e8f0; font-size: 14px; color: #94a3b8; text-align: center; font-weight: 600; letter-spacing: 1px;">
+                        OFFICIAL PERFORMANCE RECORD • GENERATED BY DANPREL OS • CONFIDENTIAL
+                    </div>
+                </div>
+            `;
+
+            // Convert to points
+            const width_pt = calcWidth * 0.75;
+            const height_pt = calcHeight * 0.75;
+
+            const opt = {
+                margin: 0,
+                filename: `DANPREL_Timeline_${project.code}_${genDate.replace(/\//g, '-')}.pdf`,
+                image: { type: 'jpeg', quality: 1.0 },
+                html2canvas: {
+                    scale: 2,
+                    useCORS: true,
+                    logging: false,
+                    width: calcWidth,
+                    height: calcHeight,
+                    backgroundColor: '#ffffff'
+                },
+                jsPDF: {
+                    unit: 'pt',
+                    format: [width_pt, height_pt],
+                    orientation: 'landscape',
+                    compress: true
+                }
+            };
+
+            html2pdf().from(pdfHtml).set(opt).save().then(() => {
+                hideExportStatus();
+                if (typeof showSuccessToast === 'function') showSuccessToast();
+            }).catch(err => {
+                console.error('Timeline PDF Error:', err);
+                hideExportStatus();
+            });
+        }
+
+
+        function exportToExcel() {
+            showExportStatus('Generating Excel spreadsheet...');
+            
+            // Prepare Professional Metadata Header Rows
+            const metaHeader = [
+                ["COMPANY", "DANPREL ENGINEERING AUTOMATION PVT LTD"],
+                ["PROJECT NAME", project.name],
+                ["PROJECT CODE", project.code],
+                ["SAT LOCATION", project.sat_location || "N/A"],
+                ["CUSTOMER", project.customer_name || "N/A"],
+                ["GENERATED ON", new Date().toLocaleDateString('en-GB')],
+                [] // Empty separator
+            ];
+
+            let pS = 0, sS = 0;
+            // Filter disabled phases and Map data row by row
+            const exportData = defaultPhases.filter(ph => {
+                const d = project.detailed_phases[ph.id] || {};
+                return !d.is_excluded;
+            }).map(ph => {
+                let sNum = "";
+                if (ph.type === 'parent' || ph.type === 'single') {
+                    pS++; sS = 0; sNum = pS + ". ";
+                } else if (ph.type === 'sub') {
+                    sS++; sNum = pS + "." + sS + " ";
+                }
+                const data = JSON.parse(JSON.stringify(project.detailed_phases[ph.id] || {}));
+                if (ph.type === 'parent') {
+                    const subs = defaultPhases.filter(s => s.parent === ph.id);
+                    let pStart = null, pEnd = null, aStart = null;
+                    subs.forEach(s => {
+                        const sData = project.detailed_phases[s.id] || {};
+                        if (sData.plan_start) {
+                            const d = new Date(sData.plan_start);
+                            if (!pStart || d < pStart) pStart = d;
+                        }
+                        if (sData.plan_end) {
+                            const d = new Date(sData.plan_end);
+                            if (!pEnd || d > pEnd) pEnd = d;
+                        }
+                        if (sData.actual_start) {
+                            const d = new Date(sData.actual_start);
+                            if (!aStart || d < aStart) aStart = d;
+                        }
+                    });
+                    if (pStart) data.plan_start = pStart.toISOString().split('T')[0];
+                    if (pEnd) data.plan_end = pEnd.toISOString().split('T')[0];
+                    if (aStart) data.actual_start = aStart.toISOString().split('T')[0];
+                }
+                return {
+                    'Ref #': sNum.trim(),
+                    'Workstream / Phase': ph.name,
+                    'Type': ph.type.toUpperCase(),
+                    'Plan Start': data.plan_start || '',
+                    'Total Days': (calcDays(data.plan_start, data.plan_end)).replace('d', ''),
+                    'Plan End': data.plan_end || '',
+                    'Responsibility': data.responsibility || '',
+                    'Actual Start': data.actual_start || '',
+                    'Calc. End': (() => {
+                        if (data.actual_start && data.plan_start && data.plan_end) {
+                            const ps = new Date(data.plan_start);
+                            const pe = new Date(data.plan_end);
+                            const dur = Math.ceil((pe - ps) / (1000 * 60 * 60 * 24));
+                            if (dur >= 0) {
+                                const ce = new Date(data.actual_start);
+                                ce.setDate(ce.getDate() + dur);
+                                return ce.toISOString().split('T')[0];
+                            }
+                        }
+                        return '';
+                    })(),
+                    'Delay Days': (() => {
+                        let refE = data.plan_end;
+                        if (data.revisions && data.revisions.length > 0) refE = data.revisions[data.revisions.length - 1].end;
+                        const dStat = calcDelayStatus(refE, data.actual_end);
+                        return data.actual_end ? dStat.text : '-';
+                    })(),
+                    'Progress %': (data.progress || 0) + '%',
+                    'Remarks': data.remarks || ''
+                };
+            });
+
+            const wb = XLSX.utils.book_new();
+            // Start with company metadata
+            const ws = XLSX.utils.aoa_to_sheet(metaHeader);
+            
+            // Append data below metadata starting at row 8 (A8)
+            XLSX.utils.sheet_add_json(ws, exportData, { origin: "A8" });
+            
+            XLSX.utils.book_append_sheet(wb, ws, "Phase Plan Details");
+            XLSX.writeFile(wb, `Phase_Export_${project.code}_${new Date().toLocaleDateString('en-GB').replace(/\//g, '-')}.xlsx`);
+            hideExportStatus();
+        }
+
+
+        // Removed initPage call as it is not defined
+        // fetchProjectData is already called on window.onload
+
+    </script>
+    <div id="exportToast">
+        <div class="spinner-s"></div>
+        <span id="exportMsg">Generating export...</span>
+    </div>
+    <div id="printArea"
+        style="position: fixed; left: -9999px; top: 0; width: 1200px; background: white; pointer-events: none; overflow: visible;">
+    </div>
+</body>
+
+</html>

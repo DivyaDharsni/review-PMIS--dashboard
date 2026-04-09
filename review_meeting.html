@@ -1,0 +1,1510 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Danprel Engineering Automation | Review Meeting</title>
+    <link rel="icon" type="image/png" href="asset/image.png">
+    <script>
+        if (localStorage.getItem('danprel_auth') !== 'true') {
+            window.location.replace('login.html');
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+    <style>
+        :root {
+            --navy-dark: #1e293b;
+            --navy-mid: #334155;
+            --blue-accent: #3b82f6;
+            --teal-bright: #10b981;
+            --gold: #f59e0b;
+            --bg-neutral: #f4f7fa;
+            --card-shadow: 0 16px 40px rgba(0, 0, 0, 0.04);
+            --radius-card: 28px;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-neutral);
+            color: #1e293b;
+            padding: 30px;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        /* ── SIDEBAR ── */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: -320px;
+            width: 320px;
+            height: 100%;
+            background: #ffffff;
+            z-index: 1100;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 10px 0 50px rgba(0, 0, 0, 0.03);
+            overflow-y: auto;
+        }
+
+        .sidebar.active {
+            left: 0;
+        }
+
+        .sidebar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .sidebar-section-title {
+            font-size: 0.6rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #94a3b8;
+            margin: 20px 0 8px 0;
+            padding: 0 5px;
+        }
+
+        .sidebar-btn {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 14px 20px;
+            color: #64748b;
+            text-decoration: none !important;
+            font-weight: 700;
+            font-size: 0.9rem;
+            border-radius: 16px;
+            margin-bottom: 6px;
+            transition: all 0.25s;
+            cursor: pointer;
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+        }
+
+        .sidebar-btn:hover {
+            background: #f8fafc;
+            color: #3b82f6;
+            transform: translateX(5px);
+        }
+
+        .sidebar-btn.active {
+            background: var(--blue-accent);
+            color: white;
+            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+        }
+
+        .sidebar-btn .sb-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: #f1f5f9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+
+        .sidebar-btn.active .sb-icon {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        .sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 31, 63, 0.6);
+            backdrop-filter: blur(4px);
+            display: none;
+            z-index: 1090;
+        }
+
+        .sidebar-overlay.active {
+            display: block;
+        }
+
+        /* ── HEADER ── */
+        .app-header {
+            background: #ffffff;
+            border-radius: var(--radius-card);
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(0, 0, 0, 0.02);
+        }
+
+        .brand-box {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .brand-logo-wrap {
+            width: 50px;
+            height: 50px;
+            background: white;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px;
+        }
+
+        .brand-logo-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .brand-name {
+            font-size: 1.2rem;
+            font-weight: 900;
+            color: #1e293b;
+        }
+
+        .brand-sub {
+            font-size: .7rem;
+            font-weight: 600;
+            color: var(--teal-bright);
+            text-transform: uppercase;
+        }
+
+        .menu-toggle {
+            background: #f1f5f9;
+            border: none;
+            color: #475569;
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1.5rem;
+        }
+
+        .header-center-title {
+            background: #f8fafc;
+            color: #64748b;
+            padding: 10px 24px;
+            border-radius: 100px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border: 1px solid #e2e8f0;
+        }
+
+        /* ── CARDS ── */
+        .ui-card {
+            background: white;
+            border-radius: var(--radius-card);
+            box-shadow: var(--card-shadow);
+            border: 1px solid rgba(0, 31, 63, 0.05);
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+
+        .ui-card-header {
+            padding: 20px 30px;
+            border-bottom: 2px solid #f1f5f9;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: var(--navy-dark);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* ── PROJECT SELECT GRID ── */
+        .project-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            padding: 24px;
+        }
+
+        .project-card-wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .project-card {
+            border: 2px solid #e2e8f0;
+            border-radius: 18px;
+            padding: 20px 22px;
+            transition: all 0.25s;
+            background: white;
+            position: relative;
+        }
+
+        .project-card.history-open {
+            border-color: var(--teal-bright);
+            border-radius: 18px 18px 0 0;
+            border-bottom-color: transparent;
+        }
+
+        .project-card:hover {
+            border-color: #94a3b8;
+            box-shadow: 0 8px 24px rgba(0, 31, 63, 0.08);
+        }
+
+        .project-card.history-open:hover {
+            border-color: var(--teal-bright);
+            border-bottom-color: transparent;
+        }
+
+        .project-card .proj-code {
+            display: inline-block;
+            background: #e0f2fe;
+            color: var(--navy-mid);
+            font-size: 0.65rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            padding: 3px 10px;
+            border-radius: 100px;
+            margin-bottom: 8px;
+            letter-spacing: 0.5px;
+        }
+
+        .project-card .proj-name {
+            font-size: 1rem;
+            font-weight: 800;
+            color: var(--navy-dark);
+        }
+
+        .project-card .proj-phase {
+            font-size: 0.7rem;
+            color: #64748b;
+            margin-top: 5px;
+            margin-bottom: 14px;
+        }
+
+        .card-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .btn-record {
+            grid-column: span 2;
+            padding: 10px 14px;
+            border-radius: 100px;
+            border: none;
+            background: linear-gradient(135deg, var(--teal-bright), #0d9488);
+            color: white;
+            font-size: 0.82rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-record:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 18px rgba(20, 184, 166, 0.35);
+        }
+
+        .btn-history,
+        .btn-resources {
+            padding: 9px 14px;
+            border-radius: 100px;
+            border: 2px solid #e2e8f0;
+            background: white;
+            color: var(--navy-mid);
+            font-size: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .btn-history:hover,
+        .btn-resources:hover {
+            background: var(--navy-dark);
+            color: white;
+            border-color: var(--navy-dark);
+        }
+
+        .btn-history .hist-count {
+            background: #f59e0b;
+            color: white;
+            font-size: 0.6rem;
+            font-weight: 900;
+            padding: 1px 6px;
+            border-radius: 100px;
+        }
+
+        .no-history {
+            text-align: center;
+            padding: 28px;
+            color: #94a3b8;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .no-history i {
+            display: block;
+            font-size: 2rem;
+            margin-bottom: 8px;
+        }
+
+        /* ── FORM STYLES ── */
+        .section-lbl {
+            font-size: 0.65rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            color: var(--blue-accent);
+            margin-bottom: 6px;
+            letter-spacing: 0.5px;
+        }
+
+        .form-control,
+        .form-select {
+            border-radius: 12px;
+            border: 1px solid #f1f5f9;
+            font-size: 0.9rem;
+            padding: 10px 14px;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            border-color: var(--teal-bright);
+            box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.15);
+        }
+
+        .member-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 10px;
+            border: 1px solid #f1f5f9;
+            border-radius: 12px;
+            min-height: 50px;
+            background: #f8fafc;
+        }
+
+        .member-tag {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: #e0f2fe;
+            color: var(--navy-mid);
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 5px 12px;
+            border-radius: 100px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .member-tag .tag-email {
+            font-weight: 400;
+            color: #0369a1;
+            opacity: 0.8;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .btn-submit {
+            background: linear-gradient(135deg, var(--teal-bright), #0d9488);
+            color: white;
+            border: none;
+            padding: 14px 40px;
+            border-radius: 100px;
+            font-weight: 800;
+            font-size: 1rem;
+            transition: all 0.25s;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(20, 184, 166, 0.4);
+            filter: brightness(1.05);
+        }
+
+        .btn-back {
+            background: #f1f5f9;
+            color: #475569;
+            border: none;
+            padding: 12px 28px;
+            border-radius: 100px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            transition: all 0.25s;
+        }
+
+        .btn-back:hover {
+            background: rgba(0, 31, 63, 0.1);
+        }
+
+        /* ── RECORDS TABLE ── */
+        .registry-table th {
+            background: #f8fafc;
+            font-size: 0.65rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            color: #64748b;
+            padding: 15px 18px;
+            letter-spacing: 0.5px;
+        }
+
+        .registry-table td {
+            padding: 14px 18px;
+            font-size: 0.85rem;
+            vertical-align: middle;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .registry-table tr:hover {
+            background: #fbfcfe;
+        }
+
+        .badge-dept {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 100px;
+            font-size: 0.68rem;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        /* ── TOAST ── */
+        .toast-custom {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: var(--navy-dark);
+            color: white;
+            padding: 16px 24px;
+            border-radius: 16px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            box-shadow: 0 12px 40px rgba(0, 31, 63, 0.3);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .toast-custom.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: var(--teal-bright);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+        }
+
+        /* ── VIEWS ── */
+        #viewProjectList {
+            display: block;
+        }
+
+        #viewMeetingForm {
+            display: none;
+        }
+
+        #viewRecords {
+            display: none;
+        }
+
+        #viewProjectHistory {
+            display: none;
+        }
+
+        #viewProjectResources {
+            display: none;
+        }
+
+        /* Stat bar */
+        .stat-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-chip {
+            background: white;
+            border-radius: 20px;
+            padding: 18px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            box-shadow: 0 4px 16px rgba(0, 31, 63, 0.05);
+            border: 1px solid rgba(0, 0, 0, 0.04);
+        }
+
+        .stat-chip-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+        }
+
+        .sci-navy {
+            background: #e6f1ff;
+            color: var(--navy-mid);
+        }
+
+        .sci-teal {
+            background: #ccfbf1;
+            color: #0d9488;
+        }
+
+        .sci-gold {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        .sci-rose {
+            background: #ffe4e6;
+            color: #e11d48;
+        }
+
+        .stat-chip-label {
+            font-size: 0.68rem;
+            font-weight: 700;
+            color: #94a3b8;
+            text-transform: uppercase;
+        }
+
+        .stat-chip-value {
+            font-size: 1.35rem;
+            font-weight: 900;
+            color: var(--navy-dark);
+        }
+
+        .search-wrap {
+            position: relative;
+            width: 280px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px 15px 10px 40px;
+            border-radius: 100px;
+            border: 1px solid #f1f5f9;
+            font-size: 0.85rem;
+            outline: none;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .search-input:focus {
+            border-color: var(--teal-bright);
+        }
+
+        .search-wrap i {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #94a3b8;
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .empty-state p {
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        .view-tabs {
+            display: flex;
+            gap: 8px;
+        }
+
+        .view-tab {
+            padding: 8px 20px;
+            border-radius: 100px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            border: 1px solid #f1f5f9;
+            background: white;
+            color: #64748b;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .view-tab.active,
+        .view-tab:hover {
+            background: var(--navy-dark);
+            color: white;
+            border-color: var(--navy-dark);
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ===== SIDEBAR ===== -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="d-flex align-items-center gap-3">
+                <div class="brand-logo-wrap" style="width: 40px; height: 40px;">
+                    <img src="asset/image.png" alt="Logo">
+                </div>
+                <div>
+                    <div style="font-weight: 900; font-size: 1.1rem; color: #1e293b;">DANPREL</div>
+                    <div style="font-size: 0.6rem; color: #94a3b8; text-transform: uppercase;">Engineering Automation
+                        Pvt Ltd</div>
+                </div>
+            </div>
+            <button class="btn-close" onclick="toggleSidebar()"></button>
+        </div>
+
+        <div class="sidebar-section-title">Navigation</div>
+
+        <a href="project_review.html" class="sidebar-btn">
+            <div class="sb-icon"><i class="bi bi-speedometer2"></i></div>
+            Project Dashboard
+        </a>
+
+        <a href="review_meeting.html" class="sidebar-btn active">
+            <div class="sb-icon"><i class="bi bi-camera-video-fill"></i></div>
+            Review Meeting
+        </a>
+
+        <a href="resource_hub.html" class="sidebar-btn">
+            <div class="sb-icon"><i class="bi bi-people-fill"></i></div>
+            Resource Hub
+        </a>
+
+        <div class="sidebar-section-title" style="margin-top: 30px;">Account</div>
+        <button class="sidebar-btn" onclick="performLogout()">
+            <div class="sb-icon"><i class="bi bi-box-arrow-right"></i></div>
+            Logout
+        </button>
+
+        <!-- Feedback Section -->
+        <div class="sidebar-section-title" style="margin-top: 30px;">Share Feedback</div>
+        <div class="px-3 pb-4">
+            <textarea id="feedbackText" class="form-control mb-3" rows="4"
+                placeholder="Suggest features or report issues..."
+                style="border-radius: 16px; font-size: 0.9rem; border: none; padding: 15px; resize: none;"></textarea>
+            <button class="btn w-100 fw-800" onclick="submitFeedbackLocal()"
+                style="background: #14b8a6; color: white; border-radius: 16px; height: 54px; font-size: 1rem; box-shadow: 0 8px 16px rgba(20, 184, 166, 0.2);">Submit
+                Feedback</button>
+        </div>
+    </div>
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <!-- ===== HEADER ===== -->
+    <header class="app-header">
+        <div class="d-flex align-items-center gap-3">
+            <button class="menu-toggle" onclick="toggleSidebar()">
+                <i class="bi bi-list"></i>
+            </button>
+            <div class="brand-box">
+                <div class="brand-logo-wrap">
+                    <img src="asset/image.png" alt="Logo">
+                </div>
+                <div>
+                    <div class="brand-name">DANPREL</div>
+                    <div class="brand-sub">Engineering Automation Pvt Ltd</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="header-center-title d-none d-lg-block">
+            <i class="bi bi-camera-video-fill me-2"></i>Review Meeting
+        </div>
+
+        <div class="d-flex align-items-center gap-3">
+            <div id="liveTime" style="color:rgba(255,255,255,0.6);font-size:0.75rem;font-weight:600;text-align:right;">
+            </div>
+            <button
+                style="background:rgba(255,255,255,0.1);border:none;color:white;width:40px;height:40px;border-radius:50%;"
+                onclick="performLogout()">
+                <i class="bi bi-box-arrow-right"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- ===== VIEW: PROJECT LIST ===== -->
+    <div id="viewProjectList">
+        <!-- Stats -->
+        <div class="stat-bar">
+            <div class="stat-chip">
+                <div class="stat-chip-icon sci-navy"><i class="bi bi-folder-fill"></i></div>
+                <div>
+                    <div class="stat-chip-label">Total Projects</div>
+                    <div class="stat-chip-value" id="statProjects">0</div>
+                </div>
+            </div>
+            <div class="stat-chip">
+                <div class="stat-chip-icon sci-teal"><i class="bi bi-camera-video-fill"></i></div>
+                <div>
+                    <div class="stat-chip-label">Total Meetings</div>
+                    <div class="stat-chip-value" id="statMeetings">0</div>
+                </div>
+            </div>
+            <div class="stat-chip">
+                <div class="stat-chip-icon sci-gold"><i class="bi bi-exclamation-triangle-fill"></i></div>
+                <div>
+                    <div class="stat-chip-label">Open Issues</div>
+                    <div class="stat-chip-value" id="statOpen">0</div>
+                </div>
+            </div>
+            <div class="stat-chip">
+                <div class="stat-chip-icon sci-rose"><i class="bi bi-check2-circle"></i></div>
+                <div>
+                    <div class="stat-chip-label">Resolved</div>
+                    <div class="stat-chip-value" id="statResolved">0</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="ui-card">
+            <div class="ui-card-header">
+                <div class="card-title">
+                    <i class="bi bi-grid-3x3-gap-fill" style="color:var(--teal-bright);"></i>
+                    Projects — Review Meeting
+                </div>
+                <div class="view-tabs">
+                    <button class="view-tab" onclick="showRecords()"><i class="bi bi-table me-1"></i>All
+                        Records</button>
+                </div>
+            </div>
+            <div id="projectGridContainer">
+                <div class="project-grid" id="projectGrid"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== VIEW: MEETING FORM ===== -->
+    <div id="viewMeetingForm">
+        <div class="ui-card">
+            <div class="ui-card-header">
+                <div class="card-title">
+                    <i class="bi bi-mic-fill" style="color:var(--teal-bright);"></i>
+                    <span id="formProjectTitle">Record Review Meeting</span>
+                </div>
+                <button class="btn-back" onclick="backToProjects()">
+                    <i class="bi bi-arrow-left me-1"></i>Back
+                </button>
+            </div>
+            <div class="p-4">
+                <div class="row g-4">
+
+                    <!-- Meeting Date -->
+                    <div class="col-md-6">
+                        <div class="section-lbl">Meeting Date</div>
+                        <input type="date" id="meetingDate" class="form-control" readonly>
+                    </div>
+
+                    <!-- Project Code (auto-filled) -->
+                    <div class="col-md-6">
+                        <div class="section-lbl">Project Code</div>
+                        <input type="text" id="meetingProjectCode" class="form-control" readonly
+                            style="background:#f8fafc;color:var(--navy-mid);font-weight:800;">
+                    </div>
+
+                    <!-- Department -->
+                    <div class="col-md-6">
+                        <div class="section-lbl">Department</div>
+                        <select id="meetingDept" class="form-select" onchange="loadDeptMembers()">
+                            <option value="">— Select Department —</option>
+                            <option value="PLC">PLC</option>
+                            <option value="Mech Assembly">Mech Assembly</option>
+                            <option value="Mech Design">Mech Design</option>
+                            <option value="LabVIEW">LabVIEW</option>
+                            <option value="Electrical Assembly">Electrical Assembly</option>
+                            <option value="Robot">Robot</option>
+                            <option value="Electrical Design">Electrical Design</option>
+                            <option value="Purchase">Purchase</option>
+                            <option value="Management">Management</option>
+                        </select>
+                    </div>
+
+                    <!-- Responsible Person -->
+                    <div class="col-md-6">
+                        <div class="section-lbl">Responsible Person</div>
+                        <select id="meetingPerson" class="form-select">
+                            <option value="">— Select Person —</option>
+                        </select>
+                    </div>
+
+                    <!-- Target Date -->
+                    <div class="col-md-6">
+                        <div class="section-lbl">Target Date to Resolve</div>
+                        <input type="date" id="meetingTarget" class="form-control">
+                    </div>
+
+                    <!-- Status -->
+                    <div class="col-md-6">
+                        <div class="section-lbl">Issue Status</div>
+                        <select id="meetingStatus" class="form-select">
+                            <option value="Open">Open</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Resolved">Resolved</option>
+                        </select>
+                    </div>
+
+                    <!-- Problem Description -->
+                    <div class="col-12">
+                        <div class="section-lbl">Problem / Issue Description</div>
+                        <textarea id="meetingProblem" class="form-control" rows="4"
+                            placeholder="Describe the problem discussed in the review meeting..."></textarea>
+                    </div>
+
+                    <!-- Action Required -->
+                    <div class="col-12">
+                        <div class="section-lbl">Action Required / Next Steps</div>
+                        <textarea id="meetingAction" class="form-control" rows="3"
+                            placeholder="What actions need to be taken?"></textarea>
+                    </div>
+
+                    <!-- Submit -->
+                    <div class="col-12 d-flex justify-content-end gap-3 mt-2">
+                        <button class="btn-back" onclick="backToProjects()">Cancel</button>
+                        <button class="btn-submit" onclick="submitMeeting()">
+                            <i class="bi bi-send-fill me-2"></i>Submit & Send Mail
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== VIEW: PROJECT RESOURCES ===== -->
+    <div id="viewProjectResources" style="display:none;">
+        <div class="ui-card">
+            <div class="ui-card-header">
+                <div class="card-title">
+                    <i class="bi bi-people-fill" style="color:var(--teal-bright);"></i>
+                    <span id="resourceProjectTitle">Project Resources</span>
+                </div>
+                <button class="btn-back" onclick="backToProjects()">
+                    <i class="bi bi-arrow-left me-1"></i>Back
+                </button>
+            </div>
+            <div class="p-4">
+                <div class="row g-4" id="resourceContainer">
+                    <!-- Categories injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== VIEW: PROJECT HISTORY ===== -->
+    <div id="viewProjectHistory" style="display:none;">
+        <div class="ui-card">
+            <div class="ui-card-header">
+                <div class="card-title">
+                    <i class="bi bi-clock-history" style="color:var(--teal-bright);"></i>
+                    <span id="historyProjectTitle">Project Meeting History</span>
+                </div>
+                <button class="btn-back" onclick="backToProjects()">
+                    <i class="bi bi-arrow-left me-1"></i>Back
+                </button>
+            </div>
+            <div class="table-responsive">
+                <table class="table registry-table mb-0">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Meeting Date</th>
+                            <th>Department</th>
+                            <th>Members</th>
+                            <th>Target Date</th>
+                            <th>Problem</th>
+                            <th>Action Required</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="projectHistoryTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== VIEW: ALL RECORDS ===== -->
+    <div id="viewRecords" style="display:none;">
+        <div class="ui-card">
+            <div class="ui-card-header">
+                <div class="card-title">
+                    <i class="bi bi-table" style="color:var(--teal-bright);"></i>
+                    Review Meeting Records
+                </div>
+                <div class="d-flex align-items-center gap-3">
+                    <div class="search-wrap">
+                        <i class="bi bi-search"></i>
+                        <input type="text" class="search-input" placeholder="Search records..."
+                            onkeyup="filterRecords()">
+                    </div>
+                    <button class="btn-back" onclick="backToProjects()">
+                        <i class="bi bi-arrow-left me-1"></i>Back
+                    </button>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table registry-table mb-0">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Project</th>
+                            <th>Meeting Date</th>
+                            <th>Department</th>
+                            <th>Members</th>
+                            <th>Target Date</th>
+                            <th>Problem</th>
+                            <th>Action Required</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recordsTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== TOAST ===== -->
+    <div class="toast-custom" id="toastMsg">
+        <div class="toast-icon"><i class="bi bi-check-lg"></i></div>
+        <div id="toastText">Meeting recorded successfully!</div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // ── DATA ──────────────────────────────────────────────────────────────
+
+        let projects = JSON.parse(localStorage.getItem('danprel_projects')) || [];
+        let meetings = JSON.parse(localStorage.getItem('danprel_meetings')) || [];
+        let currentProjectId = null;
+        let employees = []; // To be fetched from server
+
+        async function fetchEmployeeData() {
+            try {
+                const res = await fetch('/api/employees');
+                employees = await res.json();
+            } catch (err) {
+                console.error('Error fetching employees:', err);
+                // Fallback demo data if server is down
+                employees = [
+                    { name: 'Rajesh Kumar', dept: 'PLC', email: '' },
+                    { name: 'Senthil Murugan', dept: 'Mech Assembly', email: '' }
+                ];
+            }
+        }
+        fetchEmployeeData();
+
+        // ── UTILITIES ─────────────────────────────────────────────────────────
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.getElementById('sidebarOverlay').classList.toggle('active');
+        }
+
+        function performLogout() {
+            localStorage.removeItem('danprel_auth');
+            localStorage.removeItem('danprel_role');
+            window.location.replace('login.html');
+        }
+
+        function updateTime() {
+            const now = new Date();
+            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            document.getElementById('liveTime').innerHTML =
+                `${days[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}<br>${now.toLocaleTimeString()}`;
+        }
+        setInterval(updateTime, 1000);
+        updateTime();
+
+        function showToast(msg, isError = false) {
+            const t = document.getElementById('toastMsg');
+            const icon = t.querySelector('.toast-icon');
+            document.getElementById('toastText').innerText = msg;
+            t.style.background = isError ? '#e11d48' : 'var(--navy-dark)';
+            icon.innerHTML = isError ? '<i class="bi bi-x-lg"></i>' : '<i class="bi bi-check-lg"></i>';
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3500);
+        }
+
+        function todayISO() {
+            return new Date().toISOString().split('T')[0];
+        }
+
+        // Department badge colours
+        const DEPT_COLORS = {
+            "Mechanical": { bg: '#fef3c7', color: '#92400e' },
+            "Electrical": { bg: '#e0f2fe', color: '#075985' },
+            "Design": { bg: '#fdf4ff', color: '#7e22ce' },
+            "Purchase": { bg: '#fff7ed', color: '#c2410c' },
+            "Management": { bg: '#e6f1ff', color: '#1e40af' }
+        };
+
+        // Status badge colours
+        const STATUS_COLORS = {
+            'Open': { bg: '#fff7ed', color: '#c2410c' },
+            'In Progress': { bg: '#fef3c7', color: '#92400e' },
+            'Resolved': { bg: '#f0fdf4', color: '#15803d' }
+        };
+
+        // ── VIEWS ─────────────────────────────────────────────────────────────
+
+        function showView(id) {
+            ['viewProjectList', 'viewMeetingForm', 'viewRecords', 'viewProjectHistory', 'viewProjectResources'].forEach(v => {
+                const el = document.getElementById(v);
+                if (el) el.style.display = (v === id) ? 'block' : 'none';
+            });
+        }
+
+        function backToProjects() {
+            currentProjectId = null;
+            renderProjectGrid();
+            updateStats();
+            showView('viewProjectList');
+        }
+
+        function showRecords() {
+            renderRecords();
+            showView('viewRecords');
+        }
+
+        // ── PROJECT GRID ──────────────────────────────────────────────────────
+
+        function renderProjectGrid() {
+            const grid = document.getElementById('projectGrid');
+            grid.innerHTML = '';
+
+            if (projects.length === 0) {
+                grid.innerHTML = `
+                    <div class="empty-state" style="grid-column:1/-1;">
+                        <i class="bi bi-folder-x"></i>
+                        <p>No projects found. Please add projects from the Project Dashboard.</p>
+                        <a href="project_review.html" class="btn-back" style="text-decoration:none;display:inline-block;margin-top:8px;">
+                            Go to Dashboard
+                        </a>
+                    </div>`;
+                return;
+            }
+
+            projects.forEach(p => {
+                const projMeetings = meetings.filter(m => m.projectId === p.id);
+                const histCount = projMeetings.length;
+
+                const wrap = document.createElement('div');
+                wrap.className = 'project-card-wrap';
+
+                const card = document.createElement('div');
+                card.className = 'project-card';
+                card.innerHTML = `
+                    <div class="proj-code">${p.code}</div>
+                    <div class="proj-name">${p.name}</div>
+                    <div class="proj-phase"><i class="bi bi-layers me-1"></i>${p.current_phase || 'Phase-1'}</div>
+                    <div class="card-actions">
+                        <button class="btn-record" onclick="openMeetingForm('${p.id}')">
+                            <i class="bi bi-mic-fill"></i> Record Meeting
+                        </button>
+                        <button class="btn-history" onclick="openProjectHistory('${p.id}')">
+                            <i class="bi bi-clock-history"></i> History ${histCount > 0 ? `<span class="hist-count">${histCount}</span>` : ''}
+                        </button>
+                        <button class="btn-resources" onclick="openProjectResources('${p.id}')">
+                            <i class="bi bi-people-fill"></i> Resources
+                        </button>
+                    </div>
+                `;
+
+                wrap.appendChild(card);
+                grid.appendChild(wrap);
+            });
+        }
+
+        function openProjectResources(projectId) {
+            const p = projects.find(x => x.id === projectId);
+            if (!p) return;
+
+            document.getElementById('resourceProjectTitle').innerText = `Project Resources — ${p.name}`;
+            const container = document.getElementById('resourceContainer');
+            container.innerHTML = '';
+
+            Object.keys(DEPT_MEMBERS).forEach(dept => {
+                const members = DEPT_MEMBERS[dept];
+                const col = document.createElement('div');
+                col.className = 'col-md-6 col-lg-4';
+
+                let memberHtml = members.map(m => `
+                    <div class="d-flex align-items-center gap-3 mb-3 p-3 rounded-4 bg-white border">
+                        <div class="sci-navy" style="width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                            <i class="bi bi-person-fill"></i>
+                        </div>
+                        <div>
+                            <div class="fw-800" style="font-size:0.85rem;color:var(--navy-dark);">${m.name}</div>
+                            <div class="text-muted" style="font-size:0.7rem;">${m.email}</div>
+                        </div>
+                    </div>
+                `).join('');
+
+                col.innerHTML = `
+                    <div class="p-4 rounded-4" style="background:#f8fafc; height:100%; border:1px solid #e2e8f0;">
+                        <div class="section-lbl mb-3" style="color:var(--teal-bright); border-bottom:2px solid #e2e8f0; padding-bottom:10px;">
+                            ${dept} Department
+                        </div>
+                        ${memberHtml}
+                    </div>
+                `;
+                container.appendChild(col);
+            });
+
+            showView('viewProjectResources');
+        }
+
+        function openProjectHistory(projectId) {
+            const p = projects.find(x => x.id === projectId);
+            if (!p) return;
+
+            document.getElementById('historyProjectTitle').innerText = `Meeting History — ${p.name}`;
+
+            const tbody = document.getElementById('projectHistoryTableBody');
+            tbody.innerHTML = '';
+
+            const projMeetings = meetings.filter(m => m.projectId === projectId);
+
+            if (projMeetings.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8"><div class="no-history"><i class="bi bi-inbox"></i>No review meetings recorded yet for this project.</div></td></tr>`;
+            } else {
+                const sorted = [...projMeetings].sort((a, b) => new Date(b.date) - new Date(a.date));
+                let lastDate = null;
+                let currentSNo = 0;
+
+                sorted.forEach((m) => {
+                    const isNewGroup = m.date !== lastDate;
+                    if (isNewGroup) {
+                        lastDate = m.date;
+                        currentSNo++;
+                    }
+
+                    const dc = DEPT_COLORS[m.dept] || { bg: '#f1f5f9', color: '#475569' };
+                    const memberList = m.members
+                        .map(x => `<div style="font-size:0.7rem;white-space:nowrap;"><b>${x.name}</b> <span class="text-muted">${x.email}</span></div>`)
+                        .join('');
+                    const sc = STATUS_COLORS[m.status] || { bg: '#f1f5f9', color: '#475569' };
+                    const isOverdue = m.targetDate < todayISO() && m.status !== 'Resolved';
+
+                    const row = document.createElement('tr');
+                    // Remove border top for grouped rows to make them look like a single meeting block
+                    if (!isNewGroup) row.style.borderTop = "none";
+
+                    row.innerHTML = `
+                        <td class="fw-700">${isNewGroup ? currentSNo : ''}</td>
+                        <td style="font-weight: 800; color: #1e293b;">${isNewGroup ? m.date : ''}</td>
+                        <td><span class="badge-dept" style="background:${dc.bg};color:${dc.color};">${m.dept}</span></td>
+                        <td>${memberList}</td>
+                        <td class="fw-700" style="color:${isOverdue ? '#e11d48' : 'inherit'}">
+                            ${m.targetDate}
+                            ${isOverdue ? '<div style="font-size:0.65rem;color:#e11d48;font-weight:700;"><i class="bi bi-exclamation-circle me-1"></i>Overdue</div>' : ''}
+                        </td>
+                        <td style="max-width:180px;">
+                            <div style="max-height:60px;overflow:hidden;text-overflow:ellipsis;font-size:0.82rem;" title="${esc(m.problem)}">${m.problem}</div>
+                        </td>
+                        <td style="max-width:160px;">
+                            <div style="max-height:60px;overflow:hidden;font-size:0.8rem;color:#64748b;" title="${esc(m.action)}">${m.action || '—'}</div>
+                        </td>
+                        <td>
+                            <span style="padding:4px 12px;border-radius:100px;font-size:0.68rem;font-weight:800;
+                                background:${sc.bg};color:${sc.color};">${m.status}</span>
+                            ${m.mailSent ? '<div style="font-size:0.62rem;color:var(--teal-bright);font-weight:700;margin-top:3px;"><i class="bi bi-envelope-check me-1"></i>Mail Sent</div>' : ''}
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+
+            showView('viewProjectHistory');
+        }
+
+        // Redefining toggleHistory for safety
+        function toggleHistory(projectId) { openProjectHistory(projectId); }
+
+        // ── MEETING FORM ──────────────────────────────────────────────────────
+
+        function openMeetingForm(projectId) {
+            currentProjectId = projectId;
+            const p = projects.find(x => x.id === projectId);
+            if (!p) return;
+
+            document.getElementById('formProjectTitle').innerHTML =
+                `<i class="bi bi-folder-fill me-2" style="color:var(--teal-bright);"></i>Record Meeting — ${p.name}`;
+            document.getElementById('meetingProjectCode').value = p.code;
+            document.getElementById('meetingDate').value = todayISO();
+            document.getElementById('meetingDept').value = '';
+            document.getElementById('meetingTarget').value = '';
+            document.getElementById('meetingStatus').value = 'Open';
+            document.getElementById('meetingProblem').value = '';
+            document.getElementById('meetingAction').value = '';
+            document.getElementById('memberTags').innerHTML =
+                `<span style="color:#94a3b8;font-size:0.8rem;align-self:center;">Select a department first...</span>`;
+
+            showView('viewMeetingForm');
+        }
+
+        function loadDeptMembers() {
+            const dept = document.getElementById('meetingDept').value;
+            const personSelect = document.getElementById('meetingPerson');
+            personSelect.innerHTML = '<option value="">— Select Person —</option>';
+
+            if (!dept) return;
+
+            // Filter employees by department (case insensitive match)
+            const filtered = employees.filter(e =>
+                (e.dept || '').toLowerCase() === dept.toLowerCase() ||
+                (e.dept || '').toLowerCase().includes(dept.toLowerCase())
+            );
+
+            filtered.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m.name;
+                opt.textContent = m.name;
+                // Store email in dataset if needed later
+                opt.dataset.email = m.email || '';
+                personSelect.appendChild(opt);
+            });
+        }
+
+        function submitMeeting() {
+            const dept = document.getElementById('meetingDept').value;
+            const personName = document.getElementById('meetingPerson').value;
+            const target = document.getElementById('meetingTarget').value;
+            const problem = document.getElementById('meetingProblem').value.trim();
+            const action = document.getElementById('meetingAction').value.trim();
+            const status = document.getElementById('meetingStatus').value;
+
+            if (!dept) return showToast('Please select a department.', true);
+            if (!personName) return showToast('Please select a responsible person.', true);
+            if (!target) return showToast('Please set a target resolution date.', true);
+            if (!problem) return showToast('Please describe the problem.', true);
+
+            const project = projects.find(x => x.id === currentProjectId);
+            const personObj = employees.find(e => e.name === personName) || { name: personName, email: '' };
+
+            const record = {
+                id: 'MTG-' + Date.now(),
+                projectId: currentProjectId,
+                projectName: project ? project.name : '',
+                projectCode: project ? project.code : '',
+                date: todayISO(),
+                dept,
+                members: [{ name: personObj.name, email: personObj.email }], // Adapted to existing array structure
+                targetDate: target,
+                problem,
+                action,
+                status,
+                mailSent: false
+            };
+
+            meetings.push(record);
+            localStorage.setItem('danprel_meetings', JSON.stringify(meetings));
+
+            // Send actual email via API
+            sendActualMail(record);
+
+            updateStats();
+            showToast(`Meeting recorded! Notification sending...`);
+
+            setTimeout(() => backToProjects(), 1800);
+        }
+
+        async function sendActualMail(record) {
+            const member = record.members ? record.members[0] : null;
+            if (!member || !member.email) {
+                console.warn('No email address for', member?.name || 'Unknown');
+                return;
+            }
+
+            const subject = `[ACTION REQUIRED] Review Meeting: ${record.projectCode} — ${record.projectName}`;
+            const body = `Hello ${member.name},\n\nYou have been assigned a new action point from today's Review Meeting.\n\n📌 Project: ${record.projectCode} — ${record.projectName}\n📅 Meeting Date: ${record.date}\n🏷️ Dept: ${record.dept}\n🎯 Target Date: ${record.targetDate}\n\n⚠️ PROBLEM:\n${record.problem}\n\n✅ ACTION REQUIRED:\n${record.action}\n\n📊 Status: ${record.status}\n\nPlease update the status of this task once addressed.\n\nRegards,\nDanprel Engineering Automation`;
+
+            try {
+                const res = await fetch('/api/send-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ to: member.email, subject, body })
+                });
+                const result = await res.json();
+                if (res.ok) {
+                    console.log('✅ Email sent successfully:', result.messageId);
+                    record.mailSent = true;
+                    // Update the storage with the mailSent status
+                    localStorage.setItem('danprel_meetings', JSON.stringify(meetings));
+                    showToast(`📨 Live notification sent to ${member.name}`);
+                } else {
+                    console.error('❌ Email API error:', result.error);
+                }
+            } catch (err) {
+                console.error('❌ Network error sending email:', err);
+            }
+        }
+
+        // ── RECORDS TABLE ─────────────────────────────────────────────────────
+
+        function renderRecords() {
+            const tbody = document.getElementById('recordsTableBody');
+            tbody.innerHTML = '';
+
+            if (meetings.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state"><i class="bi bi-inbox"></i><p>No review meetings recorded yet.</p></div></td></tr>`;
+                return;
+            }
+
+            const sorted = [...meetings].sort((a, b) => {
+                const dateA = new Date(a.date);
+                const dateB = new Date(b.date);
+                if (dateB - dateA !== 0) return dateB - dateA;
+                return a.projectCode.localeCompare(b.projectCode);
+            });
+
+            let lastGroupKey = null;
+            let currentSNo = 0;
+
+            sorted.forEach((m) => {
+                const groupKey = `${m.projectCode}_${m.date}`;
+                const isNewGroup = groupKey !== lastGroupKey;
+                if (isNewGroup) {
+                    lastGroupKey = groupKey;
+                    currentSNo++;
+                }
+
+                const dc = DEPT_COLORS[m.dept] || { bg: '#f1f5f9', color: '#475569' };
+                const memberList = m.members
+                    .map(x => `<div style="font-size:0.7rem;white-space:nowrap;"><b>${x.name}</b> <span class="text-muted">${x.email}</span></div>`)
+                    .join('');
+                const sc = STATUS_COLORS[m.status] || { bg: '#f1f5f9', color: '#475569' };
+                const isOverdue = m.targetDate < todayISO() && m.status !== 'Resolved';
+
+                const row = document.createElement('tr');
+                if (!isNewGroup) row.style.borderTop = "none";
+
+                row.innerHTML = `
+                    <td class="fw-700">${isNewGroup ? currentSNo : ''}</td>
+                    <td>
+                        ${isNewGroup ? `
+                        <div class="fw-800" style="color:var(--navy-dark);">${m.projectName}</div>
+                        <div style="font-size:0.65rem;background:#e0f2fe;color:var(--navy-mid);
+                            display:inline-block;padding:2px 8px;border-radius:100px;font-weight:800;margin-top:3px;">
+                            ${m.projectCode}
+                        </div>` : ''}
+                    </td>
+                    <td style="font-weight: 800; color: #1e293b;">${isNewGroup ? m.date : ''}</td>
+                    <td><span class="badge-dept" style="background:${dc.bg};color:${dc.color};">${m.dept}</span></td>
+                    <td>${memberList}</td>
+                    <td class="fw-700" style="color:${isOverdue ? '#e11d48' : 'inherit'}">
+                        ${m.targetDate}
+                        ${isOverdue ? '<div style="font-size:0.65rem;color:#e11d48;font-weight:700;"><i class="bi bi-exclamation-circle me-1"></i>Overdue</div>' : ''}
+                    </td>
+                    <td style="max-width:180px;">
+                        <div style="max-height:60px;overflow:hidden;text-overflow:ellipsis;font-size:0.82rem;" title="${esc(m.problem)}">${m.problem}</div>
+                    </td>
+                    <td style="max-width:160px;">
+                        <div style="max-height:60px;overflow:hidden;font-size:0.8rem;color:#64748b;" title="${esc(m.action)}">${m.action || '—'}</div>
+                    </td>
+                    <td>
+                        <span style="padding:4px 12px;border-radius:100px;font-size:0.68rem;font-weight:800;
+                            background:${sc.bg};color:${sc.color};">${m.status}</span>
+                        ${m.mailSent ? '<div style="font-size:0.62rem;color:var(--teal-bright);font-weight:700;margin-top:3px;"><i class="bi bi-envelope-check me-1"></i>Mail Sent</div>' : ''}
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function esc(str) {
+            if (!str) return '';
+            return str.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        function filterRecords() {
+            const q = document.querySelector('#viewRecords .search-input').value.toLowerCase();
+            const rows = document.querySelectorAll('#recordsTableBody tr');
+            rows.forEach(row => {
+                row.style.display = row.innerText.toLowerCase().includes(q) ? '' : 'none';
+            });
+        }
+
+        // ── STATS ─────────────────────────────────────────────────────────────
+
+        function updateStats() {
+            const open = meetings.filter(m => m.status === 'Open').length;
+            const resolved = meetings.filter(m => m.status === 'Resolved').length;
+            document.getElementById('statProjects').innerText = projects.length;
+            document.getElementById('statMeetings').innerText = meetings.length;
+            document.getElementById('statOpen').innerText = open;
+            document.getElementById('statResolved').innerText = resolved;
+        }
+
+        // ── INIT ──────────────────────────────────────────────────────────────
+        renderProjectGrid();
+        updateStats();
+    </script>
+</body>
+
+</html>

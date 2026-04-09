@@ -1,0 +1,8 @@
+.env
+node_modules/
+*backup*/
+Danprel_Backup/
+.DS_Store
+dist/
+build/
+*.log
