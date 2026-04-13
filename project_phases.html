@@ -1273,9 +1273,11 @@
 
         .old-date-strike {
             text-decoration: line-through;
-            color: #475569 !important; /* Darker Slate */
+            color: #475569 !important;
+            /* Darker Slate */
             font-size: 0.72rem;
-            opacity: 0.85; /* Increased opacity for better readability */
+            opacity: 0.85;
+            /* Increased opacity for better readability */
             font-weight: 700;
         }
 
@@ -1338,7 +1340,8 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            min-height: 40px; /* Reduced from 48px */
+            min-height: 40px;
+            /* Reduced from 48px */
             width: 100%;
             padding: 0;
             gap: 8px;
@@ -1495,7 +1498,8 @@
                         </a>
                     </li>
                     <li>
-                        <a class="dropdown-item premium-export-item" href="javascript:void(0)" onclick="exportToExcel()">
+                        <a class="dropdown-item premium-export-item" href="javascript:void(0)"
+                            onclick="exportToExcel()">
                             <div class="export-icon-box export-icon-excel">
                                 <i class="bi bi-file-earmark-spreadsheet-fill"></i>
                             </div>
@@ -1580,16 +1584,21 @@
 
                     <!-- COMPARISON SECTION -->
                     <div class="mb-4 px-2">
-                        <div class="p-3" style="background: #f8fafc; border-radius: 20px; border: 1.5px dashed #e2e8f0;">
-                            <div class="section-lbl text-center mb-2" style="font-size: 0.65rem;">Current Active Plan</div>
+                        <div class="p-3"
+                            style="background: #f8fafc; border-radius: 20px; border: 1.5px dashed #e2e8f0;">
+                            <div class="section-lbl text-center mb-2" style="font-size: 0.65rem;">Current Active Plan
+                            </div>
                             <div class="d-flex justify-content-center align-items-center gap-3">
                                 <div class="text-center">
-                                    <div style="font-size: 0.75rem; font-weight: 800; color: #64748b;" id="mCurrentStartDisplay">---</div>
-                                    <div style="font-size: 0.6rem; color: #94a3b8; text-transform: uppercase;">START</div>
+                                    <div style="font-size: 0.75rem; font-weight: 800; color: #64748b;"
+                                        id="mCurrentStartDisplay">---</div>
+                                    <div style="font-size: 0.6rem; color: #94a3b8; text-transform: uppercase;">START
+                                    </div>
                                 </div>
                                 <i class="bi bi-arrow-right text-muted"></i>
                                 <div class="text-center">
-                                    <div style="font-size: 0.75rem; font-weight: 800; color: #64748b;" id="mCurrentEndDisplay">---</div>
+                                    <div style="font-size: 0.75rem; font-weight: 800; color: #64748b;"
+                                        id="mCurrentEndDisplay">---</div>
                                     <div style="font-size: 0.6rem; color: #94a3b8; text-transform: uppercase;">END</div>
                                 </div>
                             </div>
@@ -1705,8 +1714,8 @@
                     <div class="ms-auto d-flex gap-2 align-items-center">
                         <button class="btn btn-navy rounded-pill px-4 py-2 fw-800 shadow-sm"
                             onclick="exportGanttToPDF()"
-                            style="background: #0B2B4A; color: white; border: none; font-size: 0.85rem;">
-                            <i class="bi bi-file-earmark-pdf-fill me-2 text-danger-emphasis"></i>Export PDF
+                            style="background: linear-gradient(135deg, #0B2B4A, #1A3F5F); color: white; border: none; font-size: 0.85rem; transition: all 0.3s ease;">
+                            <i class="bi bi-file-earmark-pdf-fill me-2 text-white"></i>Export PDF
                         </button>
 
                         <div class="vr mx-2" style="height: 24px;"></div>
@@ -1724,10 +1733,13 @@
         </div>
     </div>
     <!-- SUBMISSION CONFIRMATION MODAL -->
-    <div class="modal fade" id="submitConfirmModal" tabindex="-1" style="backdrop-filter: blur(10px); background: rgba(11, 43, 74, 0.45);">
+    <div class="modal fade" id="submitConfirmModal" tabindex="-1"
+        style="backdrop-filter: blur(10px); background: rgba(11, 43, 74, 0.45);">
         <div class="modal-dialog modal-dialog-centered" style="max-width: 420px;">
-            <div class="modal-content border-0 shadow-lg" style="border-radius: 36px; overflow: hidden; background: #fff;">
-                <div class="modal-body p-5 text-center" style="background: radial-gradient(circle at 50% 0%, #fff 0%, #fcfdfe 100%);">
+            <div class="modal-content border-0 shadow-lg"
+                style="border-radius: 36px; overflow: hidden; background: #fff;">
+                <div class="modal-body p-5 text-center"
+                    style="background: radial-gradient(circle at 50% 0%, #fff 0%, #fcfdfe 100%);">
                     <div class="mb-4"
                         style="background: #FFF5F1; color: #EA580C; width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto; font-size: 2.5rem; border: 5px solid #fff; box-shadow: 0 15px 30px rgba(234, 88, 12, 0.15);">
                         <i class="bi bi-exclamation-octagon-fill"></i>
@@ -1751,10 +1763,13 @@
     </div>
 
     <!-- EXCLUSION CONFIRMATION MODAL -->
-    <div class="modal fade" id="exclusionConfirmModal" tabindex="-1" style="backdrop-filter: blur(10px); background: rgba(11, 43, 74, 0.45);">
+    <div class="modal fade" id="exclusionConfirmModal" tabindex="-1"
+        style="backdrop-filter: blur(10px); background: rgba(11, 43, 74, 0.45);">
         <div class="modal-dialog modal-dialog-centered" style="max-width: 420px;">
-            <div class="modal-content border-0 shadow-lg" style="border-radius: 36px; overflow: hidden; background: #fff;">
-                <div class="modal-body p-5 text-center" style="background: radial-gradient(circle at 50% 0%, #fff 0%, #fff9f6 100%);">
+            <div class="modal-content border-0 shadow-lg"
+                style="border-radius: 36px; overflow: hidden; background: #fff;">
+                <div class="modal-body p-5 text-center"
+                    style="background: radial-gradient(circle at 50% 0%, #fff 0%, #fff9f6 100%);">
                     <div class="mb-4"
                         style="background: #FFF5F1; color: #EA580C; width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto; font-size: 2.5rem; border: 5px solid #fff; box-shadow: 0 15px 30px rgba(234, 88, 12, 0.15);">
                         <i class="bi bi-eye-slash-fill"></i>
@@ -1777,23 +1792,30 @@
     </div>
 
     <!-- RESCHEDULE CONFIRMATION MODAL -->
-    <div class="modal fade" id="rescheduleConfirmModal" tabindex="-1" style="backdrop-filter: blur(10px); background: rgba(11, 43, 74, 0.45);">
+    <div class="modal fade" id="rescheduleConfirmModal" tabindex="-1"
+        style="backdrop-filter: blur(10px); background: rgba(11, 43, 74, 0.45);">
         <div class="modal-dialog modal-dialog-centered" style="max-width: 440px;">
-            <div class="modal-content border-0 shadow-lg" style="border-radius: 36px; overflow: hidden; background: #fff; box-shadow: 0 40px 80px -20px rgba(0,0,0,0.3) !important;">
-                <div class="modal-body p-5 text-center" style="background: radial-gradient(circle at 50% 0%, #fff 0%, #f7fbff 100%);">
+            <div class="modal-content border-0 shadow-lg"
+                style="border-radius: 36px; overflow: hidden; background: #fff; box-shadow: 0 40px 80px -20px rgba(0,0,0,0.3) !important;">
+                <div class="modal-body p-5 text-center"
+                    style="background: radial-gradient(circle at 50% 0%, #fff 0%, #f7fbff 100%);">
                     <div class="mb-4"
                         style="background: #E0F2FE; color: #0EA5E9; width: 84px; height: 84px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto; font-size: 2.5rem; border: 6px solid #fff; box-shadow: 0 20px 40px rgba(14, 165, 233, 0.15);">
                         <i class="bi bi-calendar-event-fill"></i>
                     </div>
-                    <h4 class="fw-900 mb-2" style="color: #0B2B4A; letter-spacing: -0.5px; font-size: 1.4rem;">Confirm Reschedule?</h4>
-                    <p class="text-muted mb-4" style="line-height: 1.6; font-size: 0.95rem;">Are you sure you want to request a reschedule for <b id="reschedulePhaseNameDisplay">this phase</b>?<br><br>This request will be sent to <b>Top Management</b> for final approval.</p>
+                    <h4 class="fw-900 mb-2" style="color: #0B2B4A; letter-spacing: -0.5px; font-size: 1.4rem;">Confirm
+                        Reschedule?</h4>
+                    <p class="text-muted mb-4" style="line-height: 1.6; font-size: 0.95rem;">Are you sure you want to
+                        request a reschedule for <b id="reschedulePhaseNameDisplay">this phase</b>?<br><br>This request
+                        will be sent to <b>Top Management</b> for final approval.</p>
 
                     <div class="d-flex gap-3">
                         <button class="btn btn-light flex-fill rounded-pill fw-800 py-3 border-0"
                             data-bs-dismiss="modal"
                             style="background: #F1F5F9; color: #64748B; font-size: 0.85rem; letter-spacing: 0.3px;">Cancel</button>
                         <button class="btn flex-fill rounded-pill fw-800 py-3 text-white shadow-sm"
-                            style="background: #0B2B4A; font-size: 0.85rem; letter-spacing: 0.3px;" onclick="confirmRescheduleSubmission()">Confirm & Send</button>
+                            style="background: #0B2B4A; font-size: 0.85rem; letter-spacing: 0.3px;"
+                            onclick="confirmRescheduleSubmission()">Confirm & Send</button>
                     </div>
                 </div>
             </div>
@@ -2208,12 +2230,12 @@
                     activeRevisions.forEach((rev, idx) => {
                         const isLatest = idx === activeRevisions.length - 1;
                         const rDays = calcDays(rev.start, rev.end);
-                        
+
                         // Vertical Alignment Spacers (Matched for all columns) - Auto-expanding for multi-line remarks
                         const spacerHeight = (isLatest && rev.remark) ? '20px' : '6px';
                         const spacerBase = `<div style="min-height: ${spacerHeight}; display: flex; justify-content: center; margin-top: 2px; margin-bottom: 2px; height: auto;">`;
                         const remarkContent = (isLatest && rev.remark) ? `<div class="rev-remark-small" title="${rev.remark.replace(/"/g, '&quot;')}">"${rev.remark}"</div>` : '';
-                        
+
                         const spacerWithRemark = `${spacerBase}${remarkContent}</div>`;
                         const spacerEmpty = `${spacerBase}</div>`;
 
@@ -2248,11 +2270,11 @@
                 if (pendingReq) {
                     const pDays = calcDays(pendingReq.newStart, pendingReq.newEnd);
                     const pendingBadge = (content) => `<div class="revision-row"><div class="rev-pending-badge" title="Waiting for admin approval"><i class="bi bi-clock-history me-1"></i>${content}</div></div>`;
-                    
+
                     nextStartDisplay += `<div class="revision-stack">${pendingBadge(formatDate(pendingReq.newStart))}<div style="height:6px;"></div></div>`;
                     nextEndDisplay += `<div class="revision-stack">${pendingBadge(formatDate(pendingReq.newEnd))}<div style="height:6px;"></div></div>`;
                     nextDaysDisplay += `<div class="revision-stack">${pendingBadge(pDays)}<div style="height:6px;"></div></div>`;
-                    
+
                     // Add extra spacer
                     revisionSideSpacers += `<div class="revision-stack"><div class="revision-row"></div><div style="height: 14px; margin-top: -8px; margin-bottom: 4px;"></div></div>`;
                 }
@@ -2383,22 +2405,22 @@
                         <span class="revision-stack">
                             <div class="revision-row">
                                 ${(() => {
-                                    let displayDays = '';
-                                    if (data.plan_start && data.plan_end) {
-                                        const s = new Date(data.plan_start);
-                                        const e = new Date(data.plan_end);
-                                        displayDays = Math.ceil((e - s) / (1000 * 60 * 60 * 24));
-                                        if (displayDays < 0) displayDays = 0;
-                                    } else if (data.plan_duration) {
-                                        displayDays = data.plan_duration;
-                                    }
-                                    
-                                    if (!isPlanLocked && !isParent && !isExcluded) {
-                                        return `<input type="number" class="inline-input ${hasRevisions ? 'old-date-strike' : ''}" style="width: 70px; text-align: center; border-radius: 24px; height: 38px;" value="${displayDays}" onchange="updatePlanFromDays('${ph.id}', this.value, this)" placeholder="Days">`;
-                                    } else {
-                                        return `<span class="total-days ${hasRevisions ? 'old-date-strike' : ''}" style="background:white; border:1px solid #cbd5e1; height:38px; width:70px; display:inline-flex; align-items:center; justify-content:center;">${displayDays || '-'}</span>`;
-                                    }
-                                })()}
+                        let displayDays = '';
+                        if (data.plan_start && data.plan_end) {
+                            const s = new Date(data.plan_start);
+                            const e = new Date(data.plan_end);
+                            displayDays = Math.ceil((e - s) / (1000 * 60 * 60 * 24));
+                            if (displayDays < 0) displayDays = 0;
+                        } else if (data.plan_duration) {
+                            displayDays = data.plan_duration;
+                        }
+
+                        if (!isPlanLocked && !isParent && !isExcluded) {
+                            return `<input type="number" class="inline-input ${hasRevisions ? 'old-date-strike' : ''}" style="width: 70px; text-align: center; border-radius: 24px; height: 38px;" value="${displayDays}" onchange="updatePlanFromDays('${ph.id}', this.value, this)" placeholder="Days">`;
+                        } else {
+                            return `<span class="total-days ${hasRevisions ? 'old-date-strike' : ''}" style="background:white; border:1px solid #cbd5e1; height:38px; width:70px; display:inline-flex; align-items:center; justify-content:center;">${displayDays || '-'}</span>`;
+                        }
+                    })()}
                             </div>
                             <div style="height: 10px; margin-top: -6px; margin-bottom: 2px;"></div>
                             ${nextDaysDisplay}
@@ -2557,7 +2579,7 @@
                     d.plan_end = end.toISOString().split('T')[0];
                 }
             }
-            
+
             // If manual End Date changed, update the internal duration store
             if (field === 'plan_end' && value && d.plan_start) {
                 const s = new Date(d.plan_start);
@@ -2673,7 +2695,7 @@
             const remarkText = remarkInput.value.trim();
 
             let hasError = false;
-            
+
             if (!newStart) { startInput.classList.add('is-invalid'); hasError = true; } else { startInput.classList.remove('is-invalid'); }
             if (!newEnd) { endInput.classList.add('is-invalid'); hasError = true; } else { endInput.classList.remove('is-invalid'); }
             if (!remarkText) { remarkInput.classList.add('is-invalid'); hasError = true; } else { remarkInput.classList.remove('is-invalid'); }
@@ -2691,7 +2713,7 @@
             const id = document.getElementById('mRescheduleId').value;
             const ph = defaultPhases.find(p => p.id === id);
             const d = project.detailed_phases[id];
-            
+
             const newStart = document.getElementById('mRescheduleStart').value;
             const newEnd = document.getElementById('mRescheduleEnd').value;
             const remarkText = document.getElementById('mRescheduleRemark').value.trim();
@@ -2703,12 +2725,12 @@
 
             // Create Revision Request in Project Object (Stored in MongoDB Atlas)
             if (!project.revision_requests) project.revision_requests = [];
-            
+
             const newRequest = {
                 id: 'REQ_' + Date.now(),
                 phaseId: id,
                 phaseName: ph.name,
-                oldStart: d.plan_start || '', 
+                oldStart: d.plan_start || '',
                 oldEnd: d.plan_end || '',
                 newStart: newStart,
                 newEnd: newEnd,
@@ -2717,9 +2739,9 @@
                 status: 'pending',
                 requester: localStorage.getItem('danprel_username') || 'User'
             };
-            
+
             project.revision_requests.push(newRequest);
-            
+
             // Sync now to MongoDB Atlas
             await syncProject();
 
@@ -2750,12 +2772,12 @@
                     <p style="margin: 0; color: #64748B; font-size: 0.78rem; font-weight: 600;">Submitted to Top Management.</p>
                 </div>
             </div>`;
-            
+
             document.body.insertAdjacentHTML('beforeend', toastHtml);
             const toast = document.getElementById('modernToast');
-            setTimeout(() => { if(toast) toast.style.transform = 'translateY(0)'; }, 100);
+            setTimeout(() => { if (toast) toast.style.transform = 'translateY(0)'; }, 100);
             setTimeout(() => {
-                if(toast) {
+                if (toast) {
                     toast.style.transform = 'translateY(150px)';
                     setTimeout(() => toast.remove(), 600);
                 }
@@ -2771,7 +2793,7 @@
                     const toEmails = new Set();
                     topManagements.forEach(emp => { if (emp.email) toEmails.add(emp.email); });
                     elangovans.forEach(emp => { if (emp.email) toEmails.add(emp.email); });
-                    
+
                     if (toEmails.size > 0) {
                         const toArr = Array.from(toEmails).join(', ');
                         const emailBody = `Dear Top Management,
@@ -2803,10 +2825,10 @@ Note: This is an auto-generated mail. Please do not reply to this mail.`;
                         await fetch('/api/send-email', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ 
-                                to: toArr, 
-                                subject: `🆕 ACTION REQUIRED: Schedule Revision Approval [${project.code}]`, 
-                                body: emailBody 
+                            body: JSON.stringify({
+                                to: toArr,
+                                subject: `🆕 ACTION REQUIRED: Schedule Revision Approval [${project.code}]`,
+                                body: emailBody
                             })
                         });
                     }
@@ -3255,217 +3277,273 @@ Note: This is an auto-generated mail. Please do not reply to this mail.`;
         function hideExportStatus() { document.getElementById('exportToast').style.display = 'none'; }
 
         function exportToPDF() {
-            showExportStatus('Generating Phase Performance Report...');
+            showExportStatus('Preparing Professional A4 Report...');
 
-            const pdfHtml = `
-                <div id="pdf-container" style="padding: 30px; font-family: 'Inter', sans-serif; background: #fff; width: 1400px; margin: 0 auto;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #011f3f; padding-bottom: 20px; margin-bottom: 20px;">
-                        <div style="display: flex; align-items: center; gap: 20px;">
-                            <img src="asset/image.png" style="height: 70px; width: auto;" alt="Logo" onerror="this.src='https://via.placeholder.com/70x70?text=LOGO'">
-                            <div>
-                                <h1 style="margin: 0; color: #011f3f; font-size: 28px; font-weight: 900; letter-spacing: 1px;">DANPREL</h1>
-                                <p style="margin: 0; color: #475569; font-size: 13px; font-weight: 700;">Engineering Automation Pvt Ltd</p>
-                            </div>
-                        </div>
-                        <div style="text-align: right; line-height: 1.5;">
-                            <h2 style="margin: 0; color: #011f3f; font-size: 18px; font-weight: 800; text-transform: uppercase;">Performance Report</h2>
-                            <p style="margin: 5px 0 0; color: #64748b; font-size: 11px; font-weight: 700;">Project: <span style="color: #011f3f;">${project.name} (${project.code})</span></p>
-                            <p style="margin: 0; color: #64748b; font-size: 11px; font-weight: 700;">Customer: <span style="color: #011f3f;">${project.customer_name || 'N/A'}</span></p>
-                            <p style="margin: 0; color: #64748b; font-size: 11px; font-weight: 700;">SAT Location: <span style="color: #011f3f;">${project.sat_location || 'N/A'}</span></p>
-                            <p style="margin: 2px 0 0; color: #64748b; font-size: 10px; font-weight: 800;">Generated Date: <span style="color: #011f3f;">${new Date().toLocaleDateString('en-GB')}</span></p>
-                        </div>
-                    </div>
+            // 1. Data Processing and Partitioning
+            let pSer = 0; let sSer = 0;
+            const activePhases = defaultPhases.filter(ph => !(project.detailed_phases[ph.id]?.is_excluded));
 
-                    <table style="width: 100%; border-collapse: collapse; font-size: 9px; table-layout: fixed;">
-                        <thead>
-                            <tr style="background: #011f3f; color: #ffffff;">
-                                <th colspan="5" style="padding: 10px;text-align: center; font-size: 11px; letter-spacing: 1px; border-right: 2px solid white;">PLAN SUMMARY</th>
-                                <th colspan="5" style="padding: 10px;text-align: center; font-size: 11px; letter-spacing: 1px; background: #0d9488;">ACTUAL EXECUTION</th>
-                            </tr>
-                            <tr style="background: #f1f5f9; color: #011f3f;">
-                                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #011f3f; border-right: 1px solid #cbd5e1; width: 52%;">Workstream / Phase</th>
-                                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #011f3f; border-right: 1px solid #cbd5e1; width: 6%;">Plan Start</th>
-                                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #011f3f; border-right: 1px solid #cbd5e1; width: 4%;">Total Days</th>
-                                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #011f3f; border-right: 2px solid #011f3f; width: 6%;">Plan End</th>
-                                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #011f3f; border-right: 2px solid #011f3f; width: 4%;">Resp.</th>
-                                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #0d9488; border-right: 1px solid #cbd5e1; width: 5%;">Act. Start</th>
-                                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #0d9488; border-right: 1px solid #cbd5e1; width: 5%;">Est. End</th>
-                                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #0d9488; border-right: 1px solid #cbd5e1; width: 5%;">Actual End</th>
-                                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #0d9488; border-right: 1px solid #cbd5e1; width: 6%;">Delay Days</th>
-                                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #0d9488; width: 7%;">Progress</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${(() => {
-                    let pSer = 0; let sSer = 0;
-                    return defaultPhases.filter(ph => !(project.detailed_phases[ph.id]?.is_excluded)).map(ph => {
-                        let ser = "";
-                        if (ph.type === 'parent' || ph.type === 'single') { pSer++; sSer = 0; ser = pSer + ". "; }
-                        else if (ph.type === 'sub') { sSer++; ser = pSer + "." + sSer + " "; }
+            const tableRows = activePhases.map(ph => {
+                let ser = "";
+                if (ph.type === 'parent' || ph.type === 'single') { pSer++; sSer = 0; ser = pSer + ". "; }
+                else if (ph.type === 'sub') { sSer++; ser = pSer + "." + sSer + " "; }
 
-                        const data = project.detailed_phases[ph.id] || {};
-                        if (ph.type === 'parent') {
-                            const subs = defaultPhases.filter(s => s.parent === ph.id);
-                            let pStart = null, pEnd = null, aStart = null, aEnd = null, subTotal = 0;
-                            subs.forEach(s => {
-                                const sd = project.detailed_phases[s.id] || {};
-                                subTotal += parseInt(sd.progress || 0);
-                                if (sd.plan_start) { const d = new Date(sd.plan_start); if (!pStart || d < pStart) pStart = d; }
-                                if (sd.plan_end) { const d = new Date(sd.plan_end); if (!pEnd || d > pEnd) pEnd = d; }
-                                if (sd.actual_start) { const d = new Date(sd.actual_start); if (!aStart || d < aStart) aStart = d; }
-                                if (sd.actual_end) { const d = new Date(sd.actual_end); if (!aEnd || d > aEnd) aEnd = d; }
-                            });
-                            if (pStart) data.plan_start = pStart.toISOString().split('T')[0];
-                            if (pEnd) data.plan_end = pEnd.toISOString().split('T')[0];
-                            if (aStart) data.actual_start = aStart.toISOString().split('T')[0];
-                            if (aEnd) data.actual_end = aEnd.toISOString().split('T')[0];
-                            data.progress = subs.length ? Math.round(subTotal / subs.length) : 0;
-                        }
+                const data = JSON.parse(JSON.stringify(project.detailed_phases[ph.id] || {}));
+                if (ph.type === 'parent') {
+                    const subs = defaultPhases.filter(s => s.parent === ph.id);
+                    let pStart = null, pEnd = null, aStart = null, aEnd = null, subTotal = 0;
+                    subs.forEach(s => {
+                        const sd = project.detailed_phases[s.id] || {};
+                        subTotal += parseInt(sd.progress || 0);
+                        if (sd.plan_start) { const d = new Date(sd.plan_start); if (!pStart || d < pStart) pStart = d; }
+                        if (sd.plan_end) { const d = new Date(sd.plan_end); if (!pEnd || d > pEnd) pEnd = d; }
+                        if (sd.actual_start) { const d = new Date(sd.actual_start); if (!aStart || d < aStart) aStart = d; }
+                        if (sd.actual_end) { const d = new Date(sd.actual_end); if (!aEnd || d > aEnd) aEnd = d; }
+                    });
+                    if (pStart) data.plan_start = pStart.toISOString().split('T')[0];
+                    if (pEnd) data.plan_end = pEnd.toISOString().split('T')[0];
+                    if (aStart) data.actual_start = aStart.toISOString().split('T')[0];
+                    if (aEnd) data.actual_end = aEnd.toISOString().split('T')[0];
+                    data.progress = subs.length ? Math.round(subTotal / subs.length) : 0;
+                }
+                return { ph, data, ser };
+            });
 
-                        const duration = calcDays(data.plan_start, data.plan_end);
-                        const prog = data.progress || 0;
-                        const progCol = getProgColor(prog, data);
-                        const isParent = ph.type === 'parent';
+            // 2. A4 Layout Tuning
+            // itemsPerPage is reduced to 10 to guarantee everything fits on one page height
+            const itemsPerPage = 10;
+            const totalPages = Math.ceil(tableRows.length / itemsPerPage);
+            const genDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
-                        return `
-                                <tr style="border-bottom: 1px solid #e2e8f0; background: ${isParent ? '#f8fafc' : '#ffffff'};">
-                                    <td style="padding: 10px; color: #011f3f; font-weight: ${isParent ? '800' : '500'}; padding-left: ${ph.type === 'sub' ? '25px' : '10px'}; border-right: 1px solid #e2e8f0; line-height: 1.4;">${ser}${ph.name}</td>
-                                    <td style="padding: 8px; text-align: center; border-right: 1px solid #e2e8f0;">${data.plan_start ? formatDate(data.plan_start) : '-'}</td>
-                                    <td style="padding: 8px; text-align: center; font-weight: 800; border-right: 1px solid #e2e8f0; color: #011f3f;">${duration}</td>
-                                    <td style="padding: 8px; text-align: center; border-right: 2px solid #011f3f;">${data.plan_end ? formatDate(data.plan_end) : '-'}</td>
-                                    <td style="padding: 8px; text-align: center; border-right: 2px solid #011f3f; font-weight: 700;">${data.responsibility || '-'}</td>
-                                    <td style="padding: 8px; text-align: center; border-right: 1px solid #e2e8f0;">${data.actual_start ? formatDate(data.actual_start) : '-'}</td>
-                                    <td style="padding: 8px; text-align: center; border-right: 1px solid #e2e8f0;">${(() => {
-                                if (data.actual_start && data.plan_start && data.plan_end) {
-                                    const ps = new Date(data.plan_start); const pe = new Date(data.plan_end);
-                                    const dur = Math.ceil((pe - ps) / (1000 * 60 * 60 * 24));
-                                    if (dur >= 0) { const ce = new Date(data.actual_start); ce.setDate(ce.getDate() + dur); return formatDate(ce.toISOString().split('T')[0]); }
-                                }
-                                return '-';
-                            })()}</td>
-                                    <td style="padding: 8px; text-align: center; border-right: 1px solid #e2e8f0;">${data.actual_end ? formatDate(data.actual_end) : '-'}</td>
-                                    <td style="padding: 8px; text-align: center; border-right: 1px solid #e2e8f0; color: ${(() => {
-                                let refE = data.plan_end;
-                                if (data.revisions?.length > 0) refE = data.revisions[data.revisions.length - 1].end;
-                                const dStat = calcDelayStatus(refE, data.actual_end);
-                                return data.actual_end ? dStat.color : 'inherit';
-                            })()}; font-weight: 800;">${(() => {
-                                let refE = data.plan_end;
-                                if (data.revisions?.length > 0) refE = data.revisions[data.revisions.length - 1].end;
-                                const dStat = calcDelayStatus(refE, data.actual_end);
-                                return data.actual_end ? dStat.text : '-';
-                            })()}</td>
-                                    <td style="padding: 8px; text-align: center;">
-                                        <div style="display: flex; align-items: center; gap: 4px;">
-                                            <span style="font-weight: 800; color: ${progCol}; width: 22px; font-size: 8px;">${prog}%</span>
-                                            <div style="flex: 1; height: 4px; background: #e2e8f0; border-radius: 2px; overflow: hidden;"><div style="width: ${prog}%; height: 100%; background: ${progCol};"></div></div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            `;
-                    }).join('');
-                })()}
-                        </tbody>
-                    </table>
+            // Container width set for A4 Landscape
+            let finalHtml = `<div style="background: #f1f5f9; width: 1120px; font-family: 'Inter', sans-serif; padding-top: 1px;">`;
+
+            for (let p = 0; p < totalPages; p++) {
+                const chunk = tableRows.slice(p * itemsPerPage, (p + 1) * itemsPerPage);
+
+                finalHtml += `
+        <div class="report-page" style="width: 1060px; height: 740px; padding: 30px 40px; background: #ffffff; margin: 0 auto 20px auto; position: relative; border-radius: 15px; box-shadow: 0 0 20px rgba(0,0,0,0.05); page-break-after: always; display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box;">
+            
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 3px solid #001f3f;">
+                <div style="display: flex; align-items: center; gap: 15px;">
+                     <img src="asset/image.png" style="height: 55px; width: auto; object-fit: contain;">
+                     <div>
+                        <h1 style="margin: 0; font-size: 28px; color: #001f3f; font-weight: 900; letter-spacing: -1px; line-height: 1;">DANPREL</h1>
+                        <div style="font-size: 11px; color: #64748b; font-weight: 700; margin-top: 2px; text-transform: uppercase;">Engineering Automation Pvt Ltd</div>
+                     </div>
                 </div>
-            `;
+                <div style="text-align: right; line-height: 1.2;">
+                     <h2 style="margin: 0 0 5px 0; color: #001f3f; font-size: 20px; font-weight: 900; text-transform: uppercase;">PERFORMANCE REPORT</h2>
+                     <div style="font-size: 12px; color: #475569; font-weight: 800;">Project: <span style="color: #0f172a;">${project.name || 'Untitled'} (${project.code || '---'})</span></div>
+                     <div style="font-size: 11px; color: #475569; margin-top: 3px;">Customer: <span style="color: #0f172a; font-weight: 800;">${project.customer_name || '—'}</span> | SAT: <span style="color: #0f172a; font-weight: 800;">${project.sat_location || '—'}</span></div>
+                </div>
+            </div>
+
+            <table style="width: 100%; border-collapse: separate; border-spacing: 0; font-size: 9px; table-layout: fixed; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden;">
+                <thead>
+                    <tr style="color: #ffffff; text-transform: uppercase;">
+                        <th colspan="5" style="padding: 10px; text-align: center; font-size: 11px; font-weight: 900; background: #001f3f; border-right: 1.5px solid #ffffff;">PLAN SUMMARY</th>
+                        <th colspan="5" style="padding: 10px; text-align: center; font-size: 11px; font-weight: 900; background: #0d9488;">ACTUAL EXECUTION</th>
+                    </tr>
+                    <tr style="background: #f8fafc; color: #001f3f; border-bottom: 2px solid #001f3f;">
+                        <th style="padding: 10px; border-right: 1px solid #e2e8f0; border-bottom: 2px solid #001f3f; width: 40%; text-align: left; font-weight: 900;">Workstream / Phase</th>
+                        <th style="padding: 10px; border-right: 1px solid #e2e8f0; border-bottom: 2px solid #001f3f; width: 8.5%; text-align: center; font-weight: 900;">Plan Start</th>
+                        <th style="padding: 10px; border-right: 1px solid #e2e8f0; border-bottom: 2px solid #001f3f; width: 6.5%; text-align: center; font-weight: 900;">Days</th>
+                        <th style="padding: 10px; border-right: 1px solid #e2e8f0; border-bottom: 2px solid #001f3f; width: 8.5%; text-align: center; font-weight: 900;">Plan End</th>
+                        <th style="padding: 10px; border-right: 2px solid #001f3f; border-bottom: 2px solid #001f3f; width: 6.5%; text-align: center; font-weight: 900;">Resp.</th>
+                        <th style="padding: 10px; border-right: 1px solid #e2e8f0; border-bottom: 2.5px solid #0d9488; width: 7.5%; text-align: center; font-weight: 900;">Act Start</th>
+                        <th style="padding: 10px; border-right: 1px solid #e2e8f0; border-bottom: 2.5px solid #0d9488; width: 7.5%; text-align: center; font-weight: 900;">Est End</th>
+                        <th style="padding: 10px; border-right: 1px solid #e2e8f0; border-bottom: 2.5px solid #0d9488; width: 7.5%; text-align: center; font-weight: 900;">Act End</th>
+                        <th style="padding: 10px; border-right: 1px solid #e2e8f0; border-bottom: 2.5px solid #0d9488; width: 4.5%; text-align: center; font-weight: 900;">Delay</th>
+                        <th style="padding: 10px; border-bottom: 2.5px solid #0d9488; width: 3%; text-align: center; font-weight: 900;">%</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${chunk.map(({ ph, data, ser }) => {
+                    const duration = calcDays(data.plan_start, data.plan_end);
+                    const prog = data.progress || 0;
+                    const progCol = getProgColor(prog, data);
+                    const isParent = ph.type === 'parent';
+
+                    return `
+                        <tr style="background: ${isParent ? '#f0f4f8' : '#ffffff'}; border-bottom: 1px solid #f1f5f9;">
+                            <td style="padding: 12px 10px; border-right: 1px solid #e2e8f0; font-weight: ${isParent ? '800' : '500'}; color: #001f3f; padding-left: ${ph.type === 'sub' ? '25px' : '10px'}; line-height: 1.2; word-wrap: break-word; white-space: normal;">${ser}${ph.name}</td>
+                            <td style="padding: 10px; border-right: 1px solid #e2e8f0; text-align: center; color: #475569;">${data.plan_start ? formatDate(data.plan_start) : '—'}</td>
+                            <td style="padding: 10px; border-right: 1px solid #e2e8f0; text-align: center; font-weight: 800; color: #001f3f;">${duration}</td>
+                            <td style="padding: 10px; border-right: 1px solid #e2e8f0; text-align: center; color: #475569;">${data.plan_end ? formatDate(data.plan_end) : '—'}</td>
+                            <td style="padding: 10px; border-right: 1.5px solid #001f3f; text-align: center; font-weight: 700; color: #1e293b;">${data.responsibility || '—'}</td>
+                            <td style="padding: 10px; border-right: 1px solid #e2e8f0; text-align: center; color: #475569;">${data.actual_start ? formatDate(data.actual_start) : '—'}</td>
+                            <td style="padding: 10px; border-right: 1px solid #e2e8f0; text-align: center; color: #475569;">${(() => {
+                            if (data.actual_start && data.plan_start && data.plan_end) {
+                                const ps = new Date(data.plan_start); const pe = new Date(data.plan_end);
+                                const dur = Math.ceil((pe - ps) / (1000 * 60 * 60 * 24));
+                                const ce = new Date(data.actual_start); ce.setDate(ce.getDate() + dur);
+                                return formatDate(ce.toISOString().split('T')[0]);
+                            } return '—';
+                        })()}</td>
+                            <td style="padding: 10px; border-right: 1px solid #e2e8f0; text-align: center; color: #475569;">${data.actual_end ? formatDate(data.actual_end) : '—'}</td>
+                            <td style="padding: 10px; border-right: 1px solid #e2e8f0; text-align: center; font-weight: 900; color: ${(() => {
+                            let refE = data.plan_end; if (data.revisions?.length > 0) refE = data.revisions[data.revisions.length - 1].end;
+                            const dStat = calcDelayStatus(refE, data.actual_end); return data.actual_end ? dStat.color : 'inherit';
+                        })()};">${(() => {
+                            let refE = data.plan_end; if (data.revisions?.length > 0) refE = data.revisions[data.revisions.length - 1].end;
+                            const dStat = calcDelayStatus(refE, data.actual_end); return data.actual_end ? dStat.text : '—';
+                        })()}</td>
+                            <td style="padding: 10px; text-align: center; font-weight: 800; color: ${progCol}; font-size: 10px;">${prog}%</td>
+                        </tr>`;
+                }).join('')}
+                </tbody>
+            </table>
+
+            <div style="margin-top: auto; padding-top: 15px; display: flex; justify-content: space-between; align-items: center; border-top: 1.5px solid #f1f5f9; color: #94a3b8; font-size: 10px; font-weight: 800;">
+                <div>QUALITY ASSURANCE RECORD • ${project.code || '---'} • GENERATED: ${genDate}</div>
+                <div style="color: #64748b; background: #f8fafc; padding: 5px 15px; border-radius: 40px; border: 1px solid #e2e8f0;">PAGE ${p + 1} / ${totalPages}</div>
+            </div>
+        </div>`;
+            }
+
+            finalHtml += `</div>`;
 
             const opt = {
-                margin: [0.2, 0.2, 0.2, 0.2],
-                filename: `DANPREL_Project_Report_${project.code}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true, logging: false },
-                jsPDF: { unit: 'in', format: 'a3', orientation: 'landscape' }
+                margin: 0,
+                filename: `Report_${project.code}_${genDate.replace(/\//g, '-')}.pdf`,
+                image: { type: 'jpeg', quality: 1.0 },
+                html2canvas: {
+                    scale: 2,
+                    useCORS: true,
+                    logging: false,
+                    backgroundColor: '#f1f5f9'
+                },
+                jsPDF: {
+                    unit: 'pt',
+                    format: 'a4',
+                    orientation: 'landscape',
+                    compress: true
+                }
             };
 
-            html2pdf().from(pdfHtml).set(opt).save().then(() => {
+            html2pdf().from(finalHtml).set(opt).save().then(() => {
                 hideExportStatus();
+                if (typeof showSuccessToast === 'function') showSuccessToast();
             }).catch(err => {
                 console.error('PDF Catch:', err);
                 hideExportStatus();
             });
         }
-
         function exportGanttToPDF() {
             showExportStatus('Preparing Performance Report...');
 
-            // Create a temporary hidden container for full render
+            // 1. Create a temporary hidden container for full render
             const printArea = document.getElementById('printArea');
-            // Initial render to measure content
-            printArea.innerHTML = '<div id="exportGanttTarget" class="gantt-wrapper" style="background:white; width: max-content; padding: 20px;"></div>';
-            
-            // Force render all phases for export
+            if (!printArea) {
+                const pa = document.createElement('div');
+                pa.id = 'printArea';
+                pa.style.display = 'none';
+                document.body.appendChild(pa);
+            }
+            const pa = document.getElementById('printArea');
+            pa.innerHTML = '<div id="exportGanttTarget" class="gantt-wrapper" style="background:white; width: max-content; padding: 20px;"></div>';
+
+            // 2. Force render ALL phases (expanded) for export
             renderGantt('exportGanttTarget', true);
-            
-            const container = document.getElementById('exportGanttTarget');
-            const ganttWidth = container.scrollWidth;
-            const ganttHeight = container.scrollHeight;
-            
-            // Calculate total document dimensions
-            const calcWidth = Math.max(1400, ganttWidth + 200);
-            const calcHeight = 400 + ganttHeight + 150; 
-            
+
+            const target = document.getElementById('exportGanttTarget');
+            const ganttWidth = target.scrollWidth;
+
+            // 3. Extract Headers and Rows
+            const sideHeaderNode = target.querySelector('.gantt-sidebar').cloneNode(true);
+            const mainHeaderNode = target.querySelector('.gantt-header-container').cloneNode(true);
+            const allRows = Array.from(target.querySelectorAll('.gantt-row')).map(r => r.cloneNode(true));
+
+            // 4. Content Chunking (Pages)
+            const rowsPerPage = 12; // Number of rows per PDF page
+            const totalPages = Math.ceil(allRows.length / rowsPerPage);
+            const calcWidth = Math.max(1400, ganttWidth + 100);
             const genDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
-            const pdfHtml = `
-                <div style="width: ${calcWidth}px; padding: 60px; font-family: 'Inter', sans-serif; background: #fff; color: #1e293b; min-height: ${calcHeight}px;">
-                    <!-- STYLIZED HEADER (MATCHING IMAGE) -->
-                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 50px; padding-bottom: 30px; border-bottom: 3px solid #001f3f;">
-                        <div style="display: flex; align-items: center; gap: 25px;">
-                             <img src="asset/image.png" style="height: 85px; width: auto; object-fit: contain;" onerror="this.src='https://via.placeholder.com/85x85?text=LOGO'">
+            let finalPdfHtml = `<div style="background: #f1f5f9; padding: 20px; width: ${calcWidth + 40}px;">`;
+
+            for (let p = 0; p < totalPages; p++) {
+                const chunk = allRows.slice(p * rowsPerPage, (p + 1) * rowsPerPage);
+
+                finalPdfHtml += `
+                <div class="pdf-page-wrapper" style="width: ${calcWidth}px; padding: 50px; background: #ffffff; margin-bottom: 50px; position: relative; box-shadow: 0 0 30px rgba(0,0,0,0.05); border-radius: 24px; page-break-after: ${p === totalPages - 1 ? 'auto' : 'always'}; min-height: 1050px;">
+                    <!-- CONDITIONAL BRANDING HEADER (FIRST PAGE ONLY) -->
+                    ${p === 0 ? `
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 40px; padding-bottom: 25px; border-bottom: 4px solid #001f3f;">
+                        <div style="display: flex; align-items: center; gap: 20px;">
+                             <img src="asset/image.png" style="height: 75px; width: auto; object-fit: contain;">
                              <div>
-                                <h1 style="margin: 0; font-size: 52px; color: #001f3f; font-weight: 900; letter-spacing: 0.5px; line-height: 1;">DANPREL</h1>
-                                <div style="font-size: 18px; color: #475569; font-weight: 700; margin-top: 5px;">Engineering Automation Pvt Ltd</div>
+                                <h1 style="margin: 0; font-size: 44px; color: #001f3f; font-weight: 900; letter-spacing: -1px; line-height: 1;">DANPREL</h1>
+                                <div style="font-size: 15px; color: #475569; font-weight: 700; margin-top: 4px;">Engineering Automation Pvt Ltd</div>
                              </div>
                         </div>
-                        <div style="text-align: right; line-height: 1.7;">
-                             <h2 style="margin: 0 0 10px 0; color: #001f3f; font-size: 34px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px;">PERFORMANCE REPORT</h2>
-                             <div style="font-size: 16px; color: #64748b; font-weight: 700;">Project: <span style="color: #0f172a; font-weight: 900;">${project.name} (${project.code})</span></div>
-                             <div style="font-size: 16px; color: #64748b; font-weight: 700;">Customer: <span style="color: #0f172a; font-weight: 900;">${project.customer_name || '—'}</span></div>
-                             <div style="font-size: 16px; color: #64748b; font-weight: 700;">SAT Location: <span style="color: #0f172a; font-weight: 900;">${project.sat_location || '—'}</span></div>
-                             <div style="font-size: 16px; color: #64748b; font-weight: 700;">Generated Date: <span style="color: #0f172a; font-weight: 900;">${genDate}</span></div>
+                        <div style="text-align: right; line-height: 1.5;">
+                             <h2 style="margin: 0 0 6px 0; color: #001f3f; font-size: 28px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px;">TIMELINE VISUALIZATION</h2>
+                             <div style="font-size: 15px; color: #64748b; font-weight: 700; margin-bottom: 2px;">Project: <span style="color: #0f172a; font-weight: 900;">${(project.name || 'Untitled Project')} (${(project.code || '---')})</span></div>
+                             <div style="font-size: 13px; color: #94a3b8; font-weight: 600;">Generated Date: ${genDate} | Page ${p + 1} of ${totalPages}</div>
+                             <div style="font-size: 13px; color: #475569; font-weight: 700; margin-top: 5px;">Customer: <span style="color: #0f172a; font-weight: 800;">${project.customer_name || '—'}</span></div>
+                             <div style="font-size: 13px; color: #475569; font-weight: 700;">SAT Location: <span style="color: #0f172a; font-weight: 800;">${project.sat_location || '—'}</span></div>
                         </div>
                     </div>
+                    ` : `
+                    <!-- SUBSEQUENT PAGES: SMALLER HEADER OR SPACER -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #e2e8f0;">
+                         <div style="font-size: 12px; font-weight: 800; color: #001f3f;">${project.code || '---'} | TIMELINE VISUALIZATION (CONT.)</div>
+                         <div style="font-size: 11px; color: #94a3b8;">Page ${p + 1} of ${totalPages}</div>
+                    </div>
+                    `}
 
-                    <!-- GANTT VISUALIZATION BLOCK -->
-                    <div style="border: 2px solid #e2e8f0; border-radius: 20px; overflow: visible; background: white; padding: 25px; box-shadow: 0 15px 50px rgba(0,0,0,0.05);">
-                        <div style="width: 100%; overflow: visible; background: #fff;">
-                            ${container.outerHTML}
+                    <!-- GANTT BODY WITH REPEATED HEADERS -->
+                    <div class="gantt-wrapper" style="display: grid; grid-template-columns: 280px 1fr; border: 1px solid #E2EBF5; border-radius: 20px; overflow: visible; background: #fff; box-shadow: 0 10px 30px rgba(0,0,0,0.02); min-height: 800px; align-content: start;">
+                        <!-- Re-inject Sidebar Header -->
+                        <div class="gantt-sidebar" style="background: #F8FBFE; border-right: 1px solid #E2EBF5;">
+                            ${sideHeaderNode.innerHTML}
                         </div>
+                        <!-- Re-inject Main Timeline Header -->
+                        <div class="gantt-header-container" style="display: flex; flex-direction: column;">
+                            ${mainHeaderNode.innerHTML}
+                        </div>
+                        
+                        <!-- CHUNKED ROWS -->
+                        ${chunk.map(r => r.outerHTML).join('')}
                     </div>
 
-                    <!-- FOOTER -->
-                    <div style="margin-top: 60px; padding-top: 30px; border-top: 1px solid #e2e8f0; font-size: 14px; color: #94a3b8; text-align: center; font-weight: 600; letter-spacing: 1px;">
-                        OFFICIAL PERFORMANCE RECORD • GENERATED BY DANPREL OS • CONFIDENTIAL
+                    <!-- PAGE FOOTER -->
+                    <div style="position: absolute; bottom: 40px; left: 50px; right: 50px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f1f5f9; padding-top: 20px; color: #cbd5e1; font-size: 11px; font-weight: 700; letter-spacing: 1.5px;">
+                        <div>DANPREL OS • TIMELINE RECORD</div>
+                        <div style="color: #64748b;">OFFICIAL CONFIDENTIAL DOCUMENT</div>
+                        <div>PAGE ${p + 1} / ${totalPages}</div>
                     </div>
-                </div>
-            `;
+                </div>`;
+            }
 
-            // Convert to points
+            finalPdfHtml += `</div>`;
+
+            // jsPDF Dimensions
             const width_pt = calcWidth * 0.75;
-            const height_pt = calcHeight * 0.75;
+            const height_pt = 1200; // Fixed large height to ensure columns fit
 
             const opt = {
                 margin: 0,
                 filename: `DANPREL_Timeline_${project.code}_${genDate.replace(/\//g, '-')}.pdf`,
                 image: { type: 'jpeg', quality: 1.0 },
                 html2canvas: {
-                    scale: 2,
+                    scale: 1.5, // Reduced scale for very wide documents to prevent memory issues
                     useCORS: true,
                     logging: false,
-                    width: calcWidth,
-                    height: calcHeight,
-                    backgroundColor: '#ffffff'
+                    width: calcWidth + 40,
+                    backgroundColor: '#f1f5f9'
                 },
                 jsPDF: {
                     unit: 'pt',
-                    format: [width_pt, height_pt],
+                    format: [width_pt + 30, height_pt],
                     orientation: 'landscape',
                     compress: true
                 }
             };
 
-            html2pdf().from(pdfHtml).set(opt).save().then(() => {
+            html2pdf().from(finalPdfHtml).set(opt).save().then(() => {
                 hideExportStatus();
                 if (typeof showSuccessToast === 'function') showSuccessToast();
             }).catch(err => {
@@ -3477,7 +3555,7 @@ Note: This is an auto-generated mail. Please do not reply to this mail.`;
 
         function exportToExcel() {
             showExportStatus('Generating Excel spreadsheet...');
-            
+
             // Prepare Professional Metadata Header Rows
             const metaHeader = [
                 ["COMPANY", "DANPREL ENGINEERING AUTOMATION PVT LTD"],
@@ -3560,10 +3638,10 @@ Note: This is an auto-generated mail. Please do not reply to this mail.`;
             const wb = XLSX.utils.book_new();
             // Start with company metadata
             const ws = XLSX.utils.aoa_to_sheet(metaHeader);
-            
+
             // Append data below metadata starting at row 8 (A8)
             XLSX.utils.sheet_add_json(ws, exportData, { origin: "A8" });
-            
+
             XLSX.utils.book_append_sheet(wb, ws, "Phase Plan Details");
             XLSX.writeFile(wb, `Phase_Export_${project.code}_${new Date().toLocaleDateString('en-GB').replace(/\//g, '-')}.xlsx`);
             hideExportStatus();

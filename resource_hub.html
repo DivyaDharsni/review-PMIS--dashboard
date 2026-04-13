@@ -860,7 +860,8 @@
                     </div>
                     <div class="mb-3">
                         <div class="section-lbl">Role</div>
-                        <input list="roleOptions" id="eRole" class="form-control fw-bold" placeholder="Type or select role..." autocomplete="off">
+                        <input list="roleOptions" id="eRole" class="form-control fw-bold"
+                            placeholder="Type or select role..." autocomplete="off">
                         <datalist id="roleOptions">
                             <option value="Director">
                             <option value="Finance Head">
@@ -871,12 +872,13 @@
                             <option value="Project Coordinator">
                             <option value="Purchase Executive">
                             <option value="Purchase Consultant">
-                            <option value="Purchase Vendor Development">
+                            <option value="Purchase/Vendor Development">
                         </datalist>
                     </div>
                     <div class="mb-3">
                         <div class="section-lbl">Department</div>
-                        <input list="deptOptionsModal" id="eDept" class="form-control fw-bold" placeholder="Type or select department..." autocomplete="off">
+                        <input list="deptOptionsModal" id="eDept" class="form-control fw-bold"
+                            placeholder="Type or select department..." autocomplete="off">
                         <datalist id="deptOptionsModal">
                             <option value="PLC">
                             <option value="Mech Assembly">
@@ -1077,7 +1079,7 @@
                 })
                 .sort();
             deptDl.innerHTML = allDepts.map(d => `<option value="${d}">`).join('');
-            
+
             // Also update the filter dropdown on the main page
             const deptFilter = document.getElementById('deptFilter');
             const currentVal = deptFilter.value;
@@ -1087,9 +1089,9 @@
 
         function addNewRole() {
             const val = document.getElementById('newRoleInp').value.trim();
-            if(!val) return;
+            if (!val) return;
             const roles = JSON.parse(localStorage.getItem('custom_roles') || '[]');
-            if(!roles.includes(val)) {
+            if (!roles.includes(val)) {
                 roles.push(val);
                 localStorage.setItem('custom_roles', JSON.stringify(roles));
                 syncDatalists();
@@ -1100,9 +1102,9 @@
 
         function addNewDept() {
             const val = document.getElementById('newDeptInp').value.trim();
-            if(!val) return;
+            if (!val) return;
             const depts = JSON.parse(localStorage.getItem('custom_departments') || '[]');
-            if(!depts.includes(val)) {
+            if (!depts.includes(val)) {
                 depts.push(val);
                 localStorage.setItem('custom_departments', JSON.stringify(depts));
                 syncDatalists();

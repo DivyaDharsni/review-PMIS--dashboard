@@ -1858,9 +1858,11 @@
                         <div class="hub-icon sci-teal"><i class="bi bi-calendar-event-fill"></i></div>
                         <div>
                             <div class="fw-800 text-dark">Revision Center</div>
-                            <div class="tiny-desc text-muted" style="font-size: 0.7rem;">Review & Approve Reschedule Requests</div>
+                            <div class="tiny-desc text-muted" style="font-size: 0.7rem;">Review & Approve Reschedule
+                                Requests</div>
                         </div>
-                        <span id="revHubBadge" class="badge rounded-pill bg-danger ms-auto" style="display:none;">0</span>
+                        <span id="revHubBadge" class="badge rounded-pill bg-danger ms-auto"
+                            style="display:none;">0</span>
                         <i class="bi bi-chevron-right ms-2 text-muted"></i>
                     </button>
                 </div>
@@ -1896,11 +1898,13 @@
                         <i class="bi bi-chevron-right ms-auto text-muted"></i>
                     </button>
                 </div>
-                
+
                 <!-- REVISION CENTER MENU -->
-                <div class="modal-body p-0 bg-light d-none" id="hubRevisionMenu" style="max-height: 500px; overflow-y: auto;">
+                <div class="modal-body p-0 bg-light d-none" id="hubRevisionMenu"
+                    style="max-height: 500px; overflow-y: auto;">
                     <div class="p-3 bg-white border-bottom sticky-top">
-                        <button class="btn btn-sm btn-light border fw-bold rounded-pill" onclick="switchHubView('main')">
+                        <button class="btn btn-sm btn-light border fw-bold rounded-pill"
+                            onclick="switchHubView('main')">
                             <i class="bi bi-arrow-left me-1"></i>Back
                         </button>
                     </div>
@@ -2384,7 +2388,7 @@
                 document.getElementById('p3').value +
                 document.getElementById('p4').value;
 
-            if (pin === '1234') { // Default PIN: 1234
+            if (pin === '2122') { // Default PIN: 1234
                 switchHubView('project');
             } else {
                 alert('Invalid PIN! Please try again.');
@@ -2483,11 +2487,11 @@
         function renderRevisions() {
             const hubList = document.getElementById('hubRevisionList');
             const mainList = document.getElementById('revisionList');
-            if(!hubList && !mainList) return;
-            
-            if(hubList) hubList.innerHTML = '';
-            if(mainList) mainList.innerHTML = '';
-            
+            if (!hubList && !mainList) return;
+
+            if (hubList) hubList.innerHTML = '';
+            if (mainList) mainList.innerHTML = '';
+
             let pendingCount = 0;
             projects.forEach(p => {
                 if (p.revision_requests && p.revision_requests.length > 0) {
@@ -2549,10 +2553,10 @@
                 </div>`;
 
             if (pendingCount === 0) {
-                if(hubList) hubList.innerHTML = emptyMsg;
-                if(mainList) mainList.innerHTML = emptyMsg;
+                if (hubList) hubList.innerHTML = emptyMsg;
+                if (mainList) mainList.innerHTML = emptyMsg;
             }
-            
+
             // Update all badges and labels
             if (document.getElementById('revCountLabel')) {
                 document.getElementById('revCountLabel').innerText = `${pendingCount} Pending Requests`;
@@ -2584,7 +2588,7 @@
             if (!p.detailed_phases[req.phaseId]) p.detailed_phases[req.phaseId] = { revisions: [] };
             const phData = p.detailed_phases[req.phaseId];
             if (!phData.revisions) phData.revisions = [];
-            
+
             phData.revisions.push({
                 label: 'R' + (phData.revisions.length + 1),
                 start: req.newStart,
