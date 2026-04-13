@@ -297,7 +297,12 @@ app.use((req, res, next) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-app.listen(PORT, () => {
-    console.log(`\n🚀 Server running at http://localhost:${PORT}/`);
-    console.log(`MongoDB storage is now active.\n`);
-});
+if (process.env.NODE_ENV !== 'production' || !process.env.NETLIFY) {
+    app.listen(PORT, () => {
+        console.log(`\n🚀 Server running at http://localhost:${PORT}/`);
+        console.log(`MongoDB storage is now active.\n`);
+    });
+}
+
+// Export for serverless
+module.exports = app;
