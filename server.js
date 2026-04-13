@@ -129,6 +129,12 @@ const EmployeeSchema = new mongoose.Schema({
 
 const Employee = mongoose.model('Employee', EmployeeSchema);
 
+const FeedbackSchema = new mongoose.Schema({
+    content: String,
+    sourcePage: String
+}, { timestamps: true });
+const Feedback = mongoose.model('Feedback', FeedbackSchema);
+
 
 // --- API ENDPOINTS ---
 
@@ -285,6 +291,19 @@ app.post('/api/send-email', async (req, res) => {
     } catch (err) {
         console.error('❌ Email failed:', err);
         res.status(500).json({ error: 'Email could not be sent: ' + err.message });
+    }
+});
+
+// 12. Submit Feedback
+app.post('/api/feedback', async (req, res) => {
+    try {
+        const { content, sourcePage } = req.body;
+        if (!content) return res.status(400).json({ message: 'Feedback content is empty' });
+        const fb = new Feedback({ content, sourcePage });
+        await fb.save();
+        res.json({ message: 'Feedback saved successfully' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
 });
 

@@ -1293,6 +1293,50 @@
             display: block;
         }
 
+        .no-data-msg i {
+            font-size: 3rem;
+            display: block;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        /* --- TOAST NOTIFICATION --- */
+        .toast-custom {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #0f172a;
+            color: white;
+            padding: 16px 24px;
+            border-radius: 16px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .toast-custom.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: var(--teal-bright);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+        }
+
         .rev-active-badge {
             background: #e0f2fe !important;
             border: 1.2px solid #bae6fd !important;
@@ -1442,7 +1486,7 @@
             <textarea id="feedbackText" class="form-control mb-3" rows="4"
                 placeholder="Suggest features or report issues..."
                 style="border-radius: 16px; font-size: 0.9rem; border: none; padding: 15px; resize: none;"></textarea>
-            <button class="btn w-100 fw-800" onclick="submitFeedback()"
+            <button type="button" class="btn w-100 fw-800" id="btnSubmitFeedback" onclick="submitFeedback()"
                 style="background: #14b8a6; color: white; border-radius: 16px; height: 54px; font-size: 1rem; box-shadow: 0 8px 16px rgba(20, 184, 166, 0.2);">Submit
                 Feedback</button>
         </div>
@@ -1828,7 +1872,26 @@
         <span>Details saved successfully!</span>
     </div>
 
+    <!-- ===== TOAST ===== -->
+    <div class="toast-custom" id="toastMsg">
+        <div class="toast-icon"><i class="bi bi-check-lg"></i></div>
+        <div id="toastText">Thank you for your feedback!</div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function showToast(msg, isError = false) {
+            const t = document.getElementById('toastMsg');
+            const icon = t.querySelector('.toast-icon');
+            document.getElementById('toastText').innerText = msg;
+            t.style.background = isError ? '#e11d48' : '#0f172a';
+            icon.innerHTML = isError ? '<i class="bi bi-x-lg"></i>' : '<i class="bi bi-check-lg"></i>';
+            icon.style.background = isError ? 'rgba(255,255,255,0.2)' : 'var(--teal-bright)';
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3500);
+        }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         const projectId = urlParams.get('id');
@@ -2032,12 +2095,36 @@
             document.getElementById('sidebarOverlay').classList.toggle('active');
         }
 
-        function submitFeedback() {
-            const txt = document.getElementById('feedbackText').value.trim();
+        async function submitFeedback() {
+            const textEl = document.getElementById('feedbackText');
+            const txt = textEl.value.trim();
             if (!txt) { alert('Please write your feedback first.'); return; }
-            alert('✅ Thank you for your feedback! We will review it shortly.');
-            document.getElementById('feedbackText').value = '';
-            toggleSidebar();
+            
+            const btn = document.getElementById('btnSubmitFeedback');
+            const originalText = btn.innerText;
+            btn.innerText = 'Sending...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/feedback', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content: txt, sourcePage: 'Project Phases' })
+                });
+                if (res.ok) {
+                    showToast('Thank you for your feedback!');
+                    textEl.value = '';
+                    if (typeof toggleSidebar === 'function') toggleSidebar();
+                } else {
+                    showToast('Server error: Could not save feedback.', true);
+                }
+            } catch (err) {
+                console.error('Feedback Error:', err);
+                showToast('Connection error. Feedback not saved.', true);
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
         }
 
         function performLogout() {
@@ -3281,7 +3368,16 @@ Note: This is an auto-generated mail. Please do not reply to this mail.`;
 
             // 1. Data Processing and Partitioning
             let pSer = 0; let sSer = 0;
-            const activePhases = defaultPhases.filter(ph => !(project.detailed_phases[ph.id]?.is_excluded));
+            const activePhases = defaultPhases.filter(ph => {
+                const d = project.detailed_phases[ph.id] || {};
+                if (d.is_excluded) return false;
+                // For parent phases, only show if they have active children
+                if (ph.type === 'parent') {
+                    const subCount = defaultPhases.filter(s => s.parent === ph.id && !(project.detailed_phases[s.id]?.is_excluded)).length;
+                    return subCount > 0;
+                }
+                return true;
+            });
 
             const tableRows = activePhases.map(ph => {
                 let ser = "";
@@ -3290,15 +3386,15 @@ Note: This is an auto-generated mail. Please do not reply to this mail.`;
 
                 const data = JSON.parse(JSON.stringify(project.detailed_phases[ph.id] || {}));
                 if (ph.type === 'parent') {
-                    const subs = defaultPhases.filter(s => s.parent === ph.id);
+                    const subs = defaultPhases.filter(s => s.parent === ph.id && !(project.detailed_phases[s.id]?.is_excluded));
                     let pStart = null, pEnd = null, aStart = null, aEnd = null, subTotal = 0;
                     subs.forEach(s => {
                         const sd = project.detailed_phases[s.id] || {};
                         subTotal += parseInt(sd.progress || 0);
-                        if (sd.plan_start) { const d = new Date(sd.plan_start); if (!pStart || d < pStart) pStart = d; }
-                        if (sd.plan_end) { const d = new Date(sd.plan_end); if (!pEnd || d > pEnd) pEnd = d; }
-                        if (sd.actual_start) { const d = new Date(sd.actual_start); if (!aStart || d < aStart) aStart = d; }
-                        if (sd.actual_end) { const d = new Date(sd.actual_end); if (!aEnd || d > aEnd) aEnd = d; }
+                        if (sd.plan_start) { const dBound = new Date(sd.plan_start); if (!pStart || dBound < pStart) pStart = dBound; }
+                        if (sd.plan_end) { const dBound = new Date(sd.plan_end); if (!pEnd || dBound > pEnd) pEnd = dBound; }
+                        if (sd.actual_start) { const dBound = new Date(sd.actual_start); if (!aStart || dBound < aStart) aStart = dBound; }
+                        if (sd.actual_end) { const dBound = new Date(sd.actual_end); if (!aEnd || dBound > aEnd) aEnd = dBound; }
                     });
                     if (pStart) data.plan_start = pStart.toISOString().split('T')[0];
                     if (pEnd) data.plan_end = pEnd.toISOString().split('T')[0];
@@ -3309,20 +3405,32 @@ Note: This is an auto-generated mail. Please do not reply to this mail.`;
                 return { ph, data, ser };
             });
 
+            // Calculate Overall Weighted Progress for Report Header
+            const weights = { kickoff: 3, design: 15, purchase: 15, mech_assembly: 20, program: 15, inhouse: 10, mq1_fat: 10, dispatch_parent: 2, inc_parent: 10 };
+            let totalWP = 0; let totalAW = 0;
+            Object.keys(weights).forEach(mId => {
+                const d = project.detailed_phases[mId] || {};
+                if (!d.is_excluded) {
+                    totalWP += (parseInt(d.progress || 0) / 100) * weights[mId];
+                    totalAW += weights[mId];
+                }
+            });
+            const reportOverallProgress = totalAW ? Math.round((totalWP / totalAW) * 100) : 0;
+
             // 2. A4 Layout Tuning
-            // itemsPerPage is reduced to 10 to guarantee everything fits on one page height
             const itemsPerPage = 10;
             const totalPages = Math.ceil(tableRows.length / itemsPerPage);
             const genDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
-            // Container width set for A4 Landscape
-            let finalHtml = `<div style="background: #f1f5f9; width: 1120px; font-family: 'Inter', sans-serif; padding-top: 1px;">`;
+            // Container width set for A4 Landscape - Background changed to white
+            let finalHtml = `<div style="background: #ffffff; width: 1120px; font-family: 'Inter', sans-serif; padding-top: 1px;">`;
 
             for (let p = 0; p < totalPages; p++) {
                 const chunk = tableRows.slice(p * itemsPerPage, (p + 1) * itemsPerPage);
+                const pageBreakStyle = (p < totalPages - 1) ? 'page-break-after: always;' : '';
 
                 finalHtml += `
-        <div class="report-page" style="width: 1060px; height: 740px; padding: 30px 40px; background: #ffffff; margin: 0 auto 20px auto; position: relative; border-radius: 15px; box-shadow: 0 0 20px rgba(0,0,0,0.05); page-break-after: always; display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box;">
+        <div class="report-page" style="width: 1060px; height: 740px; padding: 30px 40px; background: #ffffff; margin: 0 auto; position: relative; border-radius: 15px; box-shadow: 0 0 20px rgba(0,0,0,0.05); ${pageBreakStyle} display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box;">
             
             <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 3px solid #001f3f;">
                 <div style="display: flex; align-items: center; gap: 15px;">
@@ -3334,8 +3442,14 @@ Note: This is an auto-generated mail. Please do not reply to this mail.`;
                 </div>
                 <div style="text-align: right; line-height: 1.2;">
                      <h2 style="margin: 0 0 5px 0; color: #001f3f; font-size: 20px; font-weight: 900; text-transform: uppercase;">PERFORMANCE REPORT</h2>
-                     <div style="font-size: 12px; color: #475569; font-weight: 800;">Project: <span style="color: #0f172a;">${project.name || 'Untitled'} (${project.code || '---'})</span></div>
-                     <div style="font-size: 11px; color: #475569; margin-top: 3px;">Customer: <span style="color: #0f172a; font-weight: 800;">${project.customer_name || '—'}</span> | SAT: <span style="color: #0f172a; font-weight: 800;">${project.sat_location || '—'}</span></div>
+                     <div style="font-size: 11px; color: #475569; font-weight: 800;">Project: <span style="color: #0f172a;">${project.name || 'Untitled'} (${project.code || '---'})</span></div>
+                     <div style="font-size: 10px; color: #475569; margin-top: 3px;">Customer: <span style="color: #0f172a; font-weight: 800;">${project.customer_name || '—'}</span> | SAT: <span style="color: #0f172a; font-weight: 800;">${project.sat_location || '—'}</span></div>
+                     <div style="margin-top: 6px; display: flex; align-items: center; justify-content: flex-end; gap: 8px;">
+                          <div style="font-size: 10px; font-weight: 900; color: #001f3f;">COMPLETION: ${reportOverallProgress}%</div>
+                          <div style="width: 100px; height: 6px; background: #e2e8f0; border-radius: 10px; overflow: hidden;">
+                               <div style="width: ${reportOverallProgress}%; height: 100%; background: #14b8a6;"></div>
+                          </div>
+                     </div>
                 </div>
             </div>
 
@@ -3395,9 +3509,8 @@ Note: This is an auto-generated mail. Please do not reply to this mail.`;
                 </tbody>
             </table>
 
-            <div style="margin-top: auto; padding-top: 15px; display: flex; justify-content: space-between; align-items: center; border-top: 1.5px solid #f1f5f9; color: #94a3b8; font-size: 10px; font-weight: 800;">
-                <div>QUALITY ASSURANCE RECORD • ${project.code || '---'} • GENERATED: ${genDate}</div>
-                <div style="color: #64748b; background: #f8fafc; padding: 5px 15px; border-radius: 40px; border: 1px solid #e2e8f0;">PAGE ${p + 1} / ${totalPages}</div>
+            <div style="margin-top: auto; padding-top: 15px; display: flex; justify-content: flex-end; align-items: center;">
+                <div style="color: #64748b; background: #f8fafc; padding: 4px 12px; border-radius: 40px; border: 1px solid #e2e8f0; font-size: 10px; font-weight: 800;">PAGE ${p + 1} / ${totalPages}</div>
             </div>
         </div>`;
             }
@@ -3406,13 +3519,13 @@ Note: This is an auto-generated mail. Please do not reply to this mail.`;
 
             const opt = {
                 margin: 0,
-                filename: `Report_${project.code}_${genDate.replace(/\//g, '-')}.pdf`,
+                filename: `Report_${project.code || 'DANPREL'}_${genDate.replace(/\//g, '-')}.pdf`,
                 image: { type: 'jpeg', quality: 1.0 },
                 html2canvas: {
                     scale: 2,
                     useCORS: true,
                     logging: false,
-                    backgroundColor: '#f1f5f9'
+                    backgroundColor: '#ffffff'
                 },
                 jsPDF: {
                     unit: 'pt',
