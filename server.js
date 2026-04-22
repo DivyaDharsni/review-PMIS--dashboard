@@ -30,13 +30,19 @@ mongoose.connect(MONGODB_URI)
     });
 
 // --- SMTP CONFIGURATION ---
+const smtpPort = parseInt(process.env.SMTP_PORT || 587);
+const smtpHost = process.env.SMTP_HOST || 'smtp.office365.com';
 const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: process.env.SMTP_PORT || 465,
-    secure: true,
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpPort === 465, // true for 465, false for 587 (STARTTLS)
+    requireTLS: smtpPort === 587,
     auth: {
         user: process.env.SMTP_USER || 'info@danprel.com',
-        pass: process.env.SMTP_PASS || '' // User must set this in .env
+        pass: process.env.SMTP_PASS || ''
+    },
+    tls: {
+        rejectUnauthorized: false
     }
 });
 
@@ -134,6 +140,28 @@ const FeedbackSchema = new mongoose.Schema({
     sourcePage: String
 }, { timestamps: true });
 const Feedback = mongoose.model('Feedback', FeedbackSchema);
+ 
+ const ActionPointSchema = new mongoose.Schema({
+     projectId: String,
+     projectCode: String,
+     reviewDate: String,
+     action: String,
+     dept: String,
+     personName: String,
+     email: String,
+     targetDate: String,
+     statusValue: { type: String, default: 'Yet to Start' },
+     mailSent: { type: Boolean, default: false },
+     revisions: [
+         {
+             date: String,
+             status: String,
+             remark: String,
+             timestamp: String
+         }
+     ]
+ }, { timestamps: true });
+ const ActionPoint = mongoose.model('ActionPoint', ActionPointSchema);
 
 
 // --- API ENDPOINTS ---
@@ -197,6 +225,50 @@ app.delete('/api/projects/:id', async (req, res) => {
     try {
         await Project.findByIdAndDelete(req.params.id);
         res.json({ message: 'Project deleted' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// --- ACTION POINT ENDPOINTS (NEW TABLE) ---
+
+// Get all action points for a project
+app.get('/api/action-points', async (req, res) => {
+    try {
+        const { projectId } = req.query;
+        const items = await ActionPoint.find(projectId ? { projectId } : {}).sort({ createdAt: -1 });
+        res.json(items);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Create new action point
+app.post('/api/action-points', async (req, res) => {
+    try {
+        const ap = new ActionPoint(req.body);
+        await ap.save();
+        res.json(ap);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Update action point
+app.patch('/api/action-points/:id', async (req, res) => {
+    try {
+        const ap = await ActionPoint.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        res.json(ap);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Delete action point
+app.delete('/api/action-points/:id', async (req, res) => {
+    try {
+        await ActionPoint.findByIdAndDelete(req.params.id);
+        res.json({ message: 'Action point deleted' });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -269,7 +341,7 @@ app.post('/api/send-email', async (req, res) => {
                     <p style="color: #94a3b8; margin: 4px 0 0; font-size: 13px; text-transform: uppercase; font-weight: 600;">Engineering Automation</p>
                 </div>
                 <div style="padding: 32px; color: #334155; font-size: 15px; line-height: 1.7;">
-                    <div style="background-color: #f8fafc; border-left: 4px solid #0ea5e9; padding: 16px 20px; border-radius: 4px; margin-bottom: 24px; white-space: pre-wrap; font-family: inherit;">${body.replace(/\n/g, '<br>')}</div>
+                    <div style="background-color: #f8fafc; border-left: 4px solid #0ea5e9; padding: 24px; border-radius: 12px; margin-bottom: 24px; font-family: inherit;">${body.replace(/\n/g, '<br>')}</div>
                     
                     <p style="margin: 0 0 16px 0; font-size: 13px; color: #64748b; font-style: italic;">This is an auto-generated mail, so please do not reply.</p>
                     

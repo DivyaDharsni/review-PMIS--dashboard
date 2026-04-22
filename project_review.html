@@ -80,7 +80,6 @@
 
         .premium-export-item:hover {
             background: #f8fafc !important;
-            transform: translateX(3px);
             border-color: #f1f5f9 !important;
             color: #0b2b4a !important;
         }
@@ -803,6 +802,7 @@
             display: flex;
             align-items: center;
             gap: 12px;
+            cursor: pointer;
         }
 
         .filter-group i {
@@ -1731,7 +1731,7 @@
             <div class="filt-divider"></div>
 
             <!-- Date Range From -->
-            <div class="filter-group">
+            <div class="filter-group" onclick="try { document.getElementById('dateFrom').showPicker(); } catch(e) { document.getElementById('dateFrom').focus(); }">
                 <i class="bi bi-calendar3"></i>
                 <span class="date-label">FROM</span>
 
@@ -1741,7 +1741,7 @@
             <div class="filt-divider"></div>
 
             <!-- Date Range To -->
-            <div class="filter-group">
+            <div class="filter-group" onclick="try { document.getElementById('dateTo').showPicker(); } catch(e) { document.getElementById('dateTo').focus(); }">
                 <i class="bi bi-calendar2-minus"></i>
                 <span class="date-label">TO</span>
 
@@ -2908,9 +2908,9 @@
             }
         }
 
-        // Default filter dates
-        if (document.getElementById('dateFrom')) document.getElementById('dateFrom').value = '2026-01-01';
-        if (document.getElementById('dateTo')) document.getElementById('dateTo').value = '2026-12-31';
+        // Default to showing all projects by clearing preset date filters
+        if (document.getElementById('dateFrom')) document.getElementById('dateFrom').value = '';
+        if (document.getElementById('dateTo')) document.getElementById('dateTo').value = '';
 
         async function exportMasterToPDF() {
             const container = document.getElementById('printContainer');

@@ -76,7 +76,6 @@
 
         .premium-export-item:hover {
             background: #f8fafc !important;
-            transform: translateX(3px);
             border-color: #f1f5f9 !important;
         }
 
@@ -253,18 +252,25 @@
 
         .table thead tr th:first-child {
             text-align: left;
-            padding-left: 32px;
+            padding-left: 24px;
+            border-left: 5px solid var(--navy-prime);
         }
 
         .table thead tr:last-child th {
             background: #F1F5F9;
-            color: #334155;
+            color: #475569;
             font-size: 0.7rem;
             font-weight: 800;
             padding: 12px 10px;
             text-transform: uppercase;
             letter-spacing: 0.05em;
             border-bottom: 2px solid #E2E8F0;
+        }
+
+        /* Ensure the Workstream header in sub-row also has the navy bar */
+        .table thead tr:last-child th:first-child {
+            border-left: 5px solid var(--navy-prime);
+            background: #F1F5F9 !important;
         }
 
         .table thead tr:first-child th {
