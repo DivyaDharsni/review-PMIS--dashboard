@@ -1381,48 +1381,8 @@
                 return;
             }
 
-            const subject = `[ACTION REQUIRED] Review Meeting: ${record.projectCode} — ${record.projectName}`;
-            const body = `<div style="font-weight: 800; color: #001f3f; font-size: 18px; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">ACTION REQUIRED</div>
-
-Hello ${member.name},
-
-You have been assigned a new action point from today's Review Meeting.
-
-<div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-    <div style="margin-bottom: 12px; display: flex; align-items: center;">
-        <span style="font-weight: 700; width: 120px; color: #64748b;">Project:</span>
-        <span style="color: #0f172a;">${record.projectCode} — ${record.projectName}</span>
-    </div>
-    <div style="margin-bottom: 12px; display: flex; align-items: center;">
-        <span style="font-weight: 700; width: 120px; color: #64748b;">Meeting Date:</span>
-        <span style="color: #0f172a;">${record.date}</span>
-    </div>
-    <div style="margin-bottom: 12px; display: flex; align-items: center;">
-        <span style="font-weight: 700; width: 120px; color: #64748b;">Department:</span>
-        <span style="color: #0f172a;">${record.dept}</span>
-    </div>
-    <div style="margin-bottom: 20px; display: flex; align-items: center;">
-        <span style="font-weight: 700; width: 120px; color: #64748b;">Target Date:</span>
-        <span style="color: #e11d48; font-weight: 800;">${record.targetDate}</span>
-    </div>
-    
-    <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #f1f5f9;">
-        <div style="font-weight: 700; color: #0f172a; margin-bottom: 8px;">⚠️ PROBLEM:</div>
-        <div style="background: #fff1f2; padding: 12px; border-radius: 8px; color: #991b1b; font-size: 14px;">${record.problem}</div>
-    </div>
-    
-    <div style="margin-top: 16px;">
-        <div style="font-weight: 700; color: #0f172a; margin-bottom: 8px;">✅ ACTION REQUIRED:</div>
-        <div style="background: #f0fdf4; padding: 12px; border-radius: 8px; color: #166534; font-size: 14px;">${record.action}</div>
-    </div>
-    
-    <div style="margin-top: 16px; display: flex; align-items: center;">
-        <span style="font-weight: 700; width: 120px; color: #64748b;">Status:</span>
-        <span style="background: #f1f5f9; padding: 4px 12px; border-radius: 100px; font-size: 12px; font-weight: 700; color: #475569;">${record.status}</span>
-    </div>
-</div>
-
-Please update the status of this task once addressed.`;
+            const subject = `New Task: ${record.projectCode}`;
+            const body = `Hello ${member.name},<br><br>You have been assigned a new task for project <strong>${record.projectName}</strong>.<br><br>Task: ${record.action}<br>Target Date: ${record.targetDate}<br><br>Thank you,<br>Project Team`;
 
             try {
                 const res = await fetch('/api/send-email', {

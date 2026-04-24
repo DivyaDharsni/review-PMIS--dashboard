@@ -13,33 +13,26 @@ app.use(express.json());
 app.use(cors());
 app.use(express.static('.')); // Serve static HTML files from the current folder
 
-// Connect to MongoDB using Atlas URL in .env
+// Connect to MongoDB
 const MONGODB_URI = process.env.MONGODB_URI;
 
-if (!MONGODB_URI) {
-    console.error('❌ FATAL: MONGODB_URI is not defined in .env');
-    console.error('   Please ensure you have a .env file with MONGODB_URI=your_url');
-    process.exit(1);
+if (MONGODB_URI) {
+    mongoose.connect(MONGODB_URI)
+        .then(() => console.log('✅ Connected to MongoDB Atlas'))
+        .catch(err => console.error('❌ MongoDB Connection Error:', err.message));
+} else {
+    console.warn('⚠️ MONGODB_URI not found. Database features will be disabled.');
 }
 
-mongoose.connect(MONGODB_URI)
-    .then(() => console.log('✅ Connected to MongoDB Atlas'))
-    .catch(err => {
-        console.error('❌ MongoDB Connection Error:', err.message);
-        console.error('   Check your Internet connection and IP Whitelist in Atlas.');
-    });
-
 // --- SMTP CONFIGURATION ---
-const smtpPort = parseInt(process.env.SMTP_PORT || 587);
-const smtpHost = process.env.SMTP_HOST || 'smtp.office365.com';
+const smtpPort = parseInt(process.env.SMTP_PORT || 465);
 const transporter = nodemailer.createTransport({
-    host: smtpHost,
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
     port: smtpPort,
-    secure: smtpPort === 465, // true for 465, false for 587 (STARTTLS)
-    requireTLS: smtpPort === 587,
+    secure: smtpPort === 465,
     auth: {
-        user: process.env.SMTP_USER || 'info@danprel.com',
-        pass: process.env.SMTP_PASS || ''
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS
     },
     tls: {
         rejectUnauthorized: false
@@ -49,9 +42,10 @@ const transporter = nodemailer.createTransport({
 // Verify connection
 transporter.verify((error, success) => {
     if (error) {
-        console.error('📧 [SMTP] Connection Error:', error);
+        console.error('📧 [SMTP] Connection Error:', error.message);
+        if (!process.env.SMTP_USER) console.error('⚠️ [SMTP] SMTP_USER is missing in environment variables!');
     } else {
-        console.log('📧 [SMTP] Ready to send emails');
+        console.log('📧 [SMTP] Connected and ready');
     }
 });
 
@@ -140,28 +134,28 @@ const FeedbackSchema = new mongoose.Schema({
     sourcePage: String
 }, { timestamps: true });
 const Feedback = mongoose.model('Feedback', FeedbackSchema);
- 
- const ActionPointSchema = new mongoose.Schema({
-     projectId: String,
-     projectCode: String,
-     reviewDate: String,
-     action: String,
-     dept: String,
-     personName: String,
-     email: String,
-     targetDate: String,
-     statusValue: { type: String, default: 'Yet to Start' },
-     mailSent: { type: Boolean, default: false },
-     revisions: [
-         {
-             date: String,
-             status: String,
-             remark: String,
-             timestamp: String
-         }
-     ]
- }, { timestamps: true });
- const ActionPoint = mongoose.model('ActionPoint', ActionPointSchema);
+
+const ActionPointSchema = new mongoose.Schema({
+    projectId: String,
+    projectCode: String,
+    reviewDate: String,
+    action: String,
+    dept: String,
+    personName: String,
+    email: String,
+    targetDate: String,
+    statusValue: { type: String, default: 'Yet to Start' },
+    mailSent: { type: Boolean, default: false },
+    revisions: [
+        {
+            date: String,
+            status: String,
+            remark: String,
+            timestamp: String
+        }
+    ]
+}, { timestamps: true });
+const ActionPoint = mongoose.model('ActionPoint', ActionPointSchema);
 
 
 // --- API ENDPOINTS ---
@@ -208,7 +202,7 @@ app.post('/api/projects', async (req, res) => {
 app.patch('/api/projects/:id', async (req, res) => {
     console.log(`📡 [PATCH] /api/projects/${req.params.id} - Fields:`, Object.keys(req.body));
     try {
-        const p = await Project.findByIdAndUpdate(req.params.id, { $set: req.body }, { 
+        const p = await Project.findByIdAndUpdate(req.params.id, { $set: req.body }, {
             returnDocument: 'after',
             runValidators: true // Ensure schema validation is applied
         });
@@ -322,6 +316,7 @@ app.delete('/api/employees/:id', async (req, res) => {
 });
 
 // --- EMAIL API ENDPOINT ---
+// --- EMAIL SENDING ENDPOINT ---
 app.post('/api/send-email', async (req, res) => {
     const { to, subject, body } = req.body;
 
@@ -330,29 +325,59 @@ app.post('/api/send-email', async (req, res) => {
     }
 
     const mailOptions = {
-        from: `"Danprel Engineering Automation" <${process.env.SMTP_USER || 'info@danprel.com'}>`,
-        to: to,
-        subject: subject,
-        text: body,
+        from: `Danprel <${process.env.SMTP_USER}>`, // Updated display name
+        to,
+        subject,
         html: `
-            <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-                <div style="background-color: #001f3f; padding: 24px 32px; text-align: center; border-bottom: 4px solid #0d9488;">
-                    <h2 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 800; letter-spacing: 1px;">DANPREL</h2>
-                    <p style="color: #94a3b8; margin: 4px 0 0; font-size: 13px; text-transform: uppercase; font-weight: 600;">Engineering Automation</p>
-                </div>
-                <div style="padding: 32px; color: #334155; font-size: 15px; line-height: 1.7;">
-                    <div style="background-color: #f8fafc; border-left: 4px solid #0ea5e9; padding: 24px; border-radius: 12px; margin-bottom: 24px; font-family: inherit;">${body.replace(/\n/g, '<br>')}</div>
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <style>
+                body { margin: 0; padding: 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+                .wrapper { width: 100%; background-color: #ffffff; padding: 40px 0; }
+                .container { max-width: 600px; margin: 0 auto; padding: 0 20px; }
+                
+                /* Header Styling */
+                .header { border-bottom: 2px solid #f8fafc; padding-bottom: 25px; margin-bottom: 35px; }
+                .logo { width: 48px; height: auto; margin-bottom: 12px; }
+                .company-name { font-size: 14px; font-weight: 700; color: #0f172a; text-transform: uppercase; letter-spacing: 1.5px; margin: 0; }
+                .company-sub { font-size: 11px; color: #14b8a6; font-weight: 600; margin-top: 4px; }
+                
+                /* Content Styling */
+                .content { font-size: 16px; line-height: 1.6; color: #334155; }
+                .content p { margin-bottom: 20px; }
+                
+                /* Footer Styling */
+                .footer { margin-top: 50px; padding-top: 20px; border-top: 1px solid #f1f5f9; text-align: left; }
+                .footer-text { font-size: 12px; color: #94a3b8; line-height: 1.5; }
+            </style>
+        </head>
+        <body>
+            <div class="wrapper">
+                <div class="container">
                     
-                    <p style="margin: 0 0 16px 0; font-size: 13px; color: #64748b; font-style: italic;">This is an auto-generated mail, so please do not reply.</p>
-                    
-                    <p style="margin: 0; color: #475569;">Best Regards,<br>
-                    <strong style="color: #0f172a;">Project Team</strong><br>
-                    <strong style="color: #0f172a;">DANPREL ENGINEERING AUTOMATION</strong></p>
-                </div>
-                <div style="background-color: #f1f5f9; padding: 20px 32px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0;">
-                    <p style="margin: 0;">This is an automated notification from the Project Hub.</p>
+                    <div class="header">
+                        <img src="https://danprelpmis.netlify.app/asset/image.png" alt="Danprel" class="logo">
+                        <h1 class="company-name">Danprel Engineering Automation Pvt Ltd</h1>
+                    </div>
+
+                    <div class="content">
+                        ${body}
+                    </div>
+
+                    <div class="footer">
+                        <p class="footer-text">
+                            <strong>Danprel Engineering Automation Pvt Ltd</strong><br>
+                            This is an automated system message. Please do not reply directly to this email.<br>
+                            &copy; 2026 All rights reserved.
+                        </p>
+                    </div>
+
                 </div>
             </div>
+        </body>
+        </html>
         `
     };
 
