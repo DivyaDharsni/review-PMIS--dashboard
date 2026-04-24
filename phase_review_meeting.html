@@ -1175,7 +1175,8 @@
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end premium-export-dropdown shadow-lg border-0">
                         <li>
-                            <a class="dropdown-item premium-export-item" href="javascript:void(0)" onclick="exportToPDF()">
+                            <a class="dropdown-item premium-export-item" href="javascript:void(0)"
+                                onclick="exportToPDF()">
                                 <div class="export-icon-box export-icon-pdf">
                                     <i class="bi bi-file-earmark-pdf-fill"></i>
                                 </div>
@@ -1183,7 +1184,8 @@
                             </a>
                         </li>
                         <li>
-                            <a class="dropdown-item premium-export-item" href="javascript:void(0)" onclick="exportToExcel()">
+                            <a class="dropdown-item premium-export-item" href="javascript:void(0)"
+                                onclick="exportToExcel()">
                                 <div class="export-icon-box export-icon-excel">
                                     <i class="bi bi-file-earmark-spreadsheet-fill"></i>
                                 </div>
@@ -1489,18 +1491,18 @@
             // Relaxed validation: only Action Point is absolutely required
             if (!action) { showToast('Action Point is required!', true); return; }
 
-            const recordData = { 
-                projectId, 
+            const recordData = {
+                projectId,
                 projectCode: project.code,
-                reviewDate, 
-                action, 
-                dept, 
-                personName, 
-                email, 
-                targetDate: target, 
-                revisions: [], 
-                statusValue: status, 
-                mailSent: false 
+                reviewDate,
+                action,
+                dept,
+                personName,
+                email,
+                targetDate: target,
+                revisions: [],
+                statusValue: status,
+                mailSent: false
             };
 
             try {
@@ -1511,17 +1513,17 @@
                 });
                 const savedRecord = await res.json();
                 if (!res.ok) throw new Error(savedRecord.error || 'Failed to save to database');
-                
+
                 if (!Array.isArray(meetings)) meetings = [];
                 meetings.push(savedRecord);
                 showToast('Action point saved to database');
-                
+
                 const tr = document.getElementById(rid);
                 tr.style.background = "#f3faf8";
                 tr.querySelectorAll('.cell-input, select').forEach(el => el.disabled = true);
-                tr.querySelector('.btn-save-row').innerHTML = '<i class="bi bi-check2-all"></i> Saved'; 
+                tr.querySelector('.btn-save-row').innerHTML = '<i class="bi bi-check2-all"></i> Saved';
                 tr.querySelector('.btn-save-row').disabled = true;
-                
+
                 renderHistory();
                 updateTopStats();
                 updateDispatchButton();
@@ -1538,18 +1540,18 @@
             mailModalObj = new bootstrap.Modal(document.getElementById('mailPreviewModal'));
             deleteModalObj = new bootstrap.Modal(document.getElementById('deleteConfirmMeetingModal'));
 
-            document.getElementById('confirmDeleteMeetingBtn').onclick = async function() {
+            document.getElementById('confirmDeleteMeetingBtn').onclick = async function () {
                 if (recordToDelete) {
                     const btn = this;
                     const originalHtml = btn.innerHTML;
-                    
+
                     // 1. Instantly hide modal using Bootstrap's data API
                     const modalEl = document.getElementById('deleteConfirmMeetingModal');
                     const modalInstance = bootstrap.Modal.getInstance(modalEl);
                     if (modalInstance) modalInstance.hide();
 
                     btn.disabled = true;
-                    
+
                     const idx = meetings.findIndex(m => m._id === recordToDelete);
                     if (idx !== -1) {
                         const rec = meetings[idx];
@@ -1569,11 +1571,11 @@
                         project.meetings = meetings;
 
                         try {
-                            const res = await fetch(`/api/action-points/${recordToDelete}`, { 
+                            const res = await fetch(`/api/action-points/${recordToDelete}`, {
                                 method: 'DELETE',
                                 headers: { 'Accept': 'application/json' }
                             });
-                            
+
                             if (res.ok) {
                                 // Remove from local UI array
                                 meetings = meetings.filter(m => m._id !== recordToDelete);
@@ -1602,10 +1604,10 @@
             deleteModalObj.show();
         }
 
-        function deleteRow(rid) { 
-            const tr = document.getElementById(rid); 
+        function deleteRow(rid) {
+            const tr = document.getElementById(rid);
             if (tr) {
-                tr.remove(); 
+                tr.remove();
                 showToast('Draft row removed');
             }
         }
@@ -1701,10 +1703,10 @@
                             </div>
                             
                             ${m.revisions && m.revisions.length > 0 && m.revisions.filter(r => r.date).length > 0 ? (() => {
-                                const revisionsWithDates = m.revisions.filter(r => r.date);
-                                return revisionsWithDates.map((rev, rIdx) => {
-                                    const isLatest = rIdx === revisionsWithDates.length - 1;
-                                    return `
+                        const revisionsWithDates = m.revisions.filter(r => r.date);
+                        return revisionsWithDates.map((rev, rIdx) => {
+                            const isLatest = rIdx === revisionsWithDates.length - 1;
+                            return `
                                         <div class="mt-1" style="${!isLatest ? 'opacity: 0.7; transform: scale(0.95); transform-origin: left;' : ''}">
                                             <!-- Compact Revised Date Pill -->
                                             <div class="d-inline-flex align-items-center gap-1 px-1 py-1" 
@@ -1717,8 +1719,8 @@
                                             </div>
                                         </div>
                                     `;
-                                }).join('');
-                            })() : ''}
+                        }).join('');
+                    })() : ''}
 
                             ${isOverdue ? '<div class="small fw-800 text-danger mt-2 ps-1" style="font-size: 0.65rem;"><i class="bi bi-exclamation-triangle"></i> OVERDUE</div>' : ''}
                         </div>
@@ -1726,21 +1728,6 @@
                     <td><span class="badge" style="background:${sc.bg}; color:${sc.color}; border-radius:40px; padding:5px 12px; font-weight:700;">${m.statusValue}</span></td>
                     <td>
                         <div class="d-flex align-items-center gap-2 justify-content-center">
-                            ${(() => {
-                        const tDate = new Date(currentTarget);
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        const diffTime = tDate - today;
-                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-                        // Only show reminder for non-completed tasks due within 2 days (Today, Tomorrow, Day after)
-                        if (m.statusValue !== 'Completed' && m.statusValue !== 'Resolved' && diffDays >= 0 && diffDays <= 2) {
-                            return `<button class="btn-circle-edit" style="background:#eff6ff; color:#2563eb; border:1px solid #dbeafe;" onclick="sendReminderMail('${m._id}')" title="Send Follow-up Reminder">
-                                        <i class="bi bi-send-fill"></i>
-                                    </button>`;
-                        }
-                        return '';
-                    })()}
                             <button class="btn-circle-edit" onclick="openUpdateModal('${m._id}')" title="Update Progress">
                                 <i class="bi bi-pencil-square"></i>
                             </button>
@@ -1858,9 +1845,11 @@
         async function saveMasterProject() { return; }
         function openMailPreview(recordId) { const rec = meetings.find(m => m._id === recordId); if (!rec) return; const content = getMailContent(rec); document.getElementById('mailTo').innerText = rec.personName + " <" + rec.email + ">"; document.getElementById('mailSub').innerText = content.subject; document.getElementById('mailBodyHtml').innerText = content.body; mailModalObj.show(); }
         function getMailContent(rec) {
+            const dateParts = (rec.reviewDate || "").split("-");
+            const fmtDate = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : new Date().toLocaleDateString('en-GB');
             return {
-                subject: `New Task Assigned: ${project.code}`,
-                body: `Hello ${rec.personName},<br><br>A new task has been assigned to you for project <strong>${project.name}</strong>.<br><br>Task: ${rec.action}<br>Target Date: ${formatDate(rec.targetDate)}<br><br>Best regards,<br>Project Team`
+                subject: `project review-${fmtDate} on the project ${project.code}`,
+                body: `Dear ${rec.personName},<br><br>This is to inform you that a critical action point has been assigned to you for the project: <strong>${project.name}</strong> (${project.code}).<br><br><strong>Task:</strong> ${rec.action}<br><strong>Target Date:</strong> ${formatDate(rec.targetDate)}<br><br>Please ensure that all necessary work is on track for completion. If the task is already completed, kindly update the dashboard or inform the project manager. This is a auto generated mail, So please don't reply to this mail.<br><br>Best regards,<br><strong>Project Team</strong><br>Danprel Engineering Automation Pvt Ltd`
             };
         }
 
@@ -1888,23 +1877,11 @@ Please ensure that all necessary work is on track for completion. If the task is
         }
 
         function getWithdrawalMailContent(rec) {
-            const sendDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            const dateParts = (rec.reviewDate || "").split("-");
+            const fmtDate = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : new Date().toLocaleDateString('en-GB');
             return {
-                subject: `[WITHDRAWN] Project meeting (${sendDate}) (${project.name})`,
-                body: `DANPREL REVIEW MEETING NOTIFICATION - WITHDRAWN
-
-Dear ${rec.personName},
-
-This is to formally inform you that the action point previously assigned to you for the project: **${project.name}** (${project.code}) has been **WITHDRAWN** or removed from the review records.
-
-**Withdrawn Action Details:**
------------------------------------------------------------
-Action Item      : ${rec.action}
-Original Target  : ${formatDate(rec.targetDate)}
-Status at Removal: ${rec.statusValue}
------------------------------------------------------------
-
-No further action is required for this specific task from your side. We appreciate your efforts contributed thus far.`
+                subject: `Task Withdrawn: ${project.code}`,
+                body: `Dear ${rec.personName},<br><br>This is to inform you that the following task has been <strong>WITHDRAWN</strong> from the project: <strong>${project.name}</strong>.<br><br><strong>Action Item:</strong> ${rec.action}<br><strong>Original Target:</strong> ${formatDate(rec.targetDate)}<br><br>No further action is required for this specific task. Thank you.`
             };
         }
 
@@ -1977,14 +1954,14 @@ No further action is required for this specific task from your side. We apprecia
             return `${dd}/${mm}/${d.getFullYear()}`;
         }
         function esc(str) { if (!str) return ''; return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
-        function showToast(msg, isErr = false) { 
-            const t = document.getElementById('toast'); 
+        function showToast(msg, isErr = false) {
+            const t = document.getElementById('toast');
             const txt = document.getElementById('toastTxt');
             if (!t || !txt) return;
-            txt.innerText = msg; 
-            t.style.background = isErr ? '#b91c2c' : '#0B2B4A'; 
-            t.classList.add('show'); 
-            setTimeout(() => t.classList.remove('show'), 3000); 
+            txt.innerText = msg;
+            t.style.background = isErr ? '#b91c2c' : '#0B2B4A';
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3000);
         }
         function updateTopStats() {
             document.getElementById('topStatMeetings').innerText = meetings.length;
@@ -2051,7 +2028,7 @@ No further action is required for this specific task from your side. We apprecia
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ to: email, subject: content.subject, body: content.body })
                     });
-                    
+
                     if (res.ok) {
                         group.records.forEach(r => r.mailSent = true);
                         successCount++;
@@ -2067,8 +2044,8 @@ No further action is required for this specific task from your side. We apprecia
                 }
             }
 
-            await Promise.all(Object.values(groups).flatMap(group => 
-                group.records.map(r => 
+            await Promise.all(Object.values(groups).flatMap(group =>
+                group.records.map(r =>
                     fetch(`/api/action-points/${r._id}`, {
                         method: 'PATCH',
                         headers: { 'Content-Type': 'application/json' },
@@ -2092,6 +2069,10 @@ No further action is required for this specific task from your side. We apprecia
         }
 
         function getBatchedMailContent(personName, records) {
+            const reviewDate = document.getElementById('reviewDate').value;
+            const dateParts = (reviewDate || "").split("-");
+            const fmtDate = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : new Date().toLocaleDateString('en-GB');
+
             let rowHtml = '';
             records.forEach(r => {
                 rowHtml += `<tr><td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;">${r.action}</td><td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9; text-align: right; font-weight: bold;">${formatDate(r.targetDate)}</td></tr>`;
@@ -2100,8 +2081,8 @@ No further action is required for this specific task from your side. We apprecia
             const tableHtml = `<table style="width: 100%; border-collapse: collapse; margin-top: 15px;"><thead><tr><th style="text-align: left; border-bottom: 2px solid #333333; padding-bottom: 5px;">TASK DESCRIPTION</th><th style="text-align: right; border-bottom: 2px solid #333333; padding-bottom: 5px;">DUE DATE</th></tr></thead><tbody>${rowHtml}</tbody></table>`;
 
             return {
-                subject: `Tasks Summary: ${project.code}`,
-                body: `Hello ${personName},<br><br>Here is the list of tasks assigned to you for project: <strong>${project.name}</strong>.<br>${tableHtml}<br><br>Thank you,<br>Project Operations Team`
+                subject: `project review-${fmtDate} on the project ${project.code}`,
+                body: `Dear ${personName},<br><br>This is to inform you that critical action points have been assigned to you for the project: <strong>${project.name}</strong> (${project.code}).<br>${tableHtml}<br>Please ensure that all necessary work is on track for completion. If the task is already completed, kindly update the dashboard or inform the project lead.<br><br>Best regards,<br><strong>Project Team</strong><br>Danprel Engineering Automation Pvt Ltd`
             };
         }
 

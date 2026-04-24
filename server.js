@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
 const nodemailer = require('nodemailer');
+const cron = require('node-cron');
 
 const app = express();
 const PORT = 3000;
@@ -26,6 +27,9 @@ if (MONGODB_URI) {
 
 // --- SMTP CONFIGURATION ---
 const smtpPort = parseInt(process.env.SMTP_PORT || 465);
+
+// Temporary store for reset codes (In-Memory)
+const resetCodes = new Map();
 const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
     port: smtpPort,
@@ -146,6 +150,8 @@ const ActionPointSchema = new mongoose.Schema({
     targetDate: String,
     statusValue: { type: String, default: 'Yet to Start' },
     mailSent: { type: Boolean, default: false },
+    reminderSent: { type: Boolean, default: false },
+    reminder24Sent: { type: Boolean, default: false },
     revisions: [
         {
             date: String,
@@ -316,7 +322,47 @@ app.delete('/api/employees/:id', async (req, res) => {
 });
 
 // --- EMAIL API ENDPOINT ---
-// --- EMAIL SENDING ENDPOINT ---
+// --- FORGOT PASSWORD API ---
+app.post('/api/auth/forgot-password', async (req, res) => {
+    const { username } = req.body;
+    if (!username) return res.status(400).json({ error: 'Username required' });
+
+    // Generate 6-digit code
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    resetCodes.set(username, code);
+
+    // Auto-expiry in 10 mins
+    setTimeout(() => resetCodes.delete(username), 600000);
+
+    const mailOptions = {
+        from: `Auth System <${process.env.SMTP_USER}>`,
+        to: 'danprelpmis@gmail.com',
+        subject: 'Verification Code for Password Reset',
+        html: `<h3>Password Reset Request</h3><p>User <b>${username}</b> requested a password reset.</p><p>Verification Code: <b style="font-size: 20px;">${code}</b></p>`
+    };
+
+    try {
+        await transporter.sendMail(mailOptions);
+        console.log('✅ Forgot Password code sent to admin');
+        res.json({ message: 'Code sent to admin email' });
+    } catch (err) {
+        console.error('❌ Forgot Password Email Failed:', err.message);
+        res.status(500).json({ error: 'Failed to send email: ' + err.message });
+    }
+});
+
+app.post('/api/auth/verify-code', (req, res) => {
+    const { username, code } = req.body;
+    const validCode = resetCodes.get(username);
+
+    if (validCode && validCode === code) {
+        res.json({ success: true });
+        resetCodes.delete(username); // One-time use
+    } else {
+        res.status(400).json({ error: 'Invalid or expired code' });
+    }
+});
+
 app.post('/api/send-email', async (req, res) => {
     const { to, subject, body } = req.body;
 
@@ -414,6 +460,53 @@ app.use((req, res, next) => {
 });
 
 if (process.env.NODE_ENV !== 'production' || !process.env.NETLIFY) {
+    // --- AUTOMATED REMINDER CRON JOB (Every day at 9:00 AM) ---
+    cron.schedule('0 9 * * *', async () => {
+        console.log('⏰ Running Daily Reminder Check...');
+        try {
+            const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+            const dateStr1 = tomorrow.toISOString().split('T')[0];
+            const theDayAfter = new Date(); theDayAfter.setDate(theDayAfter.getDate() + 2);
+            const dateStr2 = theDayAfter.toISOString().split('T')[0];
+
+            // 1. Check for 48-hour reminders
+            const upcoming48 = await ActionPoint.find({ targetDate: dateStr2, statusValue: { $ne: 'Completed' }, reminderSent: { $ne: true } });
+            for (const task of upcoming48) {
+                await sendAutoReminder(task, '48 hours');
+                task.reminderSent = true;
+                await task.save();
+            }
+
+            // 2. Check for 24-hour reminders
+            const upcoming24 = await ActionPoint.find({ targetDate: dateStr1, statusValue: { $ne: 'Completed' }, reminder24Sent: { $ne: true } });
+            for (const task of upcoming24) {
+                await sendAutoReminder(task, '24 hours');
+                task.reminder24Sent = true;
+                await task.save();
+            }
+        } catch (err) { console.error('❌ Cron Job Error:', err); }
+    });
+
+    async function sendAutoReminder(task, timeLabel) {
+        if (!task.email) return;
+        const mailOptions = {
+            from: `Danprel Reminders <${process.env.SMTP_USER}>`,
+            to: task.email,
+            subject: `URGENT REMINDER: Task due in ${timeLabel} - ${task.projectCode}`,
+            html: `<div style="font-family: Arial; padding: 20px; border: 1px solid #eee;">
+                <h3 style="color: #d93025;">Deadline Reminder (${timeLabel})</h3>
+                <p>Dear ${task.personName},</p>
+                <p>This is an automated reminder that your task is due in <strong>${timeLabel}</strong>.</p>
+                <p><strong>Task:</strong> ${task.action}</p>
+                <p><strong>Target Date:</strong> ${task.targetDate}</p>
+                <br><p>Please ensure all necessary work is on track for completion. If the task is already completed, kindly update the dashboard or inform the project manager. <strong>This is a auto generated mail, so please don't reply to this mail.</strong></p>
+                <hr><p style="font-size: 12px; color: #999;">Danprel Engineering Automation Pvt Ltd</p>
+            </div>`
+        };
+        await transporter.sendMail(mailOptions);
+        console.log(`📨 ${timeLabel} Reminder sent to ${task.email}`);
+    }
+
     app.listen(PORT, () => {
         console.log(`\n🚀 Server running at http://localhost:${PORT}/`);
         console.log(`MongoDB storage is now active.\n`);
