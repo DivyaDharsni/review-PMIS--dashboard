@@ -20,6 +20,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
+
     <style>
         * {
             margin: 0;
@@ -50,20 +51,20 @@
 
         /* PREMIUM EXPORT DROPDOWN */
         .premium-export-dropdown {
-            border-radius: 20px !important;
-            padding: 8px !important;
+            border-radius: 16px !important;
+            padding: 6px !important;
             border: none !important;
-            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12) !important;
-            min-width: 210px !important;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08) !important;
+            min-width: 185px !important;
             background: #ffffff !important;
         }
 
         .premium-export-item {
             display: flex !important;
             align-items: center !important;
-            gap: 12px !important;
-            padding: 10px 14px !important;
-            border-radius: 12px !important;
+            gap: 10px !important;
+            padding: 7px 10px !important;
+            border-radius: 10px !important;
             transition: all 0.2s ease !important;
             margin-bottom: 2px !important;
             border: 1px solid transparent !important;
@@ -80,13 +81,13 @@
         }
 
         .export-icon-box {
-            width: 36px;
-            height: 36px;
-            border-radius: 10px;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.25rem;
+            font-size: 1.1rem;
             flex-shrink: 0;
         }
 
@@ -101,8 +102,8 @@
         }
 
         .export-title {
-            font-weight: 800;
-            font-size: 0.92rem;
+            font-weight: 700;
+            font-size: 0.85rem;
             color: #1e293b;
             line-height: 1;
         }
@@ -1446,6 +1447,7 @@
         .modal-body textarea.form-control:focus {
             background: #fff !important;
         }
+
     </style>
 </head>
 
@@ -1659,15 +1661,17 @@
                         <div class="col-6 text-start">
                             <label class="section-lbl mb-2 ms-2 ps-1"
                                 style="color: #475569; font-weight: 800; font-size: 0.85rem;">Start Date</label>
-                            <input type="date" id="mRescheduleStart" class="form-control fw-bold border-1 py-3 px-4"
-                                onchange="calcReassignDays()"
+                            <input type="date" id="mRescheduleStart"
+                                class="form-control fw-bold border-1 py-3 px-4"
+                                onchange="calcReassignDays()" placeholder="Select Start"
                                 style="border-radius: 100px; border-color: #e2e8f0; background: #fff; font-size: 0.9rem; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
                         </div>
                         <div class="col-6 text-start">
                             <label class="section-lbl mb-2 ms-2 ps-1"
                                 style="color: #475569; font-weight: 800; font-size: 0.85rem;">End Date</label>
-                            <input type="date" id="mRescheduleEnd" class="form-control fw-bold border-1 py-3 px-4"
-                                onchange="calcReassignDays()"
+                            <input type="date" id="mRescheduleEnd"
+                                class="form-control fw-bold border-1 py-3 px-4"
+                                onchange="calcReassignDays()" placeholder="Select End"
                                 style="border-radius: 100px; border-color: #e2e8f0; background: #fff; font-size: 0.9rem; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
                         </div>
 
@@ -1719,11 +1723,13 @@
                     <div class="row g-3">
                         <div class="col-6">
                             <label class="small fw-bold text-muted">Actual Start</label>
-                            <input type="date" class="form-control" id="mActualStart">
+                            <input type="date" class="form-control" id="mActualStart"
+                                placeholder="Select Date">
                         </div>
                         <div class="col-6">
                             <label class="small fw-bold text-muted">Actual End</label>
-                            <input type="date" class="form-control" id="mActualEnd">
+                            <input type="date" class="form-control" id="mActualEnd"
+                                placeholder="Select Date">
                         </div>
                         <div class="col-12">
                             <label class="small fw-bold text-muted">Progress (%)</label>
@@ -2006,6 +2012,17 @@
             return days >= 0 ? days + 'd' : '-';
         }
 
+        function calcEstimatedEndISO(data) {
+            if (!data.actual_start || !data.plan_start || !data.plan_end) return null;
+            const ps = new Date(data.plan_start);
+            const pe = new Date(data.plan_end);
+            const dur = Math.ceil((pe - ps) / (1000 * 60 * 60 * 24));
+            if (dur < 0) return null;
+            const ce = new Date(data.actual_start);
+            ce.setDate(ce.getDate() + dur);
+            return ce.toISOString().split('T')[0];
+        }
+
         function calcDaysInProgress(actualStart) {
             if (!actualStart) return '-';
             const s = new Date(actualStart);
@@ -2105,7 +2122,7 @@
             const textEl = document.getElementById('feedbackText');
             const txt = textEl.value.trim();
             if (!txt) { alert('Please write your feedback first.'); return; }
-            
+
             const btn = document.getElementById('btnSubmitFeedback');
             const originalText = btn.innerText;
             btn.innerText = 'Sending...';
@@ -2380,11 +2397,11 @@
 
 
                 const planStartInput = !isPlanLocked && !isParent && !isExcluded ?
-                    `<div class="revision-stack"><div class="revision-row"><input type="date" class="inline-date ${hasRevisions ? 'old-date-strike' : ''}" value="${data.plan_start || ''}" ${minAttr} onchange="saveInlineField('${ph.id}', 'plan_start', this.value, this)" onkeydown="if(event.key==='Enter') syncProject(this)"></div>${originalRowSpacer}${nextStartDisplay}</div>` :
+                    `<div class="revision-stack"><div class="revision-row"><input type="date" class="inline-date ${hasRevisions ? 'old-date-strike' : ''}" value="${data.plan_start || ''}" onchange="saveInlineField('${ph.id}', 'plan_start', this.value, this)" onkeydown="if(event.key==='Enter') syncProject(this)"></div>${originalRowSpacer}${nextStartDisplay}</div>` :
                     `<div class="revision-stack"><div class="revision-row"><div><div class="inline-date d-flex align-items-center justify-content-center assigned-date ${hasRevisions ? 'old-date-strike' : ''}" style="cursor:default; background: ${data.plan_start ? '#edf2f7' : '#fff'}; border-color: ${data.plan_start ? '#cbd5e1' : '#e2e8f0'};">${formatDate(data.plan_start)}</div></div></div>${originalRowSpacer}${nextStartDisplay}</div>`;
 
                 const planEndInput = !isPlanLocked && !isParent && !isExcluded ?
-                    `<div class="revision-stack"><div class="revision-row"><input type="date" class="inline-date ${hasRevisions ? 'old-date-strike' : ''}" value="${data.plan_end || ''}" ${minAttr} onchange="saveInlineField('${ph.id}', 'plan_end', this.value, this)" onkeydown="if(event.key==='Enter') syncProject(this)"></div>${originalRowSpacer}${nextEndDisplay}</div>` :
+                    `<div class="revision-stack"><div class="revision-row"><input type="date" class="inline-date ${hasRevisions ? 'old-date-strike' : ''}" value="${data.plan_end || ''}" onchange="saveInlineField('${ph.id}', 'plan_end', this.value, this)" onkeydown="if(event.key==='Enter') syncProject(this)"></div>${originalRowSpacer}${nextEndDisplay}</div>` :
                     `<div class="revision-stack"><div class="revision-row"><div><div class="inline-date d-flex align-items-center justify-content-center assigned-date ${hasRevisions ? 'old-date-strike' : ''}" style="cursor:default; background: ${data.plan_end ? '#edf2f7' : '#fff'}; border-color: ${data.plan_end ? '#cbd5e1' : '#e2e8f0'};">${formatDate(data.plan_end)}</div></div></div>${originalRowSpacer}${nextEndDisplay}</div>`;
 
                 const respValue = data.responsibility || '';
@@ -2405,24 +2422,18 @@
 
                 const actualStartInput = isParent ?
                     `<div class="inline-date inline-date-actual d-flex align-items-center justify-content-center assigned-date" style="cursor:default; color:var(--teal-accent);">${formatDate(data.actual_start)}</div>` :
-                    `<input type="date" class="inline-date inline-date-actual" value="${data.actual_start || ''}" ${minAttr} onchange="saveInlineField('${ph.id}', 'actual_start', this.value, this)" onkeydown="if(event.key==='Enter') syncProject(this)" ${dis}>`;
+                    `<input type="date" class="inline-date inline-date-actual" value="${data.actual_start || ''}" onchange="saveInlineField('${ph.id}', 'actual_start', this.value, this)" onkeydown="if(event.key==='Enter') syncProject(this)" ${dis} placeholder="Select Date">`;
 
                 const totalDays = calcDays(data.plan_start, data.plan_end);
 
                 const inProgress = calcDaysInProgress(data.actual_start);
                 const progressValue = data.progress || 0;
 
-                // Calculate "Calculated End" based on actual start + plan duration
+                // Calculate "Estimated End" (Calculated End) based on actual start + plan duration
                 let calculatedEndStr = '-';
-                if (data.actual_start && data.plan_start && data.plan_end) {
-                    const ps = new Date(data.plan_start);
-                    const pe = new Date(data.plan_end);
-                    const dur = Math.ceil((pe - ps) / (1000 * 60 * 60 * 24));
-                    if (dur >= 0) {
-                        const ce = new Date(data.actual_start);
-                        ce.setDate(ce.getDate() + dur);
-                        calculatedEndStr = formatDate(ce.toISOString().split('T')[0]);
-                    }
+                let calculatedEndISO = calcEstimatedEndISO(data);
+                if (calculatedEndISO) {
+                    calculatedEndStr = formatDate(calculatedEndISO);
                 }
 
                 const progColor = getProgColor(progressValue, data);
@@ -2469,15 +2480,10 @@
 
                 const actualEndInput = isParent ?
                     `<div><div class="inline-date inline-date-actual d-flex align-items-center justify-content-center assigned-date" style="cursor:default; color:#0f766e;">${formatDate(data.actual_end)}</div></div>` :
-                    `<div><input type="date" class="inline-date inline-date-actual" value="${data.actual_end || ''}" ${minAttr} onchange="saveInlineField('${ph.id}', 'actual_end', this.value, this)" onkeydown="if(event.key==='Enter') syncProject(this)"></div>`;
+                    `<div><input type="date" class="inline-date inline-date-actual" value="${data.actual_end || ''}" onchange="saveInlineField('${ph.id}', 'actual_end', this.value, this)" onkeydown="if(event.key==='Enter') syncProject(this)" placeholder="Select Date"></div>`;
 
-                // Determine the "Reference Plan End" for delay calculation (Latest revision or original)
-                let refPlanEnd = data.plan_end;
-                if (data.revisions && data.revisions.length > 0) {
-                    refPlanEnd = data.revisions[data.revisions.length - 1].end;
-                }
-
-                const delayInfo = calcDelayStatus(refPlanEnd, data.actual_end);
+                // Delay calculation based on Estimated End vs Actual End
+                const delayInfo = calcDelayStatus(calculatedEndISO, data.actual_end);
 
                 const delayDisplay = data.actual_end ?
                     `<span style="color: ${delayInfo.color}; font-weight: ${delayInfo.weight};">${delayInfo.text}</span>` :
@@ -2601,6 +2607,11 @@
             });
 
             project.overall_progress = totalActiveWeight ? Math.round((totalWeightedProgress / totalActiveWeight) * 100) : 0;
+            initFlatpickr();
+        }
+
+        function initFlatpickr() {
+            // Reverted to native calendar
         }
 
         function escapeHtml(str) {
@@ -3494,20 +3505,18 @@ Note: This is an auto-generated mail. Please do not reply to this mail.`;
                             <td style="padding: 10px; border-right: 1.5px solid #001f3f; text-align: center; font-weight: 700; color: #1e293b;">${data.responsibility || '—'}</td>
                             <td style="padding: 10px; border-right: 1px solid #e2e8f0; text-align: center; color: #475569;">${data.actual_start ? formatDate(data.actual_start) : '—'}</td>
                             <td style="padding: 10px; border-right: 1px solid #e2e8f0; text-align: center; color: #475569;">${(() => {
-                            if (data.actual_start && data.plan_start && data.plan_end) {
-                                const ps = new Date(data.plan_start); const pe = new Date(data.plan_end);
-                                const dur = Math.ceil((pe - ps) / (1000 * 60 * 60 * 24));
-                                const ce = new Date(data.actual_start); ce.setDate(ce.getDate() + dur);
-                                return formatDate(ce.toISOString().split('T')[0]);
-                            } return '—';
+                            const estEndISO = calcEstimatedEndISO(data);
+                            return estEndISO ? formatDate(estEndISO) : '—';
                         })()}</td>
                             <td style="padding: 10px; border-right: 1px solid #e2e8f0; text-align: center; color: #475569;">${data.actual_end ? formatDate(data.actual_end) : '—'}</td>
                             <td style="padding: 10px; border-right: 1px solid #e2e8f0; text-align: center; font-weight: 900; color: ${(() => {
-                            let refE = data.plan_end; if (data.revisions?.length > 0) refE = data.revisions[data.revisions.length - 1].end;
-                            const dStat = calcDelayStatus(refE, data.actual_end); return data.actual_end ? dStat.color : 'inherit';
+                            const estEndISO = calcEstimatedEndISO(data);
+                            const dStat = calcDelayStatus(estEndISO, data.actual_end);
+                            return data.actual_end ? dStat.color : 'inherit';
                         })()};">${(() => {
-                            let refE = data.plan_end; if (data.revisions?.length > 0) refE = data.revisions[data.revisions.length - 1].end;
-                            const dStat = calcDelayStatus(refE, data.actual_end); return data.actual_end ? dStat.text : '—';
+                            const estEndISO = calcEstimatedEndISO(data);
+                            const dStat = calcDelayStatus(estEndISO, data.actual_end);
+                            return data.actual_end ? dStat.text : '—';
                         })()}</td>
                             <td style="padding: 10px; text-align: center; font-weight: 800; color: ${progCol}; font-size: 10px;">${prog}%</td>
                         </tr>`;
@@ -3744,9 +3753,8 @@ Note: This is an auto-generated mail. Please do not reply to this mail.`;
                         return '';
                     })(),
                     'Delay Days': (() => {
-                        let refE = data.plan_end;
-                        if (data.revisions && data.revisions.length > 0) refE = data.revisions[data.revisions.length - 1].end;
-                        const dStat = calcDelayStatus(refE, data.actual_end);
+                        const estEndISO = calcEstimatedEndISO(data);
+                        const dStat = calcDelayStatus(estEndISO, data.actual_end);
                         return data.actual_end ? dStat.text : '-';
                     })(),
                     'Progress %': (data.progress || 0) + '%',

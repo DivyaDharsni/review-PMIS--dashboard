@@ -163,6 +163,159 @@ const ActionPointSchema = new mongoose.Schema({
 }, { timestamps: true });
 const ActionPoint = mongoose.model('ActionPoint', ActionPointSchema);
 
+// --- REUSABLE REMINDER FUNCTION ---
+async function sendAutoReminder(task, timeLabel) {
+    if (!task.email) return;
+
+    const emailBody = `
+        <p>Dear <strong>${task.personName}</strong>,</p>
+        <p>This is an automated reminder that your task is due in <strong style="color: #ef4444;">${timeLabel}</strong>.</p>
+        
+        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; margin: 30px 0;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                    <td style="padding-bottom: 10px; color: #64748b; font-size: 12px; text-transform: uppercase; font-weight: 700;">Project Code</td>
+                </tr>
+                <tr>
+                    <td style="padding-bottom: 20px; color: #0f172a; font-size: 18px; font-weight: 800;">${task.projectCode}</td>
+                </tr>
+                <tr>
+                    <td style="padding-bottom: 10px; color: #64748b; font-size: 12px; text-transform: uppercase; font-weight: 700;">Action Item</td>
+                </tr>
+                <tr>
+                    <td style="padding-bottom: 20px; color: #0f172a; font-size: 16px; font-weight: 600; line-height: 1.5;">${task.action}</td>
+                </tr>
+                <tr>
+                    <td style="padding-bottom: 10px; color: #64748b; font-size: 12px; text-transform: uppercase; font-weight: 700;">Target Deadline</td>
+                </tr>
+                <tr>
+                    <td style="color: #ef4444; font-size: 18px; font-weight: 800;">${task.targetDate}</td>
+                </tr>
+            </table>
+        </div>
+
+        <p>Please ensure all necessary work is on track for completion. If the task is already completed, kindly update the dashboard or inform the project manager.</p>
+    `;
+
+    const mailOptions = {
+        from: `Danprel Reminders <${process.env.SMTP_USER}>`,
+        to: task.email,
+        subject: `URGENT: Task Reminder [${timeLabel}] - ${task.projectCode}`,
+        html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <style>
+                body { margin: 0; padding: 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+                .wrapper { width: 100%; background-color: #ffffff; padding: 40px 0; }
+                .container { max-width: 600px; margin: 0 auto; padding: 0 20px; }
+                .header { border-bottom: 2px solid #f8fafc; padding-bottom: 25px; margin-bottom: 35px; }
+                .logo { width: 54px; height: auto; margin-bottom: 12px; }
+                .company-name { font-size: 15px; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 1.5px; margin: 0; }
+                .content { font-size: 16px; line-height: 1.6; color: #334155; }
+                .footer { margin-top: 50px; padding-top: 20px; border-top: 1px solid #f1f5f9; text-align: left; }
+                .footer-text { font-size: 12px; color: #94a3b8; line-height: 1.5; }
+            </style>
+        </head>
+        <body>
+            <div class="wrapper">
+                <div class="container">
+                    <div class="header">
+                        <img src="https://danprelpmis.netlify.app/asset/image.png" alt="Danprel" class="logo">
+                        <h1 class="company-name">Danprel Engineering Automation Pvt Ltd</h1>
+                    </div>
+                    <div class="content">
+                        ${emailBody}
+                    </div>
+                    <div class="footer">
+                        <p class="footer-text">
+                            <strong>Danprel Engineering Automation Pvt Ltd</strong><br>
+                            This is an automated system message. Please do not reply directly to this email.<br>
+                            &copy; 2026 All rights reserved.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+        `
+    };
+    await transporter.sendMail(mailOptions);
+    console.log(`📨 ${timeLabel} Reminder sent to ${task.email}`);
+}
+
+// --- DATA AUTO-CORRECTION (Fixes dates for rescheduled tasks) ---
+async function syncDataOnStartup() {
+    console.log('🔧 Running Data Sync Check...');
+    try {
+        const allTasks = await ActionPoint.find({ 'revisions.0': { $exists: true } });
+        let fixedCount = 0;
+        for (const task of allTasks) {
+            const latestRev = [...task.revisions].filter(r => r.date).pop();
+            if (latestRev && latestRev.date && latestRev.date !== task.targetDate) {
+                console.log(`   └─ Correcting: ${task.action} (${task.targetDate} -> ${latestRev.date})`);
+                task.targetDate = latestRev.date;
+                await task.save();
+                fixedCount++;
+            }
+        }
+        console.log(`✅ Data Sync Complete. ${fixedCount} records updated.`);
+    } catch (err) {
+        console.error('❌ Data Sync Error:', err);
+    }
+}
+
+async function runReminderCheck() {
+    console.log('⏰ Running Automated Reminder Check [%s]...', new Date().toLocaleString());
+    try {
+        const now = new Date();
+        const tomorrow = new Date(now);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const dateStr24 = tomorrow.toISOString().split('T')[0];
+
+        const yesterday = new Date(now);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const dateStrYesterday = yesterday.toISOString().split('T')[0];
+
+        // 1. Check for 24-hour reminders FIRST
+        const upcoming24 = await ActionPoint.find({ 
+            targetDate: { $gte: dateStrYesterday, $lte: dateStr24 }, 
+            statusValue: { $ne: 'Completed' }, 
+            reminder24Sent: { $ne: true } 
+        });
+
+        console.log(`🔍 Found ${upcoming24.length} tasks for 24h reminder check`);
+        for (const task of upcoming24) {
+            await sendAutoReminder(task, '24 hours');
+            task.reminder24Sent = true;
+            task.reminderSent = true; 
+            await task.save();
+        }
+
+        // 2. Check for 48-hour reminders
+        const dayAfterTomorrow = new Date(now);
+        dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
+        const dateStr48 = dayAfterTomorrow.toISOString().split('T')[0];
+
+        const upcoming48 = await ActionPoint.find({ 
+            targetDate: { $gte: dateStrYesterday, $lte: dateStr48 }, 
+            statusValue: { $ne: 'Completed' }, 
+            reminderSent: { $ne: true } 
+        });
+        
+        console.log(`🔍 Found ${upcoming48.length} tasks for 48h reminder check`);
+        for (const task of upcoming48) {
+            await sendAutoReminder(task, '48 hours');
+            task.reminderSent = true;
+            await task.save();
+        }
+        console.log('✅ Scheduled Reminder check completed.');
+    } catch (err) { 
+        console.error('❌ Reminder Check Error:', err); 
+    }
+}
+
 
 // --- API ENDPOINTS ---
 
@@ -257,7 +410,15 @@ app.post('/api/action-points', async (req, res) => {
 // Update action point
 app.patch('/api/action-points/:id', async (req, res) => {
     try {
-        const ap = await ActionPoint.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        const updateData = { ...req.body };
+        
+        // If the target date is being updated (rescheduled), reset reminder flags
+        if (updateData.targetDate) {
+            updateData.reminderSent = false;
+            updateData.reminder24Sent = false;
+        }
+
+        const ap = await ActionPoint.findByIdAndUpdate(req.params.id, updateData, { new: true });
         res.json(ap);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -450,6 +611,21 @@ app.post('/api/feedback', async (req, res) => {
     }
 });
 
+// 13. Netlify Cron Trigger (Public endpoint for external schedulers)
+app.get('/api/cron/reminders', async (req, res) => {
+    console.log('🌐 Remote Cron Trigger received...');
+    try {
+        // Run sync first to ensure dates are correct
+        await syncDataOnStartup();
+        // Then run the reminder check
+        await runReminderCheck();
+        res.json({ message: 'Sync and Reminder check completed successfully.' });
+    } catch (err) {
+        console.error('❌ Remote Cron Error:', err);
+        res.status(500).json({ error: 'Cron trigger failed: ' + err.message });
+    }
+});
+
 // Catch-all to serve index.html for UI routes
 app.use((req, res, next) => {
     if (req.path.startsWith('/api')) {
@@ -460,56 +636,16 @@ app.use((req, res, next) => {
 });
 
 if (process.env.NODE_ENV !== 'production' || !process.env.NETLIFY) {
-    // --- AUTOMATED REMINDER CRON JOB (Every day at 9:00 AM) ---
-    cron.schedule('0 9 * * *', async () => {
-        console.log('⏰ Running Daily Reminder Check...');
-        try {
-            const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
-            const dateStr1 = tomorrow.toISOString().split('T')[0];
-            const theDayAfter = new Date(); theDayAfter.setDate(theDayAfter.getDate() + 2);
-            const dateStr2 = theDayAfter.toISOString().split('T')[0];
-
-            // 1. Check for 48-hour reminders
-            const upcoming48 = await ActionPoint.find({ targetDate: dateStr2, statusValue: { $ne: 'Completed' }, reminderSent: { $ne: true } });
-            for (const task of upcoming48) {
-                await sendAutoReminder(task, '48 hours');
-                task.reminderSent = true;
-                await task.save();
-            }
-
-            // 2. Check for 24-hour reminders
-            const upcoming24 = await ActionPoint.find({ targetDate: dateStr1, statusValue: { $ne: 'Completed' }, reminder24Sent: { $ne: true } });
-            for (const task of upcoming24) {
-                await sendAutoReminder(task, '24 hours');
-                task.reminder24Sent = true;
-                await task.save();
-            }
-        } catch (err) { console.error('❌ Cron Job Error:', err); }
-    });
-
-    async function sendAutoReminder(task, timeLabel) {
-        if (!task.email) return;
-        const mailOptions = {
-            from: `Danprel Reminders <${process.env.SMTP_USER}>`,
-            to: task.email,
-            subject: `URGENT REMINDER: Task due in ${timeLabel} - ${task.projectCode}`,
-            html: `<div style="font-family: Arial; padding: 20px; border: 1px solid #eee;">
-                <h3 style="color: #d93025;">Deadline Reminder (${timeLabel})</h3>
-                <p>Dear ${task.personName},</p>
-                <p>This is an automated reminder that your task is due in <strong>${timeLabel}</strong>.</p>
-                <p><strong>Task:</strong> ${task.action}</p>
-                <p><strong>Target Date:</strong> ${task.targetDate}</p>
-                <br><p>Please ensure all necessary work is on track for completion. If the task is already completed, kindly update the dashboard or inform the project manager. <strong>This is a auto generated mail, so please don't reply to this mail.</strong></p>
-                <hr><p style="font-size: 12px; color: #999;">Danprel Engineering Automation Pvt Ltd</p>
-            </div>`
-        };
-        await transporter.sendMail(mailOptions);
-        console.log(`📨 ${timeLabel} Reminder sent to ${task.email}`);
-    }
+    // --- AUTOMATED REMINDER CRON JOB (Every hour from 9:00 AM to 12:00 PM) ---
+    // Pattern '0 9-12 * * *' triggers at 9:00, 10:00, 11:00, and 12:00
+    cron.schedule('0 9-12 * * *', runReminderCheck);
 
     app.listen(PORT, () => {
         console.log(`\n🚀 Server running at http://localhost:${PORT}/`);
         console.log(`MongoDB storage is now active.\n`);
+        
+        // ONLY sync data on startup, DO NOT send emails immediately
+        syncDataOnStartup();
     });
 }
 

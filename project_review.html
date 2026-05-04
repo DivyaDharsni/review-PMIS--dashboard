@@ -53,20 +53,20 @@
 
         /* PREMIUM EXPORT DROPDOWN */
         .premium-export-dropdown {
-            border-radius: 20px !important;
-            padding: 8px !important;
+            border-radius: 16px !important;
+            padding: 6px !important;
             border: none !important;
-            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12) !important;
-            min-width: 210px !important;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08) !important;
+            min-width: 185px !important;
             background: #ffffff !important;
         }
 
         .premium-export-item {
             display: flex !important;
             align-items: center !important;
-            gap: 12px !important;
-            padding: 10px 14px !important;
-            border-radius: 12px !important;
+            gap: 10px !important;
+            padding: 7px 10px !important;
+            border-radius: 10px !important;
             transition: all 0.2s ease !important;
             margin-bottom: 2px !important;
             border: 1px solid transparent !important;
@@ -85,13 +85,13 @@
         }
 
         .export-icon-box {
-            width: 36px;
-            height: 36px;
-            border-radius: 10px;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.25rem;
+            font-size: 1.1rem;
             flex-shrink: 0;
         }
 
@@ -106,8 +106,8 @@
         }
 
         .export-title {
-            font-weight: 800;
-            font-size: 0.92rem;
+            font-weight: 700;
+            font-size: 0.85rem;
             color: #1e293b;
             line-height: 1;
         }
@@ -1571,6 +1571,62 @@
         .fw-900 {
             font-weight: 900;
         }
+        /* Delete Confirmation Modal Styling */
+        .modal-round-lg {
+            border-radius: 40px !important;
+            border: none !important;
+            padding: 20px !important;
+        }
+
+        .delete-icon-box {
+            width: 90px;
+            height: 90px;
+            background: #fff5f5;
+            border-radius: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px auto;
+            position: relative;
+            box-shadow: 0 10px 20px rgba(225, 29, 72, 0.05);
+        }
+
+        .bi-trash3-custom {
+            font-size: 2.8rem;
+            color: #e11d48;
+        }
+
+        .btn-delete-confirm {
+            background: #e11d48 !important;
+            color: white !important;
+            border-radius: 100px !important;
+            font-weight: 800 !important;
+            padding: 14px 30px !important;
+            border: none !important;
+            transition: 0.3s !important;
+            box-shadow: 0 8px 15px rgba(225, 29, 72, 0.2) !important;
+        }
+
+        .btn-delete-confirm:hover {
+            transform: translateY(-2px);
+            background: #be123c !important;
+            box-shadow: 0 12px 20px rgba(225, 29, 72, 0.3) !important;
+        }
+
+        .btn-cancel-custom {
+            background: #ffffff !important;
+            color: #475569 !important;
+            border: 1.5px solid #e2e8f0 !important;
+            border-radius: 100px !important;
+            font-weight: 800 !important;
+            padding: 14px 30px !important;
+            transition: 0.2s !important;
+        }
+
+        .btn-cancel-custom:hover {
+            background: #f8fafc !important;
+            border-color: #cbd5e1 !important;
+        }
     </style>
 </head>
 
@@ -1913,8 +1969,6 @@
 
                 <!-- PROJECT MENU -->
                 <div class="modal-body p-4 bg-light d-none" id="hubProjectMenu">
-                    <button class="btn btn-sm btn-light border mb-3 fw-bold rounded-pill"
-                        onclick="switchHubView('main')"><i class="bi bi-arrow-left me-1"></i>Back</button>
                     <button class="hub-btn add" onclick="openAddProjectModal()">
                         <div class="hub-icon"><i class="bi bi-plus-circle-fill"></i></div>
                         <div>
@@ -1946,12 +2000,6 @@
                 <!-- REVISION CENTER MENU -->
                 <div class="modal-body p-0 bg-light d-none" id="hubRevisionMenu"
                     style="max-height: 500px; overflow-y: auto;">
-                    <div class="p-3 bg-white border-bottom sticky-top">
-                        <button class="btn btn-sm btn-light border fw-bold rounded-pill"
-                            onclick="switchHubView('main')">
-                            <i class="bi bi-arrow-left me-1"></i>Back
-                        </button>
-                    </div>
                     <div id="hubRevisionList" class="p-3">
                         <!-- Revision requests injected here -->
                     </div>
@@ -2042,6 +2090,27 @@
                 <div class="modal-body p-4" style="max-height: 450px; overflow-y: auto; background: #f8fafc;">
                     <div id="selectorList" class="d-flex flex-column gap-2">
                         <!-- Project list injected dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== DELETE CONFIRMATION MODAL ===== -->
+    <div class="modal fade" id="deleteConfirmModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 400px;">
+            <div class="modal-content modal-round-lg shadow-lg">
+                <div class="modal-body text-center p-4">
+                    <div class="delete-icon-box mt-2">
+                        <i class="bi bi-trash3 bi-trash3-custom"></i>
+                    </div>
+                    <h3 class="fw-900 text-navy mb-2" style="font-size: 1.6rem;">Delete Project?</h3>
+                    <p class="text-muted mb-1" style="font-size: 0.95rem;">Are you sure you want to delete <span id="delProjName" class="fw-800 text-dark"></span>?</p>
+                    <p class="text-muted mb-4" style="font-size: 0.85rem; opacity: 0.7;">This action is permanent and cannot be undone.</p>
+
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-cancel-custom flex-fill" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-delete-confirm flex-fill" onclick="confirmDeleteProject()">Yes, Delete</button>
                     </div>
                 </div>
             </div>
@@ -2762,14 +2831,35 @@
             new bootstrap.Modal(document.getElementById('projModal')).show();
         }
 
-        async function removeProject(id) {
-            if (confirm('Are you sure you want to permanently delete this project?')) {
-                try {
-                    await fetch(`/api/projects/${id}`, { method: 'DELETE' });
+        let deleteProjectIdToProcess = null;
+
+        function removeProject(id) {
+            const p = projects.find(x => x._id === id);
+            if (!p) return;
+
+            deleteProjectIdToProcess = id;
+            document.getElementById('delProjName').innerText = p.name || p.code || 'this project';
+
+            const delModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+            delModal.show();
+        }
+
+        async function confirmDeleteProject() {
+            if (!deleteProjectIdToProcess) return;
+
+            try {
+                const response = await fetch(`/api/projects/${deleteProjectIdToProcess}`, { method: 'DELETE' });
+                if (response.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById('deleteConfirmModal')).hide();
                     fetchProjects();
-                } catch (err) {
+                    showToast('Project deleted successfully');
+                } else {
                     alert('Deletion failed');
                 }
+            } catch (err) {
+                alert('Deletion failed');
+            } finally {
+                deleteProjectIdToProcess = null;
             }
         }
 
@@ -2787,6 +2877,7 @@
             const to = document.getElementById('dateTo').value;
 
             const rows = document.querySelectorAll('#projectTableBody tr');
+            let visibleIndex = 1;
 
             rows.forEach(row => {
                 const text = row.textContent.toLowerCase();
@@ -2809,7 +2900,12 @@
                 const managerMatch = selManager === 'All' || manager === selManager;
                 const globalSearchMatch = text.includes(q);
 
-                row.style.display = (managerMatch && dateValid && globalSearchMatch) ? '' : 'none';
+                const isVisible = (managerMatch && dateValid && globalSearchMatch);
+                row.style.display = isVisible ? '' : 'none';
+
+                if (isVisible) {
+                    row.cells[0].textContent = visibleIndex++;
+                }
             });
         }
 
