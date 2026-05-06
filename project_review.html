@@ -1038,7 +1038,7 @@
         /* Overall highlight */
         .overall-col {
             background-color: #f8fafc;
-            border-left: 2px solid #e2e8f0 !important;
+            border-left: 1px solid #e2e8f0 !important;
         }
 
         /* --- Clean Status Badges --- */
@@ -1571,6 +1571,7 @@
         .fw-900 {
             font-weight: 900;
         }
+
         /* Delete Confirmation Modal Styling */
         .modal-round-lg {
             border-radius: 40px !important;
@@ -1626,6 +1627,115 @@
         .btn-cancel-custom:hover {
             background: #f8fafc !important;
             border-color: #cbd5e1 !important;
+        }
+
+        /* --- Responsive Design for Mobile Devices --- */
+        @media (max-width: 991px) {
+            .app-header {
+                flex-direction: column;
+                gap: 15px;
+                padding: 15px;
+                border-radius: 20px;
+                height: auto;
+            }
+
+            .header-right {
+                width: 100%;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .app-header {
+                padding: 15px;
+                border-radius: 15px;
+            }
+
+            .brand-name {
+                font-size: 1rem;
+            }
+
+            .brand-sub {
+                font-size: 0.55rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            .stat-card {
+                padding: 20px;
+            }
+
+            .panel-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+
+            .panel-actions {
+                width: 100%;
+                flex-direction: column;
+            }
+
+            .search-box {
+                width: 100%;
+            }
+
+            .search-input {
+                width: 100%;
+            }
+
+            .btn-action-primary,
+            .btn-action-outline {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .table-container {
+                padding: 15px;
+                border-radius: 20px;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .table th,
+            .table td {
+                padding: 12px 10px;
+                font-size: 0.75rem;
+                white-space: nowrap;
+            }
+
+            .top-filter-bar {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .filter-group {
+                width: 100%;
+            }
+
+            .filt-divider {
+                display: none;
+            }
+
+            .modal-content {
+                padding: 20px !important;
+            }
+
+            .table-wrapper {
+                overflow-x: auto;
+            }
         }
     </style>
 </head>
@@ -1787,7 +1897,8 @@
             <div class="filt-divider"></div>
 
             <!-- Date Range From -->
-            <div class="filter-group" onclick="try { document.getElementById('dateFrom').showPicker(); } catch(e) { document.getElementById('dateFrom').focus(); }">
+            <div class="filter-group"
+                onclick="try { document.getElementById('dateFrom').showPicker(); } catch(e) { document.getElementById('dateFrom').focus(); }">
                 <i class="bi bi-calendar3"></i>
                 <span class="date-label">FROM</span>
 
@@ -1797,7 +1908,8 @@
             <div class="filt-divider"></div>
 
             <!-- Date Range To -->
-            <div class="filter-group" onclick="try { document.getElementById('dateTo').showPicker(); } catch(e) { document.getElementById('dateTo').focus(); }">
+            <div class="filter-group"
+                onclick="try { document.getElementById('dateTo').showPicker(); } catch(e) { document.getElementById('dateTo').focus(); }">
                 <i class="bi bi-calendar2-minus"></i>
                 <span class="date-label">TO</span>
 
@@ -1815,7 +1927,7 @@
                     <!-- Invisible fields to trick the browser's autofill engine -->
                     <input type="text" name="fake_username" style="display:none;" aria-hidden="true" tabindex="-1">
                     <input type="password" name="fake_password" style="display:none;" aria-hidden="true" tabindex="-1">
-                    <input type="text" class="search-input" placeholder="Search Project..." onkeyup="filterTable()" 
+                    <input type="text" class="search-input" placeholder="Search Project..." onkeyup="filterTable()"
                         autocomplete="one-time-code" spellcheck="false" name="real_search_field">
                 </div>
                 <div class="dropdown">
@@ -1871,7 +1983,7 @@
                             <th rowspan="2" class="overall-col"
                                 style="min-width: 90px; background: #ffffff; color: #1e293b; border-bottom: 2px solid #f1f5f9; vertical-align: middle;">
                                 Overall<br>(Inc. I&C)</th>
-                            <th rowspan="2" style="min-width: 110px; border-left: 2px solid #e2e8f0 !important;">Status
+                            <th rowspan="2" style="min-width: 110px; border-left: 1px solid #e2e8f0 !important;">Status
                             </th>
                         </tr>
                         <!-- Row 2: Sub-columns -->
@@ -2105,12 +2217,16 @@
                         <i class="bi bi-trash3 bi-trash3-custom"></i>
                     </div>
                     <h3 class="fw-900 text-navy mb-2" style="font-size: 1.6rem;">Delete Project?</h3>
-                    <p class="text-muted mb-1" style="font-size: 0.95rem;">Are you sure you want to delete <span id="delProjName" class="fw-800 text-dark"></span>?</p>
-                    <p class="text-muted mb-4" style="font-size: 0.85rem; opacity: 0.7;">This action is permanent and cannot be undone.</p>
+                    <p class="text-muted mb-1" style="font-size: 0.95rem;">Are you sure you want to delete <span
+                            id="delProjName" class="fw-800 text-dark"></span>?</p>
+                    <p class="text-muted mb-4" style="font-size: 0.85rem; opacity: 0.7;">This action is permanent and
+                        cannot be undone.</p>
 
                     <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-cancel-custom flex-fill" data-bs-dismiss="modal">Cancel</button>
-                        <button type="button" class="btn btn-delete-confirm flex-fill" onclick="confirmDeleteProject()">Yes, Delete</button>
+                        <button type="button" class="btn btn-cancel-custom flex-fill"
+                            data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-delete-confirm flex-fill"
+                            onclick="confirmDeleteProject()">Yes, Delete</button>
                     </div>
                 </div>
             </div>
@@ -2166,6 +2282,9 @@
     <!-- Reporting Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- jsPDF + AutoTable for structured PDF with repeating headers -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <script>
         let projects = [];
 
@@ -2217,7 +2336,8 @@
             let totalVal = 0;
             let dispatchedVal = 0;
             let inProgressCount = 0;
-            let dispatchedCount = 0;
+            let dispatchedCount = 0; // Will track Dispatched + Closed for value calculation
+            let closedCount = 0;     // Will track ONLY 100% Closed projects
             let projectsInIC = 0;
 
             function formatDateDisplay(dateStr) {
@@ -2233,12 +2353,7 @@
                 const poVal = parseFloat(p.po_value || 0);
                 totalVal += poVal;
 
-                if (p.status === 'Closed') {
-                    dispatchedCount++;
-                    dispatchedVal += poVal;
-                } else {
-                    inProgressCount++;
-                }
+                // Move status-based count/val logic later after phases are computed
 
                 // --- Weighted Progress Calculation ---
                 const weights = [3, 15, 15, 20, 15, 10, 10, 2, 10]; // kickoff, design, purchase, mech_assembly, program, inhouse, mq1_fat, dispatch_parent, inc_parent
@@ -2284,21 +2399,35 @@
                 const uptoDispatchAvg = activeWeightUptoDispatch > 0 ? Math.round((activeWeightedSumUptoDispatch / activeWeightUptoDispatch) * 100) : 0;
                 const overallAvg = activeWeightOverall > 0 ? Math.round((activeWeightedSumOverall / activeWeightOverall) * 100) : 0;
 
+                const allDone = activeWeightOverall > 0 && allActiveDone;
+
                 // --- Automated Status Calculation ---
                 let displayStatus = p.status || 'Started';
                 const hasAnyProgress = (p.phases || []).some(ph => (parseFloat(ph.progress) || 0) > 0);
-
-                // Check detailed phases for actual start dates
                 const detailed = p.detailed_phases || {};
                 const hasAnyActualStart = Object.values(detailed).some(det => det && det.actual_start);
 
-                const allDone = activeWeightOverall > 0 && allActiveDone;
+                // Identify if Machine Dispatched (Index 7 is Machine Dispatch)
+                const dispatchPhase = (p.phases && p.phases[7]) ? parseInt(p.phases[7].progress || 0) : 0;
+                const isMachineDispatched = (dispatchPhase === 100);
 
-                // Hierarchy: Closed > Completed > In Progress > Started
                 if (displayStatus !== 'Closed') {
-                    if (allDone) displayStatus = 'Completed';
+                    if (allDone) displayStatus = 'Closed'; // ✅ Automatically set to Closed if 100%
+                    else if (isMachineDispatched) displayStatus = 'Dispatched';
                     else if (hasAnyProgress || hasAnyActualStart) displayStatus = 'In Progress';
                     else displayStatus = 'Started';
+                }
+
+                // Update summary stats
+                if (displayStatus === 'Closed') {
+                    closedCount++;
+                    dispatchedCount++;
+                    dispatchedVal += poVal;
+                } else if (displayStatus === 'Dispatched' || displayStatus === 'Completed') {
+                    dispatchedCount++;
+                    dispatchedVal += poVal;
+                } else {
+                    inProgressCount++;
                 }
 
                 const row = document.createElement('tr');
@@ -2389,11 +2518,6 @@
                     ${(p.phases || []).map((ph, idx) => {
                             const val = parseInt(ph.progress || 0);
 
-                            // Map dashboard index to detailed aggregate parent phase ID
-                            const phaseIdMap = [
-                                'kickoff', 'design', 'purchase', 'mech_assembly', 'program',
-                                'inhouse', 'mq1_fat', 'dispatch_parent', 'inc_parent'
-                            ];
                             const phId = phaseIdMap[idx];
                             const d = (p.detailed_phases && p.detailed_phases[phId]) || {};
                             const isExcluded = d.is_excluded === true;
@@ -2456,7 +2580,7 @@
                         </span>
                     </td>
 
-                    <td style="text-align: center; border-left: 2px solid #e2e8f0;">
+                    <td style="text-align: center; border-left: 1px solid #e2e8f0;">
                         <span style="color: ${displayStatus.toLowerCase().includes('started') ? '#0369a1' :
                         (displayStatus.toLowerCase().includes('progress') || displayStatus.toLowerCase().includes('pending')) ? '#d97706' :
                             (displayStatus.toLowerCase().includes('closed') || displayStatus.toLowerCase().includes('completed') || displayStatus.toLowerCase().includes('dispatched')) ? '#10b981' : '#000000'
@@ -2470,7 +2594,7 @@
 
             document.getElementById('statTotal').innerText = projects.length;
             document.getElementById('statInProgress').innerText = inProgressCount;
-            document.getElementById('statClosed').innerText = dispatchedCount;
+            document.getElementById('statClosed').innerText = closedCount;
             document.getElementById('statDispatchedValue').innerText = `₹${dispatchedVal.toLocaleString()}`;
             document.getElementById('statTotalValue').innerText = `₹${totalVal.toLocaleString()}`;
             document.getElementById('statICCount').innerText = projectsInIC;
@@ -2976,7 +3100,7 @@
             const textEl = document.getElementById('feedbackText');
             const text = textEl.value.trim();
             if (!text) return alert('Please enter your feedback before submitting!');
-            
+
             const btn = document.getElementById('btnSubmitFeedback');
             const originalText = btn.innerText;
             btn.innerText = 'Sending...';
@@ -3009,93 +3133,327 @@
         if (document.getElementById('dateTo')) document.getElementById('dateTo').value = '';
 
         async function exportMasterToPDF() {
-            const container = document.getElementById('printContainer');
-            const originalTable = document.getElementById('registryTable');
-            const now = new Date();
-            const dateStr = now.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            showStatus('Generating Structured PDF Report...');
+            const { jsPDF } = window.jspdf;
+            // Standard A3 landscape is 420mm x 297mm.
+            // To increase the vertical length (height) to fit more rows, we use a custom format: [Width, Height] in mm.
+            // You can change 500 to a larger value (e.g., 600, 700) to make the page even longer.
+            const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [300, 450] });
+            const pageW = doc.internal.pageSize.getWidth();
+            const dateStr = new Date().toLocaleDateString('en-GB');
 
-            showStatus('Generating Professional Board Report...');
-
-            const exportWrap = document.createElement('div');
-            exportWrap.id = "master-pdf-root";
-            exportWrap.style.width = '2400px'; // Expanded width to fit all data
-            exportWrap.style.padding = '40px';
-            exportWrap.style.background = '#ffffff';
-            exportWrap.style.fontFamily = "'Inter', sans-serif";
-            exportWrap.style.color = '#011f3f';
-
-            const headerHtml = `
-                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #011f3f; padding-bottom: 20px; margin-bottom: 25px;">
-                    <div style="display: flex; align-items: center; gap: 20px;">
-                        <img src="asset/image.png" style="height: 60px; width: auto;" alt="Logo" onerror="this.src='https://via.placeholder.com/60x60?text=LOGO'">
-                        <div>
-                            <h1 style="margin: 0; color: #011f3f; font-size: 32px; font-weight: 900; letter-spacing: 1px;">DANPREL</h1>
-                            <p style="margin: 0; color: #475569; font-size: 13px; font-weight: 700;">Engineering Automation Pvt Ltd</p>
-                        </div>
-                    </div>
-                    <div style="text-align: right;">
-                        <h2 style="margin: 0; color: #011f3f; font-size: 20px; font-weight: 800; text-transform: uppercase;">MASTER PROJECT REGISTRY</h2>
-                        <p style="margin: 5px 0 0; color: #64748b; font-size: 12px; font-weight: 700;">Generated Date: <span style="color: #011f3f;">${dateStr}</span></p>
-                    </div>
-                </div>
-            `;
-
-            const tableClone = originalTable.cloneNode(true);
-            tableClone.classList.remove('collapsed');
-            tableClone.style.width = '100%';
-            tableClone.style.fontSize = '8.5px';
-            tableClone.style.tableLayout = 'fixed';
-            tableClone.style.borderCollapse = 'collapse';
-
-            tableClone.querySelectorAll('.btn-toggle-row, .no-print, button, .dropdown').forEach(el => el.remove());
-
-            tableClone.querySelectorAll('th, td').forEach(el => {
-                el.style.border = '1px solid #cbd5e1';
-                el.style.padding = '6px 4px';
-                el.style.verticalAlign = 'middle';
-                el.style.wordWrap = 'break-word';
-                el.style.overflow = 'hidden';
-            });
-
-            tableClone.querySelectorAll('thead tr:first-child th').forEach(th => {
-                th.style.backgroundColor = '#011f3f';
-                th.style.color = '#ffffff';
-                th.style.fontWeight = '800';
-                th.style.fontSize = '9px';
-            });
-
-            tableClone.querySelectorAll('.th-group-lifecycle').forEach(th => {
-                th.style.backgroundColor = '#0d9488';
-            });
-
-            exportWrap.innerHTML = headerHtml;
-            exportWrap.appendChild(tableClone);
-            container.innerHTML = '';
-            container.appendChild(exportWrap);
-
-            const opt = {
-                margin: [0.3, 0.3, 0.3, 0.3],
-                filename: `DANPREL_Master_Project_Registry_${dateStr.replace(/\//g, '-')}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: {
-                    scale: 2,
-                    useCORS: true,
-                    logging: false,
-                    width: 2400
-                },
-                jsPDF: { unit: 'in', format: 'a2', orientation: 'landscape', compress: true }
-            };
-
-            setTimeout(async () => {
+            // ── Load logo as base64 ──────────────────────────────────
+            async function getBase64(url) {
                 try {
-                    await html2pdf().set(opt).from(exportWrap).save();
-                    hideStatus();
-                } catch (err) {
-                    console.error('Master PDF Catch:', err);
-                    hideStatus();
+                    const res = await fetch(url);
+                    const blob = await res.blob();
+                    return await new Promise(resolve => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => resolve(reader.result);
+                        reader.readAsDataURL(blob);
+                    });
+                } catch { return null; }
+            }
+            const logoData = await getBase64('asset/image.png');
+
+            // ── Draw Header (Matches Screenshot Style) ──────────────
+            function drawHeader() {
+                const navy = [1, 31, 63];
+                if (logoData) {
+                    doc.addImage(logoData, 'PNG', 14, 5, 15, 15);
                 }
-                container.innerHTML = '';
-            }, 1000);
+
+                // Left Side: Company Name
+                doc.setTextColor(navy[0], navy[1], navy[2]);
+                doc.setFontSize(22);
+                doc.setFont('helvetica', 'bold');
+                doc.text('DANPREL', 32, 12);
+                doc.setFontSize(9);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(100, 116, 139); // Grayish subtitle
+                doc.text('Engineering Automation Pvt Ltd', 32, 17);
+
+                // Right Side: Title & Date
+                doc.setTextColor(navy[0], navy[1], navy[2]);
+                doc.setFontSize(16);
+                doc.setFont('helvetica', 'bold');
+                doc.text('MASTER PROJECT REGISTRY', pageW - 14, 12, { align: 'right' });
+
+                doc.setFontSize(10);
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(71, 85, 105);
+                doc.text('Generated Date: ', pageW - 34, 17, { align: 'right' });
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(navy[0], navy[1], navy[2]);
+                doc.text(dateStr, pageW - 14, 17, { align: 'right' });
+
+                // Horizontal Separator Line
+                doc.setDrawColor(navy[0], navy[1], navy[2]);
+                doc.setLineWidth(0.5);
+                doc.line(14, 24, pageW - 14, 24);
+            }
+            drawHeader();
+
+            // ── Build Table Data ─────────────────────────────────────
+            const phaseNames = ['Kickoff', 'Design', 'Purchase', 'Mech Asm', 'Program', 'Inhouse', 'MQ1/FAT', 'Dispatch', 'I&C'];
+            const phaseIdMap = ['kickoff', 'design', 'purchase', 'mech_assembly', 'program', 'inhouse', 'mq1_fat', 'dispatch_parent', 'inc_parent'];
+            const weights = [3, 15, 15, 20, 15, 10, 10, 2, 10];
+
+            function fmtDate(dt) {
+                if (!dt || dt === '-') return '-';
+                const p = dt.split('-');
+                return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : dt;
+            }
+
+            // Compute display status using same logic as dashboard
+            function computeStatus(p) {
+                let wAll = 0, sAll = 0;
+                let allActiveDone = true;
+                let hasAnyProgress = false;
+                const detailed = p.detailed_phases || {};
+
+                phaseIdMap.forEach((phId, idx) => {
+                    const d = (detailed && detailed[phId]) || {};
+                    if (d.is_excluded) return;
+                    const prog = parseInt((p.phases && p.phases[idx] && p.phases[idx].progress) || 0);
+                    const w = weights[idx];
+                    wAll += w; sAll += (prog / 100) * w;
+                    if (prog < 100) allActiveDone = false;
+                    if (prog > 0) hasAnyProgress = true;
+                });
+
+                const hasAnyActualStart = Object.values(detailed).some(d => d && d.actual_start);
+
+                // Identify if Machine Dispatched (Index 7 is Machine Dispatch)
+                const dispatchPhase = (p.phases && p.phases[7]) ? parseInt(p.phases[7].progress || 0) : 0;
+                const isMachineDispatched = (dispatchPhase === 100);
+
+                if (p.status === 'Closed') return 'Closed';
+                if (wAll > 0 && allActiveDone) return 'Closed'; // Automatically set to Closed if 100%
+                if (isMachineDispatched) return 'Dispatched';
+                if (hasAnyProgress || hasAnyActualStart) return 'In Progress';
+                return 'Started';
+            }
+
+            const head = [
+                [
+                    { content: '', colSpan: 8 },
+                    { content: 'PROJECT TIMELINE', colSpan: 3, styles: { halign: 'center', fillColor: [1, 31, 63] } },
+                    { content: 'PROJECT LIFE CYCLE PROGRESS (%)', colSpan: 9, styles: { halign: 'center', fillColor: [13, 148, 136] } },
+                    { content: '', colSpan: 3 }
+                ],
+                [
+                    'S.No', 'Code', 'Project Name', 'Customer', 'Location', 'PO Date', 'PO Value', 'Expeditor',
+                    'Start Date', 'Dispatch', 'MQ2/SAT',
+                    ...phaseNames,
+                    'Overall\n(upto Disp)', 'Overall\n(Inc)', 'Status'
+                ]
+            ];
+
+            // Get currently active filter values from the dashboard controls
+            const q = (document.querySelector('.search-input')?.value || '').toLowerCase();
+            const selManager = document.getElementById('managerSelector')?.value || 'All';
+            const from = document.getElementById('dateFrom')?.value || '';
+            const to = document.getElementById('dateTo')?.value || '';
+
+            // Filter projects to match the actual visible list on the main dashboard
+            const visibleProjects = projects.filter(p => {
+                const manager = (p.project_manager || '').trim();
+                const rawDate = p.po_date || '';
+
+                // PO Date Validation
+                let dateValid = true;
+                if (from || to) {
+                    if (rawDate) {
+                        const projectDate = new Date(rawDate);
+                        if (!isNaN(projectDate.getTime())) {
+                            if (from && projectDate < new Date(from)) dateValid = false;
+                            if (to && projectDate > new Date(to)) dateValid = false;
+                        } else {
+                            dateValid = false;
+                        }
+                    } else {
+                        dateValid = false;
+                    }
+                }
+
+                const managerMatch = selManager === 'All' || manager === selManager;
+                
+                // Concatenate searchable fields to match the DOM's text search behavior
+                const searchableText = `${p.code || ''} ${p.name || ''} ${p.customer_name || ''} ${p.sat_location || ''} ${p.project_manager || ''}`.toLowerCase();
+                const globalSearchMatch = searchableText.includes(q);
+
+                return managerMatch && dateValid && globalSearchMatch;
+            });
+
+            const body = visibleProjects.map((p, i) => {
+                const phaseValues = phaseIdMap.map((phId, idx) => {
+                    const d = (p.detailed_phases && p.detailed_phases[phId]) || {};
+                    const isEx = d.is_excluded === true;
+                    const prog = parseInt((p.phases && p.phases[idx] && p.phases[idx].progress) || 0);
+                    // Pass object to didParseCell for logic
+                    return { content: isEx ? 'NA' : `${prog}%`, data: d, val: prog };
+                });
+
+                let wUD = 0, sUD = 0, wAll = 0, sAll = 0;
+                phaseIdMap.forEach((phId, idx) => {
+                    const d = (p.detailed_phases && p.detailed_phases[phId]) || {};
+                    if (d.is_excluded) return;
+                    const prog = parseInt((p.phases && p.phases[idx] && p.phases[idx].progress) || 0);
+                    const w = weights[idx];
+                    wAll += w; sAll += (prog / 100) * w;
+                    if (idx < 8) { wUD += w; sUD += (prog / 100) * w; }
+                });
+                const uptoDisp = wUD > 0 ? Math.round((sUD / wUD) * 100) : 0;
+                const overall = wAll > 0 ? Math.round((sAll / wAll) * 100) : 0;
+
+                return [
+                    i + 1,
+                    p.code || '-',
+                    p.name || '-',
+                    p.customer_name || '-',
+                    p.sat_location || '-',
+                    fmtDate(p.po_date),
+                    p.po_value ? `Rs.${Number(p.po_value).toLocaleString('en-IN')}` : '-',
+                    p.project_manager || '-',
+                    fmtDate(p.start_date),
+                    fmtDate(p.dispatch_date),
+                    fmtDate(p.mq2_date),
+                    ...phaseValues,
+                    `${uptoDisp}%`,
+                    `${overall}%`,
+                    computeStatus(p)
+                ];
+            });
+
+            doc.autoTable({
+                head: head,
+                body: body,
+                startY: 28,
+                theme: 'grid',
+                tableWidth: 'auto',
+                rowPageBreak: 'avoid',
+                styles: {
+                    fontSize: 10,
+                    cellPadding: 2,
+                    valign: 'middle',
+                    halign: 'center', // ✅ Center all columns globally
+                    overflow: 'linebreak'
+                },
+                headStyles: {
+                    fillColor: [1, 31, 63],
+                    textColor: [255, 255, 255],
+                    fontStyle: 'bold',
+                    fontSize: 8.7,
+                    halign: 'center'
+                },
+                columnStyles: {
+                    0: { cellWidth: 11 },
+                    1: { cellWidth: 14 },
+                    2: { cellWidth: 34 }, // Increased Project Name
+                    3: { cellWidth: 30 },
+                    4: { cellWidth: 20 },//location
+                    5: { cellWidth: 22 }, //po date
+                    6: { cellWidth: 29 },
+                    7: { cellWidth: 35 },
+                    8: { cellWidth: 22 }, // Increased Start Date
+                    9: { cellWidth: 22 }, // Increased Dispatch
+                    10: { cellWidth: 22 }, // Increased MQ2/SAT
+                    11: { cellWidth: 14 }, // Decreased phases
+                    12: { cellWidth: 14 },
+                    13: { cellWidth: 14 },
+                    14: { cellWidth: 14 },
+                    15: { cellWidth: 14 },
+                    16: { cellWidth: 14 },
+                    17: { cellWidth: 14 },
+                    18: { cellWidth: 14 },
+                    19: { cellWidth: 14 },
+                    20: { cellWidth: 15 }, // Overall upto disp
+                    21: { cellWidth: 15 }, // Overall inc
+                    22: { cellWidth: 24 }  // Decreased Status column
+                },
+                alternateRowStyles: { fillColor: [245, 248, 252] },
+                didParseCell: function (data) {
+                    // 1. Make Code (1) and Expeditor (7) columns bold
+                    if ((data.column.index === 1 || data.column.index === 7) && data.section === 'body') {
+                        data.cell.styles.fontStyle = 'bold';
+                    }
+
+                    // 2. Color Percentage columns (Indices 11 to 21)
+                    if (data.column.index >= 11 && data.column.index <= 21 && data.section === 'body') {
+                        const cellRaw = data.cell.raw;
+                        const isObject = typeof cellRaw === 'object' && cellRaw !== null;
+                        const val = isObject ? cellRaw.val : parseInt(cellRaw);
+                        const d = isObject ? cellRaw.data : null;
+
+                        if (isObject) data.cell.text = [cellRaw.content];
+
+                        if (data.cell.text[0] === 'NA') {
+                            data.cell.styles.textColor = [148, 163, 184];
+                        } else {
+                            data.cell.styles.fontStyle = 'bold';
+
+                            if (data.column.index === 20 || data.column.index === 21) {
+                                if (val > 0) {
+                                    data.cell.styles.textColor = [3, 105, 161]; // Ocean Blue (matching 'Started' status)
+                                } else {
+                                    data.cell.styles.textColor = [30, 41, 59]; // Very Dark Slate for 0%
+                                }
+                            } else if (val === 100) {
+                                data.cell.styles.textColor = [34, 197, 94];
+                            } else if (d && d.actual_start) {
+                                const start = new Date(d.actual_start);
+                                const today = new Date();
+                                const daysLive = Math.floor((today - start) / (86400000));
+
+                                let duration = 0;
+                                if (d.plan_start && d.plan_end) {
+                                    duration = Math.ceil((new Date(d.plan_end) - new Date(d.plan_start)) / 86400000);
+                                }
+
+                                if (duration > 0) {
+                                    const deadline = new Date(start);
+                                    deadline.setDate(deadline.getDate() + duration);
+                                    const toDeadline = Math.ceil((deadline - today) / 86400000);
+                                    if (toDeadline <= 10) {
+                                        data.cell.styles.textColor = [239, 68, 68];
+                                        return;
+                                    }
+                                }
+
+                                if (daysLive > 10) data.cell.styles.textColor = [234, 179, 8];
+                                else data.cell.styles.textColor = [59, 130, 246];
+                            } else {
+                                // Threshold Logic - Darkened for better visibility
+                                if (val >= 60) data.cell.styles.textColor = [45, 104, 196]; // Blue
+                                else if (val >= 25) data.cell.styles.textColor = [229, 162, 59]; // Orange/Yellow
+                                else if (val > 0) data.cell.styles.textColor = [71, 85, 105]; // Darker Gray (Slate 600)
+                                else data.cell.styles.textColor = [30, 41, 59]; // Very Dark Slate for 0%
+                            }
+                        }
+                    }
+
+                    // 3. Color status column (Last index)
+                    if (data.column.index === head[1].length - 1 && data.section === 'body') {
+                        const val = (data.cell.raw || '').toLowerCase();
+                        if (val.includes('progress') || val.includes('pending')) data.cell.styles.textColor = [217, 119, 6];
+                        else if (val.includes('closed') || val.includes('completed') || val.includes('dispatched')) data.cell.styles.textColor = [16, 185, 129];
+                        else data.cell.styles.textColor = [3, 105, 161];
+                        data.cell.styles.fontStyle = 'bold';
+                    }
+                },
+                showHead: 'everyPage',
+                margin: { top: 28, left: 5, right: 5 },
+                didDrawPage: function () {
+                    drawHeader();
+                    doc.setFontSize(8);
+                    doc.setTextColor(100, 116, 139);
+                    doc.text(`Page ${doc.internal.getCurrentPageInfo().pageNumber}`, pageW / 2, doc.internal.pageSize.getHeight() - 5, { align: 'center' });
+                }
+            });
+
+            doc.save(`DANPREL_Master_Project_Registry_${dateStr.replace(/\//g, '-')}.pdf`);
+            hideStatus();
         }
 
         function exportMasterToExcel() {
@@ -3104,8 +3462,13 @@
             const originalTable = document.getElementById('registryTable');
             const tableClone = originalTable.cloneNode(true);
 
-            // Clean up elements that shouldn't be in Excel
+            // Clean up elements that shouldn't be in Excel and remove filtered-out (hidden) rows
             tableClone.querySelectorAll('.btn-toggle-row, .no-print, button, .dropdown').forEach(el => el.remove());
+            tableClone.querySelectorAll('tbody tr').forEach(row => {
+                if (row.style.display === 'none') {
+                    row.remove();
+                }
+            });
 
             // Clean up lifecycle percentage strings and handle empty dates
             tableClone.querySelectorAll('td, th').forEach(cell => {

@@ -699,6 +699,85 @@
             color: white;
             border-color: var(--navy-dark);
         }
+
+        /* --- Responsive Design for Mobile Devices --- */
+        @media (max-width: 991px) {
+            .app-header {
+                flex-direction: column;
+                gap: 15px;
+                padding: 15px;
+                height: auto;
+            }
+            .header-right, .d-flex.align-items-center.gap-3 {
+                width: 100%;
+                justify-content: center;
+            }
+            .stat-bar {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .ui-card-header {
+                flex-direction: column;
+                gap: 15px;
+                align-items: flex-start;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+                margin-left: 0;
+            }
+            .app-header {
+                padding: 15px;
+                border-radius: 15px;
+            }
+            .brand-name {
+                font-size: 1rem;
+            }
+            .brand-sub {
+                font-size: 0.55rem;
+            }
+            .stat-bar {
+                grid-template-columns: 1fr;
+            }
+            .card-actions {
+                grid-template-columns: 1fr;
+            }
+            .btn-record {
+                grid-column: span 1;
+            }
+            .row.g-4 > div {
+                width: 100%;
+            }
+            .table-responsive {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            .registry-table th, .registry-table td {
+                padding: 12px;
+                font-size: 0.8rem;
+                white-space: nowrap;
+            }
+            .view-tabs {
+                width: 100%;
+                flex-wrap: wrap;
+            }
+            .view-tab {
+                flex: 1;
+                text-align: center;
+            }
+            .search-wrap {
+                width: 100%;
+            }
+            .col-12.d-flex.justify-content-end.gap-3.mt-2 {
+                flex-direction: column;
+                align-items: stretch !important;
+            }
+            .col-12.d-flex.justify-content-end.gap-3.mt-2 button {
+                width: 100%;
+                justify-content: center;
+            }
+        }
     </style>
 </head>
 

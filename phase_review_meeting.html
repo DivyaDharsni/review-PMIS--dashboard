@@ -992,6 +992,81 @@
             color: #0d9488;
             padding: 0;
         }
+
+        /* --- Responsive Design for Mobile Devices --- */
+        @media (max-width: 991px) {
+            .app-header {
+                flex-direction: column;
+                gap: 15px;
+                padding: 15px;
+                height: auto;
+            }
+            .stat-bar {
+                grid-template-columns: 1fr;
+            }
+            .ap-table-wrap, .table-responsive {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            .section-head {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            .d-flex.align-items-center.gap-3.mt-4 {
+                flex-direction: column;
+                align-items: stretch !important;
+            }
+            .d-flex.align-items-center.gap-3.mt-4 button {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+                margin-left: 0;
+            }
+            .app-header {
+                padding: 15px;
+                border-radius: 15px;
+            }
+            .brand-name {
+                font-size: 1rem;
+            }
+            .brand-sub {
+                font-size: 0.55rem;
+            }
+            .date-row {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .history-card .d-flex.align-items-center.gap-2.me-3 {
+                flex-direction: column;
+                height: auto !important;
+                padding: 15px !important;
+                border-radius: 20px !important;
+                width: 100%;
+            }
+            .history-card .border-end {
+                border-right: none !important;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 10px;
+                margin-bottom: 10px;
+                width: 100%;
+            }
+            .history-card .ms-auto {
+                width: 100%;
+                flex-direction: column;
+            }
+            .dropdown, .btn.dropdown-toggle {
+                width: 100%;
+            }
+            .session-card, .history-card {
+                padding: 20px;
+            }
+        }
     </style>
 </head>
 

@@ -691,6 +691,78 @@
             background: #f8fafc !important;
             border-color: #cbd5e1 !important;
         }
+
+        /* --- Responsive Design for Mobile Devices --- */
+        @media (max-width: 991px) {
+            .app-header {
+                flex-direction: column;
+                gap: 15px;
+                padding: 15px;
+                height: auto;
+            }
+            .header-right {
+                width: 100%;
+                justify-content: center;
+            }
+            .stat-bar {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .ui-card-header {
+                flex-direction: column;
+                gap: 15px;
+                align-items: stretch;
+            }
+            .search-wrap {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+                margin-left: 0;
+            }
+            .app-header {
+                padding: 15px;
+                border-radius: 15px;
+            }
+            .brand-name {
+                font-size: 1rem;
+            }
+            .brand-sub {
+                font-size: 0.55rem;
+            }
+            .stat-bar {
+                grid-template-columns: 1fr;
+            }
+            .d-flex.justify-content-center.mb-4.mt-2 > div {
+                flex-direction: column;
+                width: 100%;
+                border-radius: 20px !important;
+            }
+            #deptFilter {
+                width: 100% !important;
+            }
+            .table-container {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            .resource-table th, .resource-table td {
+                padding: 12px;
+                font-size: 0.8rem;
+                white-space: nowrap;
+            }
+            .btn-action {
+                width: 100%;
+            }
+            .btn-logout-hub {
+                width: auto;
+                flex: 1;
+            }
+            .modal-content {
+                padding: 20px !important;
+            }
+        }
     </style>
 </head>
 
