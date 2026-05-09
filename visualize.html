@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Timeline Visualize | Danprel Engineering</title>
+    <title>Master Timeline Visualization | Danprel Engineering</title>
     <link rel="icon" type="image/png" href="asset/image.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
         rel="stylesheet">
@@ -14,11 +14,11 @@
     <style>
         :root {
             --navy-prime: #0B2B4A;
-            --navy-glow: #1A3F5F;
-            --teal-accent: #0d9488;
-            --blue-accent: #2D68C4;
-            --bg-body: #f1f6fc;
-            --sidebar-width: 280px;
+            --navy-glow: #1a4f7c;
+            --teal-accent: #14b8a6;
+            --blue-accent: #4f46e5;
+            --bg-body: #f8fafc;
+            --sidebar-width: 0px;
         }
 
         * {
@@ -30,262 +30,702 @@
         body {
             font-family: 'Inter', sans-serif;
             background: var(--bg-body);
-            color: #334155;
-        }
-
-        /* SIDEBAR */
-        .sidebar {
-            width: var(--sidebar-width);
-            background: var(--navy-prime);
-            height: 100vh;
-            position: fixed;
-            left: 0;
-            top: 0;
-            color: white;
-            padding: 24px;
-            z-index: 1000;
-            transition: transform 0.3s ease;
-        }
-
-        .sidebar-header {
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            padding-bottom: 24px;
-            margin-bottom: 24px;
-        }
-
-        .sidebar-section-title {
-            font-size: 0.65rem;
-            color: #94a3b8;
-            text-transform: uppercase;
-            font-weight: 800;
-            margin-bottom: 12px;
-        }
-
-        .sidebar-btn {
-            width: 100%;
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            padding: 14px 18px;
-            border-radius: 16px;
-            color: #cbd5e1;
-            text-decoration: none;
-            font-weight: 600;
-            margin-bottom: 8px;
-            border: none;
-            background: transparent;
-            text-align: left;
-        }
-
-        .sidebar-btn:hover {
-            background: rgba(255, 255, 255, 0.05);
-            color: white;
-        }
-
-        .sidebar-btn.active {
-            background: linear-gradient(135deg, var(--blue-accent), #3b82f6);
-            color: white;
-            box-shadow: 0 10px 20px rgba(59, 130, 246, 0.2);
-        }
-
-        .sb-icon {
-            width: 36px;
-            height: 36px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            color: #1e293b;
+            overflow-x: hidden;
+            padding: 20px;
         }
 
         /* HEADER */
         .app-header {
-            background: white;
-            margin-left: var(--sidebar-width);
-            padding: 16px 40px;
+            background: linear-gradient(135deg, #001f3f 0%, #003366 100%);
+            border-radius: 24px;
+            padding: 16px 32px;
             display: flex;
-            align-items: center;
             justify-content: space-between;
-            border-bottom: 1px solid #e2e8f0;
-            position: sticky;
-            top: 0;
+            align-items: center;
+            margin-bottom: 24px;
+            box-shadow: 0 8px 32px rgba(0, 31, 63, .25);
+            border: 1px solid rgba(255, 255, 255, .08);
+            position: relative;
+            overflow: hidden;
             z-index: 900;
         }
 
         .header-title {
             font-weight: 800;
-            color: var(--navy-prime);
-            font-size: 1.25rem;
+            color: white;
+            font-size: 0.95rem;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px 24px;
+            border-radius: 100px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: inline-block;
         }
 
         /* MAIN CONTENT */
         .main-content {
-            margin-left: var(--sidebar-width);
-            padding: 40px;
+            padding: 0px;
         }
 
-        /* GANTT STYLES */
+        /* GANTT TIMELINE UI */
         .gantt-card {
             background: white;
-            border-radius: 32px;
+            border-radius: 24px;
             border: 1px solid #e2e8f0;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.02);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.03);
             overflow: hidden;
+            margin-top: 24px;
+        }
+
+        .gantt-card-header {
+            padding: 24px 30px;
+            border-bottom: 1px solid #e2e8f0;
+            background: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .gantt-card-title {
+            font-weight: 800;
+            font-size: 1.1rem;
+            color: var(--navy-prime);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* LEGEND BAR */
+        .gantt-legend {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: #475569;
+        }
+
+        .legend-color {
+            width: 14px;
+            height: 14px;
+            border-radius: 4px;
         }
 
         .gantt-wrapper {
             overflow-x: auto;
             position: relative;
+            background: #ffffff;
         }
 
         .gantt-container {
-            min-width: 1500px;
+            min-width: 1600px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* TIMELINE HEADER */
+        .gantt-hd {
+            display: flex;
+            background: white;
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .gantt-hd-spacer {
+            width: 280px;
+            flex-shrink: 0;
+            background: #001f3f;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            box-sizing: border-box;
+            position: sticky;
+            left: 0;
+            z-index: 120;
+        }
+
+        .projects-header-badge {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 8px 16px;
+            border-radius: 50px;
+            color: #ffffff;
+            font-size: 0.78rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .projects-header-badge i {
+            color: #14b8a6; /* Vibrant Teal Accent */
+            font-size: 0.95rem;
+        }
+
+        .projects-header-badge:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: #14b8a6;
+            box-shadow: 0 4px 15px rgba(20, 184, 166, 0.2);
+        }
+
+        .gantt-hd-timeline {
             display: flex;
             flex-direction: column;
         }
 
-        /* GANTT HEADER (Calendar) */
-        .gantt-hd {
+        .gantt-months-row {
             display: flex;
-            border-bottom: 1px solid #e2e8f0;
-            background: #f8fafc;
-        }
-
-        .gantt-hd-spacer {
-            width: 200px;
-            border-right: 1px solid #e2e8f0;
-            flex-shrink: 0;
+            background: #001f3f;
+            height: 48px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .month-block {
             flex-shrink: 0;
-            width: 320px;
-            border-right: 1px solid #e2e8f0;
             text-align: center;
-        }
-
-        .month-label {
-            padding: 14px;
-            font-weight: 900;
-            color: var(--navy-prime);
-            font-size: 0.8rem;
-            border-bottom: 1px solid #e2e8f0;
-            text-transform: uppercase;
-            background: #fff;
-        }
-
-        .weeks-row {
             display: flex;
-            background: #f8fafc;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 800;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 1.5px;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .month-block:last-child {
+            border-right: none;
+        }
+
+        .gantt-weeks-row {
+            display: flex;
+            background: white;
+            height: 64px;
+            border-bottom: 1px solid #e2e8f0;
         }
 
         .week-cell {
-            flex: 1;
-            padding: 6px;
-            font-size: 0.6rem;
-            font-weight: 800;
-            color: #64748b;
+            flex-shrink: 0;
             border-right: 1px solid #e2e8f0;
-            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 0;
+            background: white;
         }
 
         .week-cell:last-child {
             border-right: none;
         }
 
+        .week-num {
+            font-weight: 800;
+            color: #1e293b;
+            font-size: 0.72rem;
+            line-height: 1.3;
+        }
+
+        .week-date {
+            font-weight: 700;
+            color: #14b8a6;
+            font-size: 0.68rem;
+            line-height: 1.3;
+        }
+
+        .week-day {
+            font-weight: 800;
+            color: #94a3b8;
+            font-size: 0.6rem;
+            line-height: 1.3;
+            text-transform: uppercase;
+        }
+
         /* GANTT ROWS */
         .project-row {
             display: flex;
-            height: 80px;
+            min-height: 120px;
             border-bottom: 1px solid #f1f5f9;
             background: white;
             transition: background 0.2s;
+            position: relative;
         }
 
         .project-row:hover {
-            background: #f8fbfe;
+            background: #fafcfd;
         }
 
         .project-label {
-            width: 200px;
+            width: 280px;
             border-right: 1px solid #e2e8f0;
             flex-shrink: 0;
-            padding: 15px 24px;
+            padding: 20px 24px;
             display: flex;
             flex-direction: column;
             justify-content: center;
-            background: inherit;
+            background: #ffffff !important;
             position: sticky;
             left: 0;
-            z-index: 10;
+            z-index: 80;
+            box-shadow: 5px 0 15px rgba(0,0,0,0.03);
+            box-sizing: border-box;
+        }
+
+        .project-row:hover .project-label {
+            background: #fafcfd !important;
         }
 
         .p-code {
-            font-size: 0.6rem;
+            font-size: 0.78rem;
             font-weight: 800;
-            color: var(--teal-accent);
+            color: #14b8a6; /* Vibrant Teal Accent */
             text-transform: uppercase;
-            margin-bottom: 2px;
+            margin-bottom: 6px;
+            letter-spacing: 0.8px;
         }
 
         .p-name {
-            font-size: 0.8rem;
-            font-weight: 800;
-            color: var(--navy-prime);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            font-size: 1.02rem; /* Clean, slightly increased text size */
+            font-weight: 700;   /* Professional standard bold, not too heavy */
+            color: #0369a1;     /* Beautiful Corporate Blue */
+            line-height: 1.35;
+            margin-bottom: 8px;
+            letter-spacing: -0.1px;
+        }
+
+        .p-meta {
+            font-size: 0.76rem;
+            font-weight: 700;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
         }
 
         .timeline-area {
             flex-grow: 1;
             position: relative;
-            background-image: linear-gradient(to right, #f1f5f9 1px, transparent 1px);
-            background-size: 80px 100%;
+            padding: 16px 0;
+            background-image: linear-gradient(to right, #f8fafc 1px, transparent 1px);
+            background-size: 87.5px 100%; /* Spacing corresponding to 1 week */
         }
 
-        /* BARS */
-        .bar-main {
+        /* STACKED GANTT BARS */
+        .bar-container {
             position: absolute;
-            height: 28px;
+            height: 34px;
             border-radius: 8px;
-            top: 26px;
             display: flex;
             align-items: center;
-            padding: 0 12px;
+            justify-content: space-between; /* Push items to ends and center */
+            padding: 0 10px;
             color: white;
-            font-size: 0.65rem;
+            font-size: 0.72rem;
             font-weight: 700;
-            transition: all 0.4s ease;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+            box-sizing: border-box;
+            overflow: hidden;
+            white-space: nowrap;
         }
 
-        .bar-main:hover {
-            transform: scale(1.02);
-            filter: brightness(1.1);
+        .bar-date-start, .bar-date-end {
+            font-size: 0.64rem;
+            font-weight: 800;
+            opacity: 0.95;
+            background: rgba(0, 0, 0, 0.16); /* High fidelity contrast capsule */
+            padding: 3px 8px;
+            border-radius: 6px;
+            letter-spacing: 0.2px;
+            flex-shrink: 0;
+            display: inline-block;
         }
 
-        .bar-dates {
-            font-size: 0.55rem;
-            opacity: 0.8;
-            margin-left: auto;
+        .bar-container:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+            z-index: 15 !important;
+            filter: saturate(1.1);
+        }
+
+        .bar-planned {
+            top: 20px;
+            background: linear-gradient(135deg, #1e40af, #3b82f6);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .bar-actual {
+            top: 64px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .bar-mq2 {
+            height: 34px !important;
+            top: 20px !important;
+            background: linear-gradient(135deg, #4f46e5, #7c3aed) !important; /* Premium Indigo/Royal Violet gradient */
+            border: 1px solid rgba(255, 255, 255, 0.15) !important;
+            box-shadow: 0 4px 10px rgba(79, 70, 229, 0.25) !important;
+            border-radius: 8px !important; /* Matches other bars */
+            z-index: 7 !important;
+            font-size: 0.72rem !important;
+            font-weight: 700 !important;
+            padding: 0 10px !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .bar-mq2:hover {
+            transform: translateY(-2px) scale(1.05) !important;
+            box-shadow: 0 6px 15px rgba(79, 70, 229, 0.4) !important;
+            z-index: 25 !important;
+        }
+
+        .bar-mq2-actual {
+            height: 34px !important;
+            top: 64px; /* Default vertically aligned with Actual timeline (top: 64px), can be overridden */
+            background: linear-gradient(135deg, #0ea5e9, #14b8a6) !important; /* Premium Teal-Cyan gradient */
+            border: 1px solid rgba(255, 255, 255, 0.15) !important;
+            box-shadow: 0 4px 10px rgba(20, 184, 166, 0.25) !important;
+            border-radius: 8px !important; /* Matches standard bars */
+            z-index: 7 !important;
+            font-size: 0.72rem !important;
+            font-weight: 700 !important;
+            padding: 0 10px !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .bar-mq2-actual:hover {
+            transform: translateY(-2px) scale(1.05) !important;
+            box-shadow: 0 6px 15px rgba(20, 184, 166, 0.4) !important;
+            z-index: 25 !important;
+        }
+
+        /* ACTUAL TIMELINE STATUS GRADIENTS */
+        .actual-ontime, .actual-dispatched {
+            background: linear-gradient(135deg, #15803d, #22c55e); /* Solid corporate green gradient */
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.2);
+        }
+
+        .actual-delay {
+            background: linear-gradient(135deg, #b91c1c, #f43f5e);
+            box-shadow: 0 4px 12px rgba(244, 63, 94, 0.2);
+        }
+
+        .actual-progress {
+            background: linear-gradient(135deg, #d97706, #fbbf24);
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+        }
+
+        .actual-notstarted {
+            top: 64px;
+            background: repeating-linear-gradient(
+                45deg,
+                #f1f5f9,
+                #f1f5f9 10px,
+                #e2e8f0 10px,
+                #e2e8f0 20px
+            );
+            color: #64748b;
+            border: 1.5px dashed #cbd5e1;
+            box-shadow: none;
+            cursor: default;
+        }
+
+        .actual-notstarted:hover {
+            transform: none;
+            box-shadow: none;
+            filter: none;
+        }
+
+        .bar-label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            flex-grow: 1;
+            justify-content: center;
+            margin: 0 10px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         /* TOOLTIP */
-        .tooltip-custom {
+        .gantt-tooltip {
             position: absolute;
             background: var(--navy-prime);
             color: white;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 0.7rem;
-            z-index: 100;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            z-index: 1000;
             pointer-events: none;
             opacity: 0;
             transition: opacity 0.2s;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            border: 1px solid rgba(255,255,255,0.1);
         }
 
+        .tooltip-row {
+            margin-bottom: 4px;
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .tooltip-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .tooltip-val {
+            font-weight: 800;
+        }
+
+        /* EXACT PARITY FILTER STYLES (MATCHING MAIN DASHBOARD) */
+        .filter-bar-wrap {
+            display: flex;
+            justify-content: center;
+            margin: 10px 0 35px 0;
+            width: 100%;
+        }
+
+        .unified-filter-pill {
+            display: flex;
+            align-items: center;
+            background: white;
+            padding: 12px 40px;
+            border-radius: 100px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.05);
+            border: 1px solid #f1f5f9;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .filt-divider {
+            width: 1px;
+            height: 24px;
+            background: #e2e8f0;
+            margin: 0 25px;
+        }
+
+        @media (max-width: 991px) {
+            .filt-divider {
+                display: none;
+            }
+            .unified-filter-pill {
+                border-radius: 24px;
+                padding: 18px 24px;
+                flex-direction: column;
+                align-items: stretch;
+                width: 100%;
+            }
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+        }
+
+        .filter-group i {
+            color: #0369a1;
+            font-size: 1.25rem;
+            margin-right: 10px;
+        }
+
+        .filter-label {
+            font-size: 0.75rem;
+            font-weight: 800;
+            color: #1e293b;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        .date-label {
+            font-size: 0.9rem;
+            font-weight: 800;
+            color: #003366;
+            letter-spacing: 0.8px;
+            margin-right: 15px;
+            text-transform: uppercase;
+        }
+
+        .date-input-field {
+            border: 1.5px solid #d4e4f5 !important;
+            border-radius: 12px;
+            padding: 10px 35px 10px 20px;
+            font-weight: 700;
+            color: #003366;
+            background: #ffffff;
+            font-size: 0.9rem;
+            outline: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            min-width: 190px;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23003366' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 12px 12px;
+            box-shadow: 0 2px 6px rgba(0, 31, 63, 0.04);
+            position: relative;
+        }
+
+        .date-input-field:hover {
+            border-color: #0ea5e9 !important;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 31, 63, 0.08);
+        }
+
+        .date-input-field:focus {
+            border-color: #14b8a6 !important;
+            box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.15);
+        }
+
+        /* Hide native date picker indicator but keep functionality */
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        /* Ensure input handles the space for the icon */
+        input[type="date"] {
+            position: relative;
+        }
+
+        .btn-export-pill {
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            color: #ffffff;
+            border: 1px solid #1e293b;
+            border-radius: 100px;
+            padding: 10px 22px;
+            font-size: 0.82rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+        }
+
+        .btn-export-pill:hover, .btn-export-pill:focus {
+            background: #ffffff;
+            color: #0f172a;
+            border-color: #0f172a;
+            box-shadow: 0 6px 18px rgba(15, 23, 42, 0.25);
+            transform: translateY(-1px);
+        }
+
+        /* PREMIUM EXPORT DROPDOWN */
+        .premium-export-dropdown {
+            border-radius: 16px !important;
+            padding: 8px !important;
+            border: none !important;
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.12) !important;
+            min-width: 220px !important;
+            background: #ffffff !important;
+            z-index: 2000 !important;
+        }
+
+        .premium-export-item {
+            display: flex !important;
+            align-items: center !important;
+            gap: 12px !important;
+            padding: 8px 12px !important;
+            border-radius: 10px !important;
+            transition: all 0.2s ease !important;
+            margin-bottom: 2px !important;
+            border: 1px solid transparent !important;
+            text-decoration: none !important;
+            color: #1e293b !important;
+        }
+
+        .premium-export-item:last-child {
+            margin-bottom: 0 !important;
+        }
+
+        .premium-export-item:hover {
+            background: #f8fafc !important;
+            border-color: #f1f5f9 !important;
+            color: #0369a1 !important;
+        }
+
+        .export-icon-box {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+
+        .export-icon-pdf {
+            background: #fff1f2;
+            color: #e11d48;
+        }
+
+        .export-icon-excel {
+            background: #f0fdf4;
+            color: #16a34a;
+        }
+
+        .export-title {
+            font-weight: 700;
+            font-size: 0.82rem;
+            color: #1e293b;
+            line-height: 1.2;
+        }
+
+        /* RESPONSIVE */
         @media (max-width: 991px) {
             .sidebar {
                 transform: translateX(-100%);
@@ -300,205 +740,808 @@
                 margin-left: 0;
             }
         }
-
-        /* --- Responsive Design for Mobile Devices --- */
-        @media (max-width: 768px) {
-            .app-header {
-                padding: 15px;
-            }
-            .header-title {
-                font-size: 1.1rem;
-            }
-            .main-content {
-                padding: 15px;
-            }
-            .gantt-card {
-                border-radius: 20px;
-            }
-            .project-label {
-                width: 150px;
-                padding: 10px 15px;
-            }
-            .gantt-hd-spacer {
-                width: 150px;
-            }
-        }
     </style>
 </head>
 
 <body>
 
-    <!-- SIDEBAR -->
-    <div class="sidebar" id="sidebar">
-        <div class="sidebar-header">
+    <!-- HEADER -->
+    <header class="app-header">
+        <!-- Left: Brand Logo & Name (Enlarged) -->
+        <div class="d-flex align-items-center gap-3">
             <div class="d-flex align-items-center gap-3">
-                <div style="width: 40px; height: 40px; background: white; border-radius: 12px;">
-                    <img src="asset/image.png" alt="logo"
-                        style="width: 100%; height:100%; object-fit:contain; padding:5px;">
+                <div style="width: 50px; height: 50px; background: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; padding: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border: 1px solid #e2e8f0;">
+                    <img src="asset/image.png" alt="logo" style="width: 100%; height:100%; object-fit:contain;">
                 </div>
                 <div>
-                    <div style="font-weight: 900; font-size: 1.1rem; color: white;">DANPREL</div>
-                    <div style="font-size: 0.6rem; color: #94a3b8; text-transform: uppercase;">Engineering Automation
-                    </div>
+                    <div style="font-weight: 900; font-size: 1.25rem; color: #ffffff; letter-spacing: -0.5px; line-height: 1.1;">DANPREL</div>
+                    <div style="font-size: 0.72rem; color: #14b8a6; text-transform: uppercase; font-weight: 700; letter-spacing: 0.3px; line-height: 1.2; margin-top: 3px;">Engineering Automation</div>
                 </div>
             </div>
         </div>
-        <div class="sidebar-section-title">Navigation</div>
-        <a href="project_review.html" class="sidebar-btn">
-            <div class="sb-icon"><i class="bi bi-speedometer2"></i></div>
-            Dashboard
-        </a>
-        <a href="resource_hub.html" class="sidebar-btn">
-            <div class="sb-icon"><i class="bi bi-people-fill"></i></div>
-            Resource Hub
-        </a>
-        <a href="visualize.html" class="sidebar-btn active">
-            <div class="sb-icon"><i class="bi bi-calendar3"></i></div>
-            Visualize
-        </a>
 
-        <div class="sidebar-section-title" style="margin-top: 30px;">Account</div>
-        <button class="sidebar-btn" onclick="performLogout()">
-            <div class="sb-icon"><i class="bi bi-box-arrow-right"></i></div>
-            Logout
-        </button>
-    </div>
-
-    <!-- HEADER -->
-    <header class="app-header">
-        <div class="d-flex align-items-center gap-3">
-            <button class="menu-toggle d-lg-none" onclick="toggleSidebar()">
-                <i class="bi bi-list"></i>
-            </button>
-            <div class="header-title">Master Timeline Visualization</div>
+        <!-- Center: Centered Title -->
+        <div class="header-title d-none d-lg-block">
+            Master Timeline Visualization
         </div>
+
+        <!-- Right: Action Button -->
         <div class="d-flex align-items-center gap-3">
-            <!-- Profile or Other Stuff -->
+            <a href="project_review.html" class="btn btn-sm btn-outline-light fw-bold px-3 py-2 rounded-pill" style="border: 1.5px solid rgba(255,255,255,0.3); font-size: 0.75rem; text-decoration: none;">
+                <i class="bi bi-arrow-left me-1"></i> BACK TO DASHBOARD
+            </a>
         </div>
     </header>
 
     <!-- CONTENT -->
     <main class="main-content">
+        
+        <!-- EXACT PARITY UNIFIED FILTER PILL (MATCHING MAIN DASHBOARD) -->
+        <div class="filter-bar-wrap">
+            <div class="unified-filter-pill">
+                <!-- PM/Project Expeditor Filter -->
+                <div class="filter-group">
+                    <i class="bi bi-person-badge"></i>
+                    <span class="filter-label">PM/Project Expeditor</span>
+                    <select id="expeditorSelector" class="date-input-field" onchange="applyFilters()" style="min-width: 220px;">
+                        <option value="All">All Project Expeditors</option>
+                    </select>
+                </div>
+
+                <div class="filt-divider"></div>
+
+                <!-- Date Range From -->
+                <div class="filter-group" onclick="try { document.getElementById('fromDateFilter').showPicker(); } catch(e) { document.getElementById('fromDateFilter').focus(); }">
+                    <i class="bi bi-calendar3"></i>
+                    <span class="date-label">FROM</span>
+                    <input type="date" id="fromDateFilter" class="date-input-field" onchange="applyFilters()">
+                </div>
+
+                <div class="filt-divider"></div>
+
+                <!-- Date Range To -->
+                <div class="filter-group" onclick="try { document.getElementById('toDateFilter').showPicker(); } catch(e) { document.getElementById('toDateFilter').focus(); }">
+                    <i class="bi bi-calendar2-minus"></i>
+                    <span class="date-label">TO</span>
+                    <input type="date" id="toDateFilter" class="date-input-field" onchange="applyFilters()">
+                </div>
+
+                <div class="filt-divider"></div>
+
+                <!-- Premium Export Action Dropdown -->
+                <div class="dropdown">
+                    <button class="btn-export-pill dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-download"></i> EXPORT
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end premium-export-dropdown shadow-lg border-0">
+                        <li>
+                            <a class="dropdown-item premium-export-item" href="javascript:void(0)" onclick="exportGanttToPDF()">
+                                <div class="export-icon-box export-icon-pdf">
+                                    <i class="bi bi-file-earmark-pdf-fill"></i>
+                                </div>
+                                <div class="d-flex flex-column text-start">
+                                    <span class="export-title">Export as PDF</span>
+                                    <span style="font-size: 0.65rem; color: #64748b; font-weight: 600;">High-Quality Document</span>
+                                </div>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item premium-export-item" href="javascript:void(0)" onclick="exportGanttToExcel()">
+                                <div class="export-icon-box export-icon-excel">
+                                    <i class="bi bi-file-earmark-spreadsheet-fill"></i>
+                                </div>
+                                <div class="d-flex flex-column text-start">
+                                    <span class="export-title">Export as Excel</span>
+                                    <span style="font-size: 0.65rem; color: #64748b; font-weight: 600;">Master Spreadsheet</span>
+                                </div>
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider" style="border-color: #f1f5f9; margin: 4px 0;"></li>
+                        <li>
+                            <a class="dropdown-item premium-export-item" href="javascript:void(0)" onclick="resetFilters()">
+                                <div class="export-icon-box" style="background: #f1f5f9; color: #475569;">
+                                    <i class="bi bi-arrow-counterclockwise"></i>
+                                </div>
+                                <div class="d-flex flex-column text-start">
+                                    <span class="export-title" style="color: #475569;">Reset Filters</span>
+                                    <span style="font-size: 0.65rem; color: #94a3b8; font-weight: 600;">Clear Selection</span>
+                                </div>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <!-- Legend & Overview Card -->
         <div class="gantt-card">
+            <div class="gantt-card-header">
+                <div class="gantt-card-title">
+                    <i class="bi bi-bar-chart-steps" style="color: #14b8a6; font-size: 1.25rem;"></i>
+                    <span>Project Planned vs Actual Timelines</span>
+                </div>
+                <div class="gantt-legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: linear-gradient(135deg, #1e40af, #3b82f6);"></div>
+                        <span>Planned Schedule</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: linear-gradient(135deg, #4f46e5, #7c3aed); border: 1px solid rgba(255, 255, 255, 0.2);"></div>
+                        <span>Planned MQ2 Milestone</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: linear-gradient(135deg, #0ea5e9, #14b8a6); border: 1px solid rgba(255, 255, 255, 0.2);"></div>
+                        <span>Actual MQ2 Milestone</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color actual-dispatched"></div>
+                        <span>Actual (Dispatched)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color actual-delay"></div>
+                        <span>Actual (Delayed)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color actual-progress"></div>
+                        <span>Actual (In Progress)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color actual-notstarted" style="border: 1px dashed #cbd5e1; background: #f1f5f9;"></div>
+                        <span>Actual (Not Started)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gantt Wrapper -->
             <div class="gantt-wrapper">
                 <div class="gantt-container" id="ganttContainer">
-                    <!-- Calendar and Rows will be injected here -->
+                    <!-- Calendar Grid and Project Rows loaded dynamically -->
                 </div>
             </div>
         </div>
     </main>
 
+    <!-- Custom Floating Tooltip -->
+    <div class="gantt-tooltip" id="ganttTooltip"></div>
+
+    <!-- Bootstrap JS Bundle and Export Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
     <script>
-        let projects = [];
+        let allProjects = []; // Master list of unfiltered projects
+        let projects = [];    // Filtered list currently displayed
         const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
         async function loadProjects() {
             try {
                 const res = await fetch('/api/projects');
-                projects = await res.json();
-                renderVisualize();
+                allProjects = await res.json();
+                projects = [...allProjects];
+                
+                // Populate the dropdown filter options dynamically
+                populateExpeditors();
+                
+                renderGantt();
             } catch (err) {
-                console.error("Load failed", err);
+                console.error("Failed to load project database", err);
             }
         }
 
-        function renderVisualize() {
+        // Dynamically extract unique Project Managers/Expeditors from database
+        function populateExpeditors() {
+            const selector = document.getElementById('expeditorSelector');
+            if (!selector) return;
+
+            // Extract unique names
+            const expeditors = [...new Set(allProjects.map(p => p.project_manager).filter(m => m && m !== '—' && m.trim() !== ''))];
+            expeditors.sort();
+
+            // Retain "All" option and append others
+            selector.innerHTML = '<option value="All">All Project Expeditors</option>';
+            expeditors.forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.innerText = name;
+                selector.appendChild(opt);
+            });
+        }
+
+        // Client-side Filter Application Logic
+        function applyFilters() {
+            const expeditorVal = document.getElementById('expeditorSelector').value;
+            const fromDateVal = document.getElementById('fromDateFilter').value;
+            const toDateVal = document.getElementById('toDateFilter').value;
+
+            let filtered = [...allProjects];
+
+            // 1. Filter by Expeditor
+            if (expeditorVal && expeditorVal !== 'All') {
+                filtered = filtered.filter(p => p.project_manager === expeditorVal);
+            }
+
+            // 2. Filter by overlapping active period [From Date, To Date]
+            if (fromDateVal || toDateVal) {
+                const fd = fromDateVal ? new Date(fromDateVal) : null;
+                const td = toDateVal ? new Date(toDateVal) : null;
+
+                if (fd) fd.setHours(0,0,0,0);
+                if (td) td.setHours(23,59,59,999);
+
+                filtered = filtered.filter(p => {
+                    // Extract effective start date (prefer actual kickoff start, fallback to planned start)
+                    let pStart = null;
+                    if (p.detailed_phases?.['kickoff']?.actual_start) {
+                        pStart = new Date(p.detailed_phases['kickoff'].actual_start);
+                    } else if (p.start_date) {
+                        pStart = new Date(p.start_date);
+                    }
+                    if (pStart) pStart.setHours(0,0,0,0);
+
+                    // Extract effective end date (prefer actual dispatch end, fallback to planned dispatch date)
+                    let pEnd = null;
+                    if (p.detailed_phases?.['dispatch_parent']?.actual_end) {
+                        pEnd = new Date(p.detailed_phases['dispatch_parent'].actual_end);
+                    } else if (p.dispatch_date) {
+                        pEnd = new Date(p.dispatch_date);
+                    }
+                    if (pEnd) pEnd.setHours(0,0,0,0);
+
+                    // Standard Interval Intersection Overlap Math:
+                    // A project overlaps the selected period if its start is before/on the selected End Date (td),
+                    // AND its end is after/on the selected Start Date (fd).
+                    // If project has no start or end defined, it is considered open-ended and matches.
+                    const startMatch = !td || !pStart || (pStart <= td);
+                    const endMatch = !fd || !pEnd || (pEnd >= fd);
+
+                    return startMatch && endMatch;
+                });
+            }
+
+            projects = filtered;
+            renderGantt();
+        }
+
+        // Reset Filter inputs back to defaults
+        function resetFilters() {
+            document.getElementById('expeditorSelector').value = 'All';
+            document.getElementById('fromDateFilter').value = '';
+            document.getElementById('toDateFilter').value = '';
+            projects = [...allProjects];
+            renderGantt();
+        }
+
+        function renderGantt() {
             const container = document.getElementById('ganttContainer');
             container.innerHTML = '';
 
-            // 1. Determine Date Range (Start with today, end with furthest dispatch)
-            let minDate = new Date();
-            let maxDate = new Date();
-            maxDate.setMonth(maxDate.getMonth() + 6); // Default 6 months ahead
+            // 1. Compute dynamic date bounds (Default to today start, extending to extremes)
+            let earliest = new Date();
+            let latest = new Date();
+            latest.setMonth(latest.getMonth() + 4); // Default to 4 months lookahead
 
             projects.forEach(p => {
+                // Planned Dates
                 if (p.start_date) {
                     const d = new Date(p.start_date);
-                    if (d < minDate) minDate = new Date(d);
+                    if (d < earliest) earliest = new Date(d);
                 }
                 if (p.dispatch_date) {
                     const d = new Date(p.dispatch_date);
-                    if (d > maxDate) maxDate = new Date(d);
+                    if (d > latest) latest = new Date(d);
+                }
+
+                // Actual Dates (Kickoff & Dispatch)
+                const kickoffActualStart = p.detailed_phases?.['kickoff']?.actual_start;
+                const dispatchActualEnd = p.detailed_phases?.['dispatch_parent']?.actual_end;
+
+                if (kickoffActualStart) {
+                    const d = new Date(kickoffActualStart);
+                    if (d < earliest) earliest = new Date(d);
+                }
+                if (dispatchActualEnd) {
+                    const d = new Date(dispatchActualEnd);
+                    if (d > latest) latest = new Date(d);
                 }
             });
 
-            // Adjust to start of month
-            minDate.setDate(1);
-            maxDate.setMonth(maxDate.getMonth() + 1);
-            maxDate.setDate(1);
+            // Adjust minDate to Monday of that week
+            const minDate = new Date(earliest);
+            minDate.setHours(0,0,0,0);
+            const startDay = minDate.getDay();
+            const offsetToMonday = (startDay === 0) ? -6 : 1 - startDay;
+            minDate.setDate(minDate.getDate() + offsetToMonday);
 
-            // 2. Render Header (Months & Weeks)
+            // Adjust maxDate to Sunday of that week + 4 weeks of padding
+            latest.setDate(latest.getDate() + 28);
+            const maxDate = new Date(latest);
+            maxDate.setHours(23,59,59,999);
+            const endDay = maxDate.getDay();
+            const offsetToSunday = (endDay === 0) ? 0 : 7 - endDay;
+            maxDate.setDate(maxDate.getDate() + offsetToSunday);
+
+            // 2. Generate list of weekly Monday dates
+            const weeks = [];
+            let curr = new Date(minDate);
+            while (curr < maxDate) {
+                weeks.push(new Date(curr));
+                curr.setDate(curr.getDate() + 7);
+            }
+
+            // Group weeks by Month
+            const monthsGrouped = [];
+            const monthNamesShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            
+            weeks.forEach((wDate, idx) => {
+                const monthIndex = wDate.getMonth();
+                const mName = monthNamesShort[monthIndex].toUpperCase(); // FEB, MAR, APR...
+                const year = wDate.getFullYear();
+                const key = `${mName} ${year}`;
+                let mGroup = monthsGrouped.find(g => g.key === key);
+                if (!mGroup) {
+                    mGroup = { key, mName, year, weeks: [] };
+                    monthsGrouped.push(mGroup);
+                }
+                mGroup.weeks.push({
+                    date: wDate,
+                    idx: idx + 1
+                });
+            });
+
+            const weekWidth = 87.5; // matching background grid width in CSS
+            const totalTimelineWidth = weeks.length * weekWidth;
+            const pixelsPerDay = weekWidth / 7; // Exactly 12.5 pixels per day!
+
+            // Set container total width dynamically to avoid layout warping
+            container.style.width = `${280 + totalTimelineWidth}px`;
+
+            // 3. Build Calendar Headers (Months & Weeks row)
             const hd = document.createElement('div');
             hd.className = 'gantt-hd';
 
             const spacer = document.createElement('div');
             spacer.className = 'gantt-hd-spacer';
+            spacer.innerHTML = `
+                <div class="projects-header-badge">
+                    <i class="bi bi-folder2-open"></i>
+                    <span>LIST OF PROJECTS</span>
+                </div>
+            `;
             hd.appendChild(spacer);
 
-            let current = new Date(minDate);
-            while (current < maxDate) {
+            const timelineHeader = document.createElement('div');
+            timelineHeader.className = 'gantt-hd-timeline';
+            timelineHeader.style.width = `${totalTimelineWidth}px`;
+            timelineHeader.style.flexShrink = '0';
+
+            // Create Months Row
+            const monthsRow = document.createElement('div');
+            monthsRow.className = 'gantt-months-row';
+            monthsGrouped.forEach(mGroup => {
                 const mBlock = document.createElement('div');
                 mBlock.className = 'month-block';
+                mBlock.style.width = `${mGroup.weeks.length * weekWidth}px`;
+                mBlock.innerText = mGroup.mName;
+                monthsRow.appendChild(mBlock);
+            });
+            timelineHeader.appendChild(monthsRow);
 
-                const mLabel = document.createElement('div');
-                mLabel.className = 'month-label';
-                mLabel.innerText = `${monthNames[current.getMonth()]} ${current.getFullYear()}`;
-                mBlock.appendChild(mLabel);
+            // Create Weeks Row
+            const weeksRow = document.createElement('div');
+            weeksRow.className = 'gantt-weeks-row';
+            weeks.forEach((wDate, wIdx) => {
+                const wCell = document.createElement('div');
+                wCell.className = 'week-cell';
+                wCell.style.width = `${weekWidth}px`;
 
-                const wRow = document.createElement('div');
-                wRow.className = 'weeks-row';
-                for (let i = 1; i <= 4; i++) {
-                    const wCell = document.createElement('div');
-                    wCell.className = 'week-cell';
-                    wCell.innerText = `W${i}`;
-                    wRow.appendChild(wCell);
-                }
-                mBlock.appendChild(wRow);
+                // Line 1: Week number (e.g. W1)
+                const weekNum = document.createElement('div');
+                weekNum.className = 'week-num';
+                weekNum.innerText = `W${wIdx + 1}`;
+                wCell.appendChild(weekNum);
 
-                hd.appendChild(mBlock);
-                current.setMonth(current.getMonth() + 1);
-            }
+                // Line 2: Week start date (e.g. 02 Feb)
+                const weekDate = document.createElement('div');
+                weekDate.className = 'week-date';
+                const dayVal = String(wDate.getDate()).padStart(2, '0');
+                const monthVal = monthNamesShort[wDate.getMonth()];
+                weekDate.innerText = `${dayVal} ${monthVal}`;
+                wCell.appendChild(weekDate);
+
+                // Line 3: Day literal (MON)
+                const weekDay = document.createElement('div');
+                weekDay.className = 'week-day';
+                weekDay.innerText = 'MON';
+                wCell.appendChild(weekDay);
+
+                weeksRow.appendChild(wCell);
+            });
+            timelineHeader.appendChild(weeksRow);
+
+            hd.appendChild(timelineHeader);
             container.appendChild(hd);
 
-            // 3. Render Project Rows
-            projects.forEach((p, idx) => {
+            // 5. Handle Empty Project List Fallback State
+            if (projects.length === 0) {
+                const emptyRow = document.createElement('div');
+                emptyRow.className = 'project-row d-flex align-items-center justify-content-center bg-white text-muted';
+                emptyRow.style.minHeight = '180px';
+                emptyRow.style.width = '100%';
+                emptyRow.innerHTML = `
+                    <div class="text-center py-4">
+                        <div class="mb-2" style="font-size: 2rem; color: #cbd5e1;"><i class="bi bi-folder-x"></i></div>
+                        <div class="fw-bold text-slate-700" style="font-size: 0.9rem;">No projects found matching the selected filters</div>
+                        <div class="text-xs text-slate-400 mt-1" style="font-size: 0.75rem;">Try modifying your Project Expeditor selection or date range limits.</div>
+                    </div>
+                `;
+                container.appendChild(emptyRow);
+                return;
+            }
+
+            // 4. Render Timeline Project Rows
+            projects.forEach(p => {
                 const row = document.createElement('div');
                 row.className = 'project-row';
 
+                // Sidebar Info Label for Row
                 const labelCell = document.createElement('div');
                 labelCell.className = 'project-label';
                 labelCell.innerHTML = `
                     <div class="p-code">${p.code || '---'}</div>
-                    <div class="p-name">${p.name || 'Untitled'}</div>
+                    <div class="p-name">${p.name || 'Untitled Project'}</div>
+                    <div class="p-meta">
+                        <i class="bi bi-person-fill" style="color: #14b8a6;"></i>
+                        <span>${p.project_manager || 'No PM Assigned'}</span>
+                    </div>
                 `;
                 row.appendChild(labelCell);
 
+                // Timeline Area
                 const timelineArea = document.createElement('div');
                 timelineArea.className = 'timeline-area';
+                timelineArea.style.width = `${totalTimelineWidth}px`;
+                timelineArea.style.flexShrink = '0';
 
+                // RENDER BAR 1: Planned Schedule Baseline (Planned Start -> Planned Dispatch)
                 if (p.start_date && p.dispatch_date) {
-                    const start = new Date(p.start_date);
-                    const end = new Date(p.dispatch_date);
+                    const planStart = new Date(p.start_date);
+                    const planEnd = new Date(p.dispatch_date);
+                    planStart.setHours(0,0,0,0);
+                    planEnd.setHours(0,0,0,0);
 
-                    const totalWidth = 320; // Width of a month block
-                    const pixelsPerDay = totalWidth / 30; // approx
+                    const leftOffset = Math.max(0, (planStart - minDate) / (1000 * 60 * 60 * 24) * pixelsPerDay);
+                    const barWidth = Math.max(40, (planEnd - planStart) / (1000 * 60 * 60 * 24) * pixelsPerDay);
 
-                    const leftOffset = (start - minDate) / (1000 * 60 * 60 * 24) * pixelsPerDay;
-                    const width = (end - start) / (1000 * 60 * 60 * 24) * pixelsPerDay;
-
-                    if (width > 0) {
-                        const bar = document.createElement('div');
-                        bar.className = 'bar-main';
-                        const color = getProjectColor(idx);
-                        bar.style.backgroundColor = color;
-                        bar.style.left = `${leftOffset}px`;
-                        bar.style.width = `${width}px`;
-                        bar.innerHTML = `
-                            <span>${p.name}</span>
-                            <span class="bar-dates">${formatDate(p.start_date)} - ${formatDate(p.dispatch_date)}</span>
+                    const planBar = document.createElement('div');
+                    planBar.className = 'bar-container bar-planned';
+                    planBar.style.left = `${leftOffset}px`;
+                    planBar.style.width = `${barWidth}px`;
+                    planBar.style.zIndex = '5';
+                    const planStartFmt = fmtDateStr(p.start_date);
+                    const planEndFmt = fmtDateStr(p.dispatch_date);
+                    if (barWidth >= 220) {
+                        planBar.innerHTML = `
+                            <span class="bar-date-start">${planStartFmt}</span>
+                            <span class="bar-label"><i class="bi bi-flag-fill me-1"></i>Planned</span>
+                            <span class="bar-date-end">${planEndFmt}</span>
                         `;
-                        bar.onclick = () => window.location.href = `project_phases.html?id=${p._id}`;
-                        timelineArea.appendChild(bar);
+                    } else if (barWidth >= 130) {
+                        planBar.innerHTML = `
+                            <span class="bar-date-start">${planStartFmt}</span>
+                            <span class="bar-date-end">${planEndFmt}</span>
+                        `;
+                    } else {
+                        planBar.innerHTML = `
+                            <span class="bar-label" style="margin: 0;"><i class="bi bi-flag-fill"></i></span>
+                        `;
+                    }
+
+                    // Tooltip bindings
+                    setupTooltip(planBar, {
+                        title: 'Planned Schedule',
+                        project: p.name,
+                        code: p.code,
+                        start: fmtDateStr(p.start_date),
+                        end: fmtDateStr(p.dispatch_date),
+                        duration: `${Math.ceil((planEnd - planStart) / (1000 * 60 * 60 * 24))} Days`
+                    });
+
+                    planBar.onclick = () => window.location.href = `project_phases.html?id=${p._id}`;
+                    timelineArea.appendChild(planBar);
+
+                    // RENDER BAR 1B: Planned MQ2 Date (Stretched I&C Phase timeline)
+                    const rawMq2Date = p.reassign_mq2_date || p.mq2_date;
+                    if (rawMq2Date) {
+                        const mq2DateObj = new Date(rawMq2Date);
+                        mq2DateObj.setHours(0,0,0,0);
+                        if (mq2DateObj >= minDate && mq2DateObj <= maxDate) {
+                            // Extract Installation & Commissioning planned dates from database
+                            const incPhase = p.detailed_phases?.['inc_parent'] || {};
+                            const incStartVal = incPhase.reassign_start || incPhase.plan_start || '';
+                            const incEndVal = incPhase.reassign_end || incPhase.plan_end || rawMq2Date || '';
+
+                            const incStartFmt = incStartVal ? fmtDateNoYear(incStartVal) : '---';
+                            const incEndFmt = incEndVal ? fmtDateNoYear(incEndVal) : '---';
+
+                            let mq2Left = 0;
+                            let mq2Width = 0;
+                            let hasIncRange = false;
+
+                            if (incStartVal && incEndVal) {
+                                const sDate = new Date(incStartVal);
+                                const eDate = new Date(incEndVal);
+                                sDate.setHours(0,0,0,0);
+                                eDate.setHours(0,0,0,0);
+                                if (sDate <= eDate) {
+                                    mq2Left = (sDate - minDate) / (1000 * 60 * 60 * 24) * pixelsPerDay;
+                                    mq2Width = (((eDate - sDate) / (1000 * 60 * 60 * 24)) + 1) * pixelsPerDay;
+                                    hasIncRange = true;
+                                }
+                            }
+
+                            if (!hasIncRange) {
+                                const pointLeft = (mq2DateObj - minDate) / (1000 * 60 * 60 * 24) * pixelsPerDay;
+                                mq2Left = Math.max(0, pointLeft - 47.5);
+                                mq2Width = 95;
+                            }
+
+                            const mq2Bar = document.createElement('div');
+                            mq2Bar.className = 'bar-container bar-mq2';
+                            mq2Bar.style.setProperty('left', `${mq2Left}px`, 'important');
+                            mq2Bar.style.setProperty('width', `${mq2Width}px`, 'important');
+
+                            if (hasIncRange) {
+                                mq2Bar.style.setProperty('justify-content', 'space-between', 'important');
+                                if (mq2Width >= 220) {
+                                    mq2Bar.innerHTML = `
+                                        <span class="bar-date-start" style="color: rgba(255,255,255,0.85); font-size: 0.68rem;">${incStartFmt}</span>
+                                        <span class="bar-label" style="font-size: 0.72rem;"><i class="bi bi-pin-angle-fill me-1"></i>I&C Plan</span>
+                                        <span class="bar-date-end" style="color: rgba(255,255,255,0.85); font-size: 0.68rem;">${incEndFmt}</span>
+                                    `;
+                                } else if (mq2Width >= 130) {
+                                    mq2Bar.innerHTML = `
+                                        <span class="bar-date-start" style="color: rgba(255,255,255,0.85); font-size: 0.68rem;">${incStartFmt}</span>
+                                        <span class="bar-date-end" style="color: rgba(255,255,255,0.85); font-size: 0.68rem;">${incEndFmt}</span>
+                                    `;
+                                } else {
+                                    mq2Bar.innerHTML = `
+                                        <span class="bar-label" style="margin: 0;"><i class="bi bi-pin-angle-fill"></i></span>
+                                    `;
+                                }
+                            } else {
+                                const mq2Fmt = fmtDateNoYear(rawMq2Date);
+                                mq2Bar.innerHTML = `<span class="bar-label" style="margin: 0;"><i class="bi bi-pin-angle-fill me-1"></i>MQ2: ${mq2Fmt}</span>`;
+                            }
+                            
+                            let durationStr = '---';
+                            if (incStartVal && incEndVal) {
+                                const sDate = new Date(incStartVal);
+                                const eDate = new Date(incEndVal);
+                                sDate.setHours(0,0,0,0);
+                                eDate.setHours(0,0,0,0);
+                                const diffDays = Math.ceil((eDate - sDate) / (1000 * 60 * 60 * 24));
+                                durationStr = diffDays >= 0 ? `${diffDays + 1} Days` : '---';
+                            }
+
+                            // Bind customized interactive tooltip
+                            setupTooltip(mq2Bar, {
+                                title: 'Planned I&C / MQ2 Milestone',
+                                project: p.name,
+                                code: p.code,
+                                start: incStartFmt,
+                                end: incEndFmt,
+                                duration: durationStr,
+                                status: p.reassign_mq2_date ? 'Reassigned / Updated Date' : 'Original Baseline Date'
+                            });
+                            
+                            mq2Bar.onclick = () => window.location.href = `project_phases.html?id=${p._id}`;
+                            timelineArea.appendChild(mq2Bar);
+                        }
+                    }
+                }
+
+                // RENDER BAR 2: Actual Schedule (Kickoff Actual Start -> Dispatch Actual End)
+                const actStartStr = p.detailed_phases?.['kickoff']?.actual_start;
+                const actEndStr = p.detailed_phases?.['dispatch_parent']?.actual_end;
+                const planEndStr = p.dispatch_date;
+
+                const actualBar = document.createElement('div');
+
+                if (actStartStr) {
+                    const actStart = new Date(actStartStr);
+                    const actEnd = actEndStr ? new Date(actEndStr) : new Date(); // Fallback to today if still running
+                    actStart.setHours(0,0,0,0);
+                    actEnd.setHours(0,0,0,0);
+
+                    const leftOffset = Math.max(0, (actStart - minDate) / (1000 * 60 * 60 * 24) * pixelsPerDay);
+                    const barWidth = Math.max(40, (actEnd - actStart) / (1000 * 60 * 60 * 24) * pixelsPerDay);
+
+                    // Compute Status & Color Accent
+                    let actualClass = '';
+                    let statusLabel = '';
+                    let tooltipStatus = '';
+
+                    if (actEndStr) {
+                        // Project completed / Dispatched!
+                        actualClass = 'actual-dispatched';
+                        if (planEndStr) {
+                            const planEnd = new Date(planEndStr);
+                            planEnd.setHours(0,0,0,0);
+                            if (actEnd <= planEnd) {
+                                statusLabel = 'Dispatched (On Time)';
+                                tooltipStatus = 'Dispatched - On Time';
+                            } else {
+                                const delayDays = Math.ceil((actEnd - planEnd) / (1000 * 60 * 60 * 24));
+                                statusLabel = `Dispatched (Late by ${delayDays} Days)`;
+                                tooltipStatus = `Dispatched - Late by ${delayDays} days`;
+                            }
+                        } else {
+                            statusLabel = 'Dispatched';
+                            tooltipStatus = 'Dispatched (Baseline dates undefined)';
+                        }
+                    } else {
+                        // Project in progress!
+                        actualClass = 'actual-progress';
+                        if (planEndStr) {
+                            const planEnd = new Date(planEndStr);
+                            planEnd.setHours(0,0,0,0);
+                            const today = new Date();
+                            today.setHours(0,0,0,0);
+                            if (today <= planEnd) {
+                                statusLabel = 'In Progress';
+                                tooltipStatus = 'In Progress (Active schedule)';
+                            } else {
+                                const delayDays = Math.ceil((today - planEnd) / (1000 * 60 * 60 * 24));
+                                statusLabel = `Delay (${delayDays} Days)`;
+                                tooltipStatus = `In Progress - Delayed by ${delayDays} days`;
+                            }
+                        } else {
+                            statusLabel = 'In Progress';
+                            tooltipStatus = 'In Progress';
+                        }
+                    }
+
+                    actualBar.className = `bar-container bar-actual ${actualClass}`;
+                    actualBar.style.left = `${leftOffset}px`;
+                    actualBar.style.width = `${barWidth}px`;
+                    actualBar.style.zIndex = '6';
+                    const actStartFmt = fmtDateStr(actStartStr);
+                    const actEndFmt = actEndStr ? fmtDateStr(actEndStr) : 'Active';
+                    if (barWidth >= 220) {
+                        actualBar.innerHTML = `
+                            <span class="bar-date-start">${actStartFmt}</span>
+                            <span class="bar-label"><i class="bi bi-play-circle-fill me-1"></i>${statusLabel}</span>
+                            <span class="bar-date-end">${actEndFmt}</span>
+                        `;
+                    } else if (barWidth >= 130) {
+                        actualBar.innerHTML = `
+                            <span class="bar-date-start">${actStartFmt}</span>
+                            <span class="bar-date-end">${actEndFmt}</span>
+                        `;
+                    } else {
+                        actualBar.innerHTML = `
+                            <span class="bar-label" style="margin: 0;"><i class="bi bi-play-circle-fill"></i></span>
+                        `;
+                    }
+
+                    // Tooltip bindings
+                    setupTooltip(actualBar, {
+                        title: 'Actual Progress Timeline',
+                        project: p.name,
+                        code: p.code,
+                        start: fmtDateStr(actStartStr),
+                        end: actEndStr ? fmtDateStr(actEndStr) : 'Active (Today)',
+                        duration: `${Math.ceil((actEnd - actStart) / (1000 * 60 * 60 * 24))} Days elapsed`,
+                        status: tooltipStatus
+                    });
+
+                    actualBar.onclick = () => window.location.href = `project_phases.html?id=${p._id}`;
+                } else {
+                    // Actual schedule has not started yet
+                    actualBar.className = 'bar-container actual-notstarted';
+                    actualBar.style.left = p.start_date ? `${Math.max(0, (new Date(p.start_date) - minDate) / (1000 * 60 * 60 * 24) * pixelsPerDay)}px` : '0px';
+                    actualBar.style.width = '180px';
+                    actualBar.innerHTML = `<span class="bar-label"><i class="bi bi-clock me-1"></i>Not Started</span>`;
+                }
+
+                timelineArea.appendChild(actualBar);
+
+                // RENDER BAR 2B: Actual MQ2/SAT Milestone (Stretched Actual I&C Phase timeline)
+                const rawActMq2Date = p.detailed_phases?.['inc_2']?.actual_end || p.detailed_phases?.['inc_2']?.actual_start;
+                if (rawActMq2Date) {
+                    const actMq2DateObj = new Date(rawActMq2Date);
+                    actMq2DateObj.setHours(0,0,0,0);
+                    if (actMq2DateObj >= minDate && actMq2DateObj <= maxDate) {
+                        const isCompleted = !!p.detailed_phases?.['inc_2']?.actual_end;
+                        const actMq2Fmt = fmtDateNoYear(rawActMq2Date);
+
+                        // Extract Installation & Commissioning ACTUAL dates from database
+                        const incPhase = p.detailed_phases?.['inc_parent'] || {};
+                        const incActStartVal = incPhase.actual_start || '';
+                        const incActEndVal = incPhase.actual_end || (isCompleted ? rawActMq2Date : new Date().toISOString().split('T')[0]);
+
+                        const incActStartFmt = incActStartVal ? fmtDateNoYear(incActStartVal) : '---';
+                        const incActEndFmt = incPhase.actual_end ? fmtDateNoYear(incPhase.actual_end) : (isCompleted ? actMq2Fmt : 'Active');
+
+                        let actMq2Left = 0;
+                        let actMq2Width = 0;
+                        let hasActIncRange = false;
+
+                        if (incActStartVal && incActEndVal) {
+                            const sDate = new Date(incActStartVal);
+                            const eDate = new Date(incActEndVal);
+                            sDate.setHours(0,0,0,0);
+                            eDate.setHours(0,0,0,0);
+                            if (sDate <= eDate) {
+                                actMq2Left = (sDate - minDate) / (1000 * 60 * 60 * 24) * pixelsPerDay;
+                                actMq2Width = (((eDate - sDate) / (1000 * 60 * 60 * 24)) + 1) * pixelsPerDay;
+                                hasActIncRange = true;
+                            }
+                        }
+
+                        if (!hasActIncRange) {
+                            const pointLeft = (actMq2DateObj - minDate) / (1000 * 60 * 60 * 24) * pixelsPerDay;
+                            actMq2Left = Math.max(0, pointLeft - 47.5);
+                            actMq2Width = 95;
+                        }
+
+                        const actMq2Bar = document.createElement('div');
+                        actMq2Bar.className = 'bar-container bar-mq2-actual';
+                        actMq2Bar.style.setProperty('left', `${actMq2Left}px`, 'important');
+                        actMq2Bar.style.setProperty('width', `${actMq2Width}px`, 'important');
+                        
+                        // Positioned strictly BELOW the main actual timeline bar (which is at top: 64px)
+                        actMq2Bar.style.setProperty('top', '102px', 'important');
+                        row.style.minHeight = '152px'; // Ensure container expands to prevent clipping
+
+                        if (hasActIncRange) {
+                            actMq2Bar.style.setProperty('justify-content', 'space-between', 'important');
+                            if (actMq2Width >= 220) {
+                                actMq2Bar.innerHTML = `
+                                    <span class="bar-date-start" style="color: rgba(255,255,255,0.85); font-size: 0.68rem;">${incActStartFmt}</span>
+                                    <span class="bar-label" style="font-size: 0.72rem;"><i class="bi bi-pin-angle-fill me-1"></i>I&C Actual</span>
+                                    <span class="bar-date-end" style="color: rgba(255,255,255,0.85); font-size: 0.68rem;">${incActEndFmt}</span>
+                                `;
+                            } else if (actMq2Width >= 130) {
+                                actMq2Bar.innerHTML = `
+                                    <span class="bar-date-start" style="color: rgba(255,255,255,0.85); font-size: 0.68rem;">${incActStartFmt}</span>
+                                    <span class="bar-date-end" style="color: rgba(255,255,255,0.85); font-size: 0.68rem;">${incActEndFmt}</span>
+                                `;
+                            } else {
+                                actMq2Bar.innerHTML = `
+                                    <span class="bar-label" style="margin: 0;"><i class="bi bi-pin-angle-fill"></i></span>
+                                `;
+                            }
+                        } else {
+                            const labelText = isCompleted ? `<i class="bi bi-pin-angle-fill me-1"></i>MQ2: ${actMq2Fmt}` : `<i class="bi bi-arrow-repeat me-1"></i>MQ2: Active`;
+                            actMq2Bar.innerHTML = `<span class="bar-label" style="margin: 0; display: inline-flex; align-items: center;">${labelText}</span>`;
+                        }
+
+                        let actDurationStr = '---';
+                        if (incActStartVal && incActEndVal) {
+                            const sDate = new Date(incActStartVal);
+                            const eDate = new Date(incActEndVal);
+                            sDate.setHours(0,0,0,0);
+                            eDate.setHours(0,0,0,0);
+                            const diffDays = Math.ceil((eDate - sDate) / (1000 * 60 * 60 * 24));
+                            actDurationStr = diffDays >= 0 ? `${diffDays + 1} Days` : '---';
+                        }
+
+                        // Bind customized interactive tooltip for ACTUAL I&C
+                        setupTooltip(actMq2Bar, {
+                            title: isCompleted ? 'Actual I&C / MQ2 Milestone (Completed)' : 'Actual I&C / MQ2 Milestone (In Progress)',
+                            project: p.name,
+                            code: p.code,
+                            start: incActStartVal ? fmtDateStr(incActStartVal) : '---',
+                            end: incActEndVal ? fmtDateStr(incActEndVal) : '---',
+                            duration: actDurationStr,
+                            status: isCompleted ? 'Completed Actual Schedule' : `Phase Started on ${incActStartVal ? fmtDateStr(incActStartVal) : '---'}`
+                        });
+
+                        actMq2Bar.onclick = () => window.location.href = `project_phases.html?id=${p._id}`;
+                        timelineArea.appendChild(actMq2Bar);
                     }
                 }
 
@@ -507,20 +1550,44 @@
             });
         }
 
-        function getProjectColor(idx) {
-            const colors = ['#0d9488', '#2563eb', '#7c3aed', '#db2777', '#ea580c', '#16a34a'];
-            return colors[idx % colors.length];
+        function fmtDateStr(dt) {
+            if (!dt) return '';
+            const p = dt.split('-');
+            return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : dt;
         }
 
-        function formatDate(dt) {
+        function fmtDateNoYear(dt) {
             if (!dt) return '';
-            const parts = dt.split('-');
-            if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
-            const d = new Date(dt);
-            if (isNaN(d.getTime())) return dt;
-            const dd = String(d.getDate()).padStart(2, '0');
-            const mm = String(d.getMonth() + 1).padStart(2, '0');
-            return `${dd}/${mm}/${d.getFullYear()}`;
+            const p = dt.split('-');
+            return p.length === 3 ? `${p[2]}/${p[1]}` : dt;
+        }
+
+        // TOOLTIP INTERACTIVE BINDING
+        function setupTooltip(element, data) {
+            const tooltip = document.getElementById('ganttTooltip');
+            element.addEventListener('mouseenter', (e) => {
+                let html = `<div style="font-weight:900; color:var(--teal-accent); margin-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:6px;">${data.title}</div>`;
+                html += `<div class="tooltip-row"><span>Project:</span><span class="tooltip-val">${data.project}</span></div>`;
+                html += `<div class="tooltip-row"><span>Code:</span><span class="tooltip-val text-uppercase">${data.code || '---'}</span></div>`;
+                html += `<div class="tooltip-row"><span>Start Date:</span><span class="tooltip-val">${data.start}</span></div>`;
+                html += `<div class="tooltip-row"><span>End Date:</span><span class="tooltip-val">${data.end}</span></div>`;
+                html += `<div class="tooltip-row"><span>Duration:</span><span class="tooltip-val text-warning">${data.duration}</span></div>`;
+                if (data.status) {
+                    html += `<div class="tooltip-row" style="margin-top:4px; padding-top:4px; border-top:1px dashed rgba(255,255,255,0.1);"><span>Status:</span><span class="tooltip-val text-info">${data.status}</span></div>`;
+                }
+                tooltip.innerHTML = html;
+                tooltip.style.opacity = '1';
+            });
+
+            element.addEventListener('mousemove', (e) => {
+                // Position tooltip next to the mouse cursor
+                tooltip.style.left = `${e.pageX + 15}px`;
+                tooltip.style.top = `${e.pageY + 15}px`;
+            });
+
+            element.addEventListener('mouseleave', () => {
+                tooltip.style.opacity = '0';
+            });
         }
 
         function toggleSidebar() {
@@ -531,6 +1598,218 @@
             localStorage.removeItem('danprel_auth');
             localStorage.removeItem('danprel_role');
             window.location.replace('login.html');
+        }
+
+        // HIGH-FIDELITY EXPORT TIMELINES TO EXCEL SPREADSHEET
+        function exportGanttToExcel() {
+            if (projects.length === 0) {
+                alert("No project data available to export.");
+                return;
+            }
+
+            // Create temporary table element in DOM
+            const table = document.createElement('table');
+            table.style.display = 'none';
+
+            const dateStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            let tableHtml = `
+                <thead>
+                    <tr><th colspan="8" style="font-size: 18px; font-weight: bold; text-align: left; background-color: #001f3f; color: #ffffff;">DANPREL - Engineering Automation Pvt Ltd</th></tr>
+                    <tr><th colspan="8" style="font-size: 14px; font-weight: bold; text-align: left; background-color: #001f3f; color: #ffffff;">MASTER PROJECT TIMELINES REPORT</th></tr>
+                    <tr><th colspan="8" style="text-align: left;">Generated Date: ${dateStr}</th></tr>
+                    <tr><th colspan="8"></th></tr>
+                    <tr style="background-color: #f1f5f9; font-weight: bold;">
+                        <th style="border: 1px solid #cbd5e1; padding: 8px;">Project Code</th>
+                        <th style="border: 1px solid #cbd5e1; padding: 8px;">Project Name</th>
+                        <th style="border: 1px solid #cbd5e1; padding: 8px;">Project Expeditor / PM</th>
+                        <th style="border: 1px solid #cbd5e1; padding: 8px;">Planned Start Date</th>
+                        <th style="border: 1px solid #cbd5e1; padding: 8px;">Planned Dispatch Date</th>
+                        <th style="border: 1px solid #cbd5e1; padding: 8px;">Actual Start Date</th>
+                        <th style="border: 1px solid #cbd5e1; padding: 8px;">Actual Dispatch Date</th>
+                        <th style="border: 1px solid #cbd5e1; padding: 8px;">Schedule Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+            `;
+
+            // Row Population
+            projects.forEach(p => {
+                const actStartStr = p.detailed_phases?.['kickoff']?.actual_start;
+                const actEndStr = p.detailed_phases?.['dispatch_parent']?.actual_end;
+
+                let statusLabel = 'Not Started';
+                if (actStartStr) {
+                    if (actEndStr) {
+                        if (p.dispatch_date) {
+                            const planEnd = new Date(p.dispatch_date);
+                            const actEnd = new Date(actEndStr);
+                            planEnd.setHours(0,0,0,0);
+                            actEnd.setHours(0,0,0,0);
+                            if (actEnd <= planEnd) {
+                                statusLabel = 'On Time';
+                            } else {
+                                const delayDays = Math.ceil((actEnd - planEnd) / (1000 * 60 * 60 * 24));
+                                statusLabel = `Delayed (${delayDays} Days)`;
+                            }
+                        } else {
+                            statusLabel = 'Completed';
+                        }
+                    } else {
+                        if (p.dispatch_date) {
+                            const planEnd = new Date(p.dispatch_date);
+                            const today = new Date();
+                            planEnd.setHours(0,0,0,0);
+                            today.setHours(0,0,0,0);
+                            if (today <= planEnd) {
+                                statusLabel = 'In Progress';
+                            } else {
+                                const delayDays = Math.ceil((today - planEnd) / (1000 * 60 * 60 * 24));
+                                statusLabel = `Delayed In-Progress (${delayDays} Days)`;
+                            }
+                        } else {
+                            statusLabel = 'In Progress';
+                        }
+                    }
+                }
+
+                tableHtml += `
+                    <tr>
+                        <td style="border: 1px solid #cbd5e1; padding: 6px;">${p.code || '---'}</td>
+                        <td style="border: 1px solid #cbd5e1; padding: 6px; font-weight: bold;">${p.name || '---'}</td>
+                        <td style="border: 1px solid #cbd5e1; padding: 6px;">${p.project_manager || '---'}</td>
+                        <td style="border: 1px solid #cbd5e1; padding: 6px; text-align: center;">${p.start_date ? new Date(p.start_date).toLocaleDateString('en-GB') : '---'}</td>
+                        <td style="border: 1px solid #cbd5e1; padding: 6px; text-align: center;">${p.dispatch_date ? new Date(p.dispatch_date).toLocaleDateString('en-GB') : '---'}</td>
+                        <td style="border: 1px solid #cbd5e1; padding: 6px; text-align: center;">${actStartStr ? new Date(actStartStr).toLocaleDateString('en-GB') : '---'}</td>
+                        <td style="border: 1px solid #cbd5e1; padding: 6px; text-align: center;">${actEndStr ? new Date(actEndStr).toLocaleDateString('en-GB') : '---'}</td>
+                        <td style="border: 1px solid #cbd5e1; padding: 6px; font-weight: bold;">${statusLabel}</td>
+                    </tr>
+                `;
+            });
+
+            tableHtml += `</tbody>`;
+            table.innerHTML = tableHtml;
+            document.body.appendChild(table);
+
+            const ws = XLSX.utils.table_to_sheet(table, { raw: true });
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Master Timelines");
+
+            const timestamp = new Date().getTime();
+            XLSX.writeFile(wb, `DANPREL_Gantt_Timelines_${timestamp}.xlsx`);
+
+            document.body.removeChild(table);
+        }        // GORGEOUS MULTI-PAGE LANDSCAPE GANTT CHART PDF EXPORT WITH REPEATING CORPORATE HEADERS & FOOTERS
+        function exportGanttToPDF() {
+            document.body.style.cursor = 'wait';
+
+            // 1. Get elements
+            const ganttContainer = document.getElementById('ganttContainer');
+            if (!ganttContainer) {
+                document.body.style.cursor = 'default';
+                return;
+            }
+
+            const headerNode = ganttContainer.querySelector('.gantt-hd').cloneNode(true);
+            const allRows = Array.from(ganttContainer.querySelectorAll('.project-row')).map(r => r.cloneNode(true));
+
+            if (allRows.length === 0) {
+                alert('No active project rows to export.');
+                document.body.style.cursor = 'default';
+                return;
+            }
+
+            const ganttWidth = ganttContainer.scrollWidth;
+            const calcWidth = Math.max(1400, ganttWidth + 100);
+            const genDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+            // 2. Content Chunking (Pages) - 8 rows per page is ideal for a roomy dashboard layout
+            const rowsPerPage = 8;
+            const totalPages = Math.ceil(allRows.length / rowsPerPage);
+
+            let finalPdfHtml = `<div style="background: #f1f5f9; width: ${calcWidth + 40}px; padding: 20px 0; font-family: 'Inter', system-ui, -apple-system, sans-serif;">`;
+
+            for (let p = 0; p < totalPages; p++) {
+                const chunk = allRows.slice(p * rowsPerPage, (p + 1) * rowsPerPage);
+
+                finalPdfHtml += `
+                <div class="pdf-page-wrapper" style="width: ${calcWidth}px; padding: 40px; background: #ffffff; margin: 0 auto 30px auto; position: relative; border-radius: 15px; page-break-after: ${p === totalPages - 1 ? 'auto' : 'always'}; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.05);">
+                    <!-- REPEATED BRANDING HEADER -->
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 40px; padding-bottom: 25px; border-bottom: 4px solid #001f3f;">
+                        <div style="display: flex; align-items: center; gap: 20px;">
+                             <img src="asset/image.png" style="height: 75px; width: auto; object-fit: contain;">
+                             <div>
+                                <h1 style="margin: 0; font-size: 44px; color: #001f3f; font-weight: 900; letter-spacing: -1px; line-height: 1;">DANPREL</h1>
+                                <div style="font-size: 15px; color: #475569; font-weight: 700; margin-top: 4px;">Engineering Automation Pvt Ltd</div>
+                             </div>
+                        </div>
+                        <div style="text-align: right; line-height: 1.5;">
+                             <h2 style="margin: 0 0 6px 0; color: #001f3f; font-size: 28px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px;">PROJECT TIMELINES DASHBOARD</h2>
+                             <div style="font-size: 13px; color: #94a3b8; font-weight: 600;">Generated Date: ${genDate}</div>
+                             <div style="font-size: 13px; color: #475569; font-weight: 700; margin-top: 5px;">Source: <span style="color: #0f172a; font-weight: 800;">Main PMIS Visualization</span></div>
+                        </div>
+                    </div>
+
+                    <!-- GANTT BODY WITH REPEATED HEADER -->
+                    <div class="gantt-container" style="display: flex; flex-direction: column; border: 1px solid #E2EBF5; border-radius: 20px; overflow: visible; background: #fff; box-shadow: 0 10px 30px rgba(0,0,0,0.02); align-content: start; width: max-content;">
+                        <!-- Re-inject Calendar Grid Header -->
+                        ${headerNode.outerHTML}
+                        
+                        <!-- CHUNKED ROWS -->
+                        ${chunk.map(r => r.outerHTML).join('')}
+                    </div>
+                    
+                    <!-- GANTT FOOTER WITH PAGE NUMBERS -->
+                    <div style="margin-top: auto; padding-top: 20px; display: flex; justify-content: flex-end; align-items: center;">
+                        <div style="background: #001f3f; color: #ffffff; padding: 6px 16px; border-radius: 20px; font-weight: 800; font-size: 12px;">Page ${p + 1} of ${totalPages}</div>
+                    </div>
+                </div>`;
+            }
+
+            finalPdfHtml += `</div>`;
+
+            // 3. Mount to off-screen print area to measure actual dimensions
+            let printArea = document.getElementById('printArea');
+            if (!printArea) {
+                printArea = document.createElement('div');
+                printArea.id = 'printArea';
+                printArea.style.position = 'absolute';
+                printArea.style.left = '-99999px';
+                printArea.style.top = '-99999px';
+                document.body.appendChild(printArea);
+            }
+            printArea.innerHTML = finalPdfHtml;
+
+            // Measure height of page wrapper to dynamically scale page size
+            printArea.style.display = 'block';
+            const pageWrapper = printArea.querySelector('.pdf-page-wrapper');
+            const pageHeight = pageWrapper ? pageWrapper.offsetHeight : 1200;
+            printArea.style.display = 'none';
+
+            const width_pt = (calcWidth + 40) * 0.75;
+            const height_pt = (pageHeight + 40) * 0.75;
+
+            const opt = {
+                margin:       0,
+                filename:     `DANPREL_Dashboard_Timelines_${new Date().getTime()}.pdf`,
+                image:        { type: 'jpeg', quality: 1.0 },
+                html2canvas:  { 
+                    scale: 1.5, 
+                    useCORS: true,
+                    logging: false,
+                    scrollX: 0,
+                    scrollY: 0
+                },
+                jsPDF:        { unit: 'pt', format: [width_pt, height_pt], orientation: 'landscape' }
+            };
+
+            html2pdf().set(opt).from(printArea.firstChild).save().then(() => {
+                printArea.innerHTML = '';
+                document.body.style.cursor = 'default';
+            }).catch(err => {
+                console.error("PDF export failed:", err);
+                printArea.innerHTML = '';
+                document.body.style.cursor = 'default';
+            });
         }
 
         window.onload = loadProjects;

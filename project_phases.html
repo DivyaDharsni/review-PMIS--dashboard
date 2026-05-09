@@ -1583,14 +1583,17 @@
                 border-radius: 20px;
                 height: auto;
             }
+
             .d-flex.gap-2.align-items-center {
                 width: 100%;
                 justify-content: center;
                 flex-wrap: wrap;
             }
+
             .dashboard-grid {
                 grid-template-columns: 1fr;
             }
+
             .info-card {
                 flex-direction: column;
                 align-items: flex-start;
@@ -1602,49 +1605,63 @@
             body {
                 padding: 10px;
             }
+
             .app-header {
                 padding: 15px;
                 border-radius: 15px;
             }
+
             .brand-name {
                 font-size: 1rem;
             }
+
             .brand-sub {
                 font-size: 0.55rem;
             }
+
             .nav-actions .btn {
                 width: 100%;
                 justify-content: center;
             }
+
             .phase-card {
                 padding: 20px;
             }
-            .info-card > div {
+
+            .info-card>div {
                 width: 100%;
             }
-            .btn-visualize, .dropdown-toggle {
+
+            .btn-visualize,
+            .dropdown-toggle {
                 width: 100%;
                 justify-content: center;
             }
+
             .d-flex.align-items-center.gap-3 {
                 flex-direction: column;
                 width: 100%;
                 align-items: stretch !important;
             }
+
             .modal-content {
                 padding: 20px !important;
             }
+
             .gantt-wrapper {
                 grid-template-columns: 150px 1fr !important;
                 overflow-x: auto;
             }
+
             .gantt-sidebar {
                 min-width: 150px;
             }
+
             .gantt-row {
                 grid-template-columns: 150px 1fr !important;
             }
-            .row > div {
+
+            .row>div {
                 width: 100%;
                 margin-bottom: 15px;
             }
@@ -1773,8 +1790,48 @@
                             <div
                                 style="display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; width: 100%;">
                                 <div></div> <!-- Left Spacer -->
-                                <div class="text-center fw-900" style="letter-spacing: 0.1em; font-size: 0.85rem;">
-                                    <i class="bi bi-calendar-check me-2"></i>PLAN
+                                <div class="text-center fw-900 d-flex align-items-center justify-content-center gap-2"
+                                    style="letter-spacing: 0.1em; font-size: 0.85rem;">
+                                    <!-- Plan Export Dropdown Button -->
+                                    <div class="dropdown d-inline-block" style="letter-spacing: normal;">
+                                        <button
+                                            class="btn btn-sm p-0 border-0 d-flex align-items-center justify-content-center"
+                                            type="button" data-bs-toggle="dropdown" aria-expanded="false"
+                                            style="color: #ffffff; background: transparent; box-shadow: none;">
+                                            <i class="bi bi-download cursor-pointer me-1"
+                                                style="font-size: 0.95rem; transition: color 0.2s;"
+                                                onmouseover="this.style.color='#14b8a6'"
+                                                onmouseout="this.style.color='#ffffff'"></i>
+                                        </button>
+                                        <ul class="dropdown-menu shadow border-0"
+                                            style="font-size: 0.72rem; border-radius: 12px; padding: 6px; background: #ffffff; min-width: 220px; border: 1px solid rgba(0,0,0,0.06); text-transform: none;">
+                                            <li>
+                                                <a class="dropdown-item d-flex align-items-center gap-2 py-2"
+                                                    href="javascript:void(0)" onclick="exportPhasesPlanPDF()"
+                                                    style="border-radius: 8px; color: #1F2A44; transition: all 0.2s;">
+                                                    <div class="export-icon-box"
+                                                        style="background: #e0f2fe; color: #0284c7; width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 1rem;">
+                                                        <i class="bi bi-file-earmark-pdf-fill"></i>
+                                                    </div>
+                                                    <span style="font-weight: 700;">Export Phases Page Plan (PDF)</span>
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item d-flex align-items-center gap-2 py-2"
+                                                    href="javascript:void(0)" onclick="exportGanttPlanPDF()"
+                                                    style="border-radius: 8px; color: #1F2A44; transition: all 0.2s;">
+                                                    <div class="export-icon-box"
+                                                        style="background: #fef3c7; color: #d97706; width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 1rem;">
+                                                        <i class="bi bi-bar-chart-steps"></i>
+                                                    </div>
+                                                    <span style="font-weight: 700;">Export Gantt Plan (PDF)</span>
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </div>
+
+                                    <i class="bi bi-calendar-check"></i>
+                                    <span>PLAN</span>
                                 </div>
                                 <div id="planHeaderActions" class="d-flex gap-2 justify-content-end">
                                     <!-- Dynamic controls injected via renderPlanHeader() -->
@@ -1932,7 +1989,8 @@
                         </div>
                         <div class="col-12">
                             <label class="small fw-bold text-muted">Progress (%)</label>
-                            <input type="number" class="form-control" id="mProgress" min="0" max="100" oninput="if(this.value !== '') { let v = parseInt(this.value); if(isNaN(v) || v < 0) this.value = 0; if(v > 100) this.value = 100; }">
+                            <input type="number" class="form-control" id="mProgress" min="0" max="100"
+                                oninput="if(this.value !== '') { let v = parseInt(this.value); if(isNaN(v) || v < 0) this.value = 0; if(v > 100) this.value = 100; }">
                         </div>
                         <div class="col-12">
                             <label class="small fw-bold text-muted">Remarks</label>
@@ -2207,7 +2265,7 @@
         function calcDays(start, end) {
             if (!start || !end) return '-';
             const s = new Date(start), e = new Date(end);
-            const days = Math.ceil((e - s) / (1000 * 60 * 60 * 24));
+            const days = Math.round((e - s) / (1000 * 60 * 60 * 24)) + 1;
             return days >= 0 ? days + 'd' : '-';
         }
 
@@ -2707,8 +2765,8 @@
                         if (data.plan_start && data.plan_end) {
                             const s = new Date(data.plan_start);
                             const e = new Date(data.plan_end);
-                            displayDays = Math.ceil((e - s) / (1000 * 60 * 60 * 24));
-                            if (displayDays < 0) displayDays = 0;
+                            displayDays = Math.round((e - s) / (1000 * 60 * 60 * 24)) + 1;
+                            if (displayDays < 1) displayDays = 0;
                         } else if (data.plan_duration) {
                             displayDays = data.plan_duration;
                         }
@@ -2879,7 +2937,7 @@
                             const isoValue = date ? date.toLocaleDateString('sv-SE') : '';
                             const phaseId = el.dataset.phaseId;
                             const field = el.dataset.field;
-                            
+
                             // Immediately close the datepicker on select/clear before re-rendering the table
                             if (datepicker) {
                                 datepicker.hide();
@@ -2999,7 +3057,7 @@
                 if (!isNaN(dur) && dur > 0) {
                     const start = new Date(value);
                     const end = new Date(start);
-                    end.setDate(end.getDate() + dur);
+                    end.setDate(end.getDate() + (dur - 1));
                     d.plan_end = end.toISOString().split('T')[0];
                 }
             }
@@ -3008,8 +3066,8 @@
             if (field === 'plan_end' && value && d.plan_start) {
                 const s = new Date(d.plan_start);
                 const e = new Date(value);
-                const dur = Math.ceil((e - s) / (1000 * 60 * 60 * 24));
-                if (dur >= 0) d.plan_duration = dur;
+                const dur = Math.round((e - s) / (1000 * 60 * 60 * 24)) + 1;
+                if (dur >= 1) d.plan_duration = dur;
             }
 
             renderTable(); // Update sibling fields on screen
@@ -3017,7 +3075,7 @@
 
         function updatePlanFromDays(phaseId, days, element) {
             const val = parseInt(days);
-            if (isNaN(val) || val < 0) return;
+            if (isNaN(val) || val < 1) return;
 
             if (!project.detailed_phases[phaseId]) project.detailed_phases[phaseId] = {};
             const d = project.detailed_phases[phaseId];
@@ -3026,7 +3084,7 @@
             if (d.plan_start) {
                 const start = new Date(d.plan_start);
                 const end = new Date(start);
-                end.setDate(end.getDate() + val);
+                end.setDate(end.getDate() + (val - 1));
                 d.plan_end = end.toISOString().split('T')[0];
             }
             renderTable();
@@ -3328,7 +3386,7 @@
             new bootstrap.Modal(document.getElementById('ganttModal')).show();
         }
 
-        function renderGantt(targetId = 'ganttContainer', forceAll = false) {
+        function renderGantt(targetId = 'ganttContainer', forceAll = false, hideActual = false) {
             const container = document.getElementById(targetId);
             if (!container) return;
             container.innerHTML = '';
@@ -3493,7 +3551,7 @@
                     if (data.plan_start && data.plan_end) {
                         const start = new Date(data.plan_start), end = new Date(data.plan_end);
                         const left = ((start - minDate) / (1000 * 60 * 60 * 24 * 7)) * weekWidth;
-                        const width = ((end - start) / (1000 * 60 * 60 * 24 * 7)) * weekWidth;
+                        const width = (((end - start) + (1000 * 60 * 60 * 24)) / (1000 * 60 * 60 * 24 * 7)) * weekWidth;
                         if (width > 0) {
                             const bar = document.createElement('div');
                             bar.className = 'gantt-bar gantt-bar-planned';
@@ -3505,11 +3563,11 @@
                             timelineCell.appendChild(bar); timelineCell.appendChild(label);
                         }
                     }
-                    if (data.actual_start) {
+                    if (!hideActual && data.actual_start) {
                         const start = new Date(data.actual_start);
                         let end = data.actual_end ? new Date(data.actual_end) : new Date();
                         const left = ((start - minDate) / (1000 * 60 * 60 * 24 * 7)) * weekWidth;
-                        const width = ((end - start) / (1000 * 60 * 60 * 24 * 7)) * weekWidth;
+                        const width = (((end - start) + (1000 * 60 * 60 * 24)) / (1000 * 60 * 60 * 24 * 7)) * weekWidth;
                         if (width >= 0) {
                             const bar = document.createElement('div');
                             bar.className = 'gantt-bar gantt-bar-actual' + (data.progress === 100 ? ' completed' : '');
@@ -3601,18 +3659,22 @@
                 });
 
                 if (!d[parentId]) d[parentId] = {};
-                if (pStart) d[parentId].plan_start = pStart.toISOString().split('T')[0];
-                if (pEnd) d[parentId].plan_end = pEnd.toISOString().split('T')[0];
+                d[parentId].plan_start = pStart ? pStart.toISOString().split('T')[0] : '';
+                d[parentId].plan_end = pEnd ? pEnd.toISOString().split('T')[0] : '';
 
-                if (aStart) d[parentId].actual_start = aStart.toISOString().split('T')[0];
-                if (aEnd) d[parentId].actual_end = aEnd.toISOString().split('T')[0];
+                d[parentId].actual_start = aStart ? aStart.toISOString().split('T')[0] : '';
+                d[parentId].actual_end = aEnd ? aEnd.toISOString().split('T')[0] : '';
 
                 // Baseline fallback from revisions
-                if (!d[parentId].plan_start && rStart) d[parentId].plan_start = rStart.toISOString().split('T')[0];
-                if (!d[parentId].plan_end && rEnd) d[parentId].plan_end = rEnd.toISOString().split('T')[0];
+                if (!d[parentId].plan_start && rStart) {
+                    d[parentId].plan_start = rStart.toISOString().split('T')[0];
+                }
+                if (!d[parentId].plan_end && rEnd) {
+                    d[parentId].plan_end = rEnd.toISOString().split('T')[0];
+                }
 
-                if (rStart) d[parentId].reassign_start = rStart.toISOString().split('T')[0];
-                if (rEnd) d[parentId].reassign_end = rEnd.toISOString().split('T')[0];
+                d[parentId].reassign_start = rStart ? rStart.toISOString().split('T')[0] : '';
+                d[parentId].reassign_end = rEnd ? rEnd.toISOString().split('T')[0] : '';
             };
 
             // Trigger aggregate sync for ALL relevant parent phases to ensure timeline integrity
@@ -3921,7 +3983,9 @@
                     scale: 2,
                     useCORS: true,
                     logging: false,
-                    backgroundColor: '#ffffff'
+                    backgroundColor: '#ffffff',
+                    scrollY: 0,
+                    scrollX: 0
                 },
                 jsPDF: {
                     unit: 'pt',
@@ -4033,11 +4097,276 @@
                     useCORS: true,
                     logging: false,
                     width: calcWidth + 40,
-                    backgroundColor: '#ffffff'
+                    backgroundColor: '#ffffff',
+                    scrollY: 0,
+                    scrollX: 0
                 },
                 jsPDF: {
                     unit: 'pt',
                     format: [width_pt + 20, height_pt + 10], // Custom page size matched to content
+                    orientation: 'landscape',
+                    compress: true
+                }
+            };
+
+            html2pdf().from(finalPdfHtml).set(opt).save().then(() => {
+                hideExportStatus();
+                if (typeof showSuccessToast === 'function') showSuccessToast();
+            }).catch(err => {
+                console.error('Timeline PDF Error:', err);
+                hideExportStatus();
+            });
+        }
+
+
+        function exportPhasesPlanPDF() {
+            showExportStatus('Preparing Baseline Plan PDF...');
+
+            // 1. Data Processing and Partitioning
+            let pSer = 0; let sSer = 0;
+            const activePhases = defaultPhases.filter(ph => {
+                const d = project.detailed_phases[ph.id] || {};
+                if (d.is_excluded) return false;
+                // For parent phases, only show if they have active children
+                if (ph.type === 'parent') {
+                    const subCount = defaultPhases.filter(s => s.parent === ph.id && !(project.detailed_phases[s.id]?.is_excluded)).length;
+                    return subCount > 0;
+                }
+                return true;
+            });
+
+            const tableRows = activePhases.map(ph => {
+                let ser = "";
+                if (ph.type === 'parent' || ph.type === 'single') { pSer++; sSer = 0; ser = pSer + ". "; }
+                else if (ph.type === 'sub') { sSer++; ser = pSer + "." + sSer + " "; }
+
+                const data = JSON.parse(JSON.stringify(project.detailed_phases[ph.id] || {}));
+                if (ph.type === 'parent') {
+                    const subs = defaultPhases.filter(s => s.parent === ph.id && !(project.detailed_phases[s.id]?.is_excluded));
+                    let pStart = null, pEnd = null;
+                    subs.forEach(s => {
+                        const sd = project.detailed_phases[s.id] || {};
+                        if (sd.plan_start) { const dBound = new Date(sd.plan_start); if (!pStart || dBound < pStart) pStart = dBound; }
+                        if (sd.plan_end) { const dBound = new Date(sd.plan_end); if (!pEnd || dBound > pEnd) pEnd = dBound; }
+                    });
+                    if (pStart) data.plan_start = pStart.toISOString().split('T')[0];
+                    if (pEnd) data.plan_end = pEnd.toISOString().split('T')[0];
+                }
+                return { ph, data, ser };
+            });
+
+            // 2. A4 Layout Tuning
+            const itemsPerPage = 16;
+            const totalPages = Math.ceil(tableRows.length / itemsPerPage);
+            const genDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+            const cleanFmtDate = (isoStr) => {
+                if (!isoStr) return '---';
+                const p = isoStr.split('-');
+                return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : isoStr;
+            };
+
+            // Container width set for A4 Landscape
+            let finalHtml = `<div style="background: #ffffff; width: 1120px; font-family: 'Inter', sans-serif; padding-top: 1px;">`;
+
+            for (let p = 0; p < totalPages; p++) {
+                const chunk = tableRows.slice(p * itemsPerPage, (p + 1) * itemsPerPage);
+                const pageBreakStyle = (p < totalPages - 1) ? 'page-break-after: always;' : '';
+
+                finalHtml += `
+        <div class="report-page" style="width: 1060px; min-height: 700px; padding: 15px 40px; background: #ffffff; margin: 0 auto; position: relative; border-radius: 15px; box-shadow: 0 0 20px rgba(0,0,0,0.05); ${pageBreakStyle} display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box;">
+            
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 3px solid #001f3f;">
+                <div style="display: flex; align-items: center; gap: 15px;">
+                     <img src="asset/image.png" style="height: 55px; width: auto; object-fit: contain;">
+                     <div>
+                        <h1 style="margin: 0; font-size: 28px; color: #001f3f; font-weight: 900; letter-spacing: -1px; line-height: 1;">DANPREL</h1>
+                        <div style="font-size: 11px; color: #64748b; font-weight: 700; margin-top: 2px; text-transform: uppercase;">Engineering Automation Pvt Ltd</div>
+                     </div>
+                </div>
+                <div style="text-align: right; line-height: 1.2;">
+                     <h2 style="margin: 0 0 5px 0; color: #001f3f; font-size: 20px; font-weight: 900; text-transform: uppercase;">BASELINE PLAN REPORT</h2>
+                     <div style="font-size: 11px; color: #475569; font-weight: 800;">Project: <span style="color: #0f172a;">${project.name || 'Untitled'} (${project.code || '---'})</span></div>
+                     <div style="font-size: 10px; color: #475569; margin-top: 3px;">Customer: <span style="color: #0f172a; font-weight: 800;">${project.customer_name || '—'}</span> | SAT: <span style="color: #0f172a; font-weight: 800;">${project.sat_location || '—'}</span></div>
+                     <div style="font-size: 10px; color: #94a3b8; margin-top: 3px;">Generated Date: ${genDate}</div>
+                </div>
+            </div>
+
+            <table style="width: 100%; border-collapse: separate; border-spacing: 0; font-size: 9.5px; table-layout: fixed; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden;">
+                <colgroup>
+                    <col style="width: 45%;">
+                    <col style="width: 14%;">
+                    <col style="width: 8%;">
+                    <col style="width: 14%;">
+                    <col style="width: 19%;">
+                </colgroup>
+                <thead>
+                    <tr style="color: #ffffff; text-transform: uppercase;">
+                        <th colspan="5" style="padding: 12px; text-align: center; font-size: 12px; font-weight: 900; background: #001f3f;">PLAN DETAILS SUMMARY</th>
+                    </tr>
+                    <tr style="background: #f8fafc; color: #001f3f; border-bottom: 2px solid #001f3f;">
+                        <th style="padding: 10px; border-right: 1px solid #e2e8f0; border-bottom: 2px solid #001f3f; text-align: left; font-weight: 900;">Workstream / Phase</th>
+                        <th style="padding: 10px; border-right: 1px solid #e2e8f0; border-bottom: 2px solid #001f3f; text-align: center; font-weight: 900;">Plan Start</th>
+                        <th style="padding: 10px; border-right: 1px solid #e2e8f0; border-bottom: 2px solid #001f3f; text-align: center; font-weight: 900;">Days</th>
+                        <th style="padding: 10px; border-right: 1px solid #e2e8f0; border-bottom: 2px solid #001f3f; text-align: center; font-weight: 900;">Plan End</th>
+                        <th style="padding: 10px; border-bottom: 2px solid #001f3f; text-align: center; font-weight: 900;">Responsibility</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${chunk.map(({ ph, data, ser }) => {
+                    const duration = calcDays(data.plan_start, data.plan_end);
+                    const isParent = ph.type === 'parent';
+
+                    return `
+                    <tr style="background: ${isParent ? '#F8FBFE' : '#ffffff'}; font-weight: ${isParent ? '900' : 'normal'}; border-bottom: 1px solid #e2e8f0;">
+                        <td style="padding: 8px 10px; border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; font-size: 10px; color: ${isParent ? '#001f3f' : '#334155'}; font-weight: ${isParent ? '900' : '600'}; padding-left: ${ph.type === 'sub' ? '25px' : '10px'};">${ser}${ph.name}</td>
+                        <td style="padding: 8px 10px; border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; text-align: center; font-weight: 700; color: #475569;">${data.plan_start ? cleanFmtDate(data.plan_start) : '—'}</td>
+                        <td style="padding: 8px 10px; border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; text-align: center; font-weight: 800; color: #0284c7;">${duration ? duration.replace('d', '') : '—'}</td>
+                        <td style="padding: 8px 10px; border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; text-align: center; font-weight: 700; color: #475569;">${data.plan_end ? cleanFmtDate(data.plan_end) : '—'}</td>
+                        <td style="padding: 8px 10px; border-bottom: 1px solid #e2e8f0; text-align: center; font-weight: 800; color: #0f172a;">${data.responsibility || '—'}</td>
+                    </tr>`;
+                }).join('')}
+                </tbody>
+            </table>
+            <!-- PAGE NUMBER FOOTER -->
+            <div style="margin-top: auto; padding-top: 15px; display: flex; justify-content: flex-end; align-items: center;">
+                <div style="background: #001f3f; color: #ffffff; padding: 4px 12px; border-radius: 20px; font-weight: 800; font-size: 10px;">Page ${p + 1} of ${totalPages}</div>
+            </div>
+        </div>`;
+            }
+
+            finalHtml += `</div>`;
+
+            const opt = {
+                margin: 0,
+                filename: `Baseline_Plan_Table_${project.code || 'DANPREL'}_${genDate.replace(/\//g, '-')}.pdf`,
+                image: { type: 'jpeg', quality: 1.0 },
+                html2canvas: {
+                    scale: 2,
+                    useCORS: true,
+                    logging: false,
+                    backgroundColor: '#ffffff',
+                    scrollY: 0,
+                    scrollX: 0
+                },
+                jsPDF: {
+                    unit: 'pt',
+                    format: 'a4',
+                    orientation: 'landscape',
+                    compress: true
+                }
+            };
+
+            html2pdf().from(finalHtml).set(opt).save().then(() => {
+                hideExportStatus();
+                if (typeof showSuccessToast === 'function') showSuccessToast();
+            }).catch(err => {
+                console.error('PDF Catch:', err);
+                hideExportStatus();
+            });
+        }
+
+
+        function exportGanttPlanPDF() {
+            showExportStatus('Preparing Baseline Gantt PDF...');
+
+            // 1. Create a temporary hidden container for full render
+            const printArea = document.getElementById('printArea');
+            if (!printArea) {
+                const pa = document.createElement('div');
+                pa.id = 'printArea';
+                pa.style.display = 'none';
+                document.body.appendChild(pa);
+            }
+            const pa = document.getElementById('printArea');
+            pa.innerHTML = '<div id="exportGanttTarget" class="gantt-wrapper" style="background:white; width: max-content; padding: 20px;"></div>';
+
+            // 2. Force render ALL phases (expanded) with hideActual = true!
+            renderGantt('exportGanttTarget', true, true);
+
+            const target = document.getElementById('exportGanttTarget');
+            const ganttWidth = target.scrollWidth;
+
+            // 3. Extract Headers and Rows
+            const sideHeaderNode = target.querySelector('.gantt-sidebar').cloneNode(true);
+            const mainHeaderNode = target.querySelector('.gantt-header-container').cloneNode(true);
+            const allRows = Array.from(target.querySelectorAll('.gantt-row')).map(r => r.cloneNode(true));
+
+            // 4. Content Chunking (Pages)
+            const rowsPerPage = 10;
+            const totalPages = Math.ceil(allRows.length / rowsPerPage);
+            const calcWidth = Math.max(1400, ganttWidth + 100);
+            const genDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+            let finalPdfHtml = `<div style="background: #f1f5f9; width: ${calcWidth + 40}px;">`;
+
+            for (let p = 0; p < totalPages; p++) {
+                const chunk = allRows.slice(p * rowsPerPage, (p + 1) * rowsPerPage);
+
+                finalPdfHtml += `
+                <div class="pdf-page-wrapper" style="width: ${calcWidth}px; min-height: 800px; padding: 40px; background: #ffffff; margin: 0 auto; position: relative; border-radius: 15px; page-break-after: ${p === totalPages - 1 ? 'auto' : 'always'}; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;">
+                    <!-- REPEATED BRANDING HEADER -->
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 40px; padding-bottom: 25px; border-bottom: 4px solid #001f3f;">
+                        <div style="display: flex; align-items: center; gap: 20px;">
+                             <img src="asset/image.png" style="height: 75px; width: auto; object-fit: contain;">
+                             <div>
+                                <h1 style="margin: 0; font-size: 44px; color: #001f3f; font-weight: 900; letter-spacing: -1px; line-height: 1;">DANPREL</h1>
+                                <div style="font-size: 15px; color: #475569; font-weight: 700; margin-top: 4px;">Engineering Automation Pvt Ltd</div>
+                             </div>
+                        </div>
+                        <div style="text-align: right; line-height: 1.5;">
+                             <h2 style="margin: 0 0 6px 0; color: #001f3f; font-size: 28px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px;">BASELINE PLAN VISUALIZATION</h2>
+                             <div style="font-size: 15px; color: #64748b; font-weight: 700; margin-bottom: 2px;">Project: <span style="color: #0f172a; font-weight: 900;">${(project.name || 'Untitled Project')} (${(project.code || '---')})</span></div>
+                             <div style="font-size: 13px; color: #94a3b8; font-weight: 600;">Generated Date: ${genDate}</div>
+                             <div style="font-size: 13px; color: #475569; font-weight: 700; margin-top: 5px;">Customer: <span style="color: #0f172a; font-weight: 800;">${project.customer_name || '—'}</span></div>
+                             <div style="font-size: 13px; color: #475569; font-weight: 700;">SAT Location: <span style="color: #0f172a; font-weight: 800;">${project.sat_location || '—'}</span></div>
+                        </div>
+                    </div>
+
+                    <!-- GANTT BODY WITH REPEATED HEADERS -->
+                    <div class="gantt-wrapper" style="display: grid; grid-template-columns: 280px 1fr; border: 1px solid #E2EBF5; border-radius: 20px; overflow: visible; background: #fff; box-shadow: 0 10px 30px rgba(0,0,0,0.02); align-content: start;">
+                        <!-- Re-inject Sidebar Header -->
+                        <div class="gantt-sidebar" style="background: #F8FBFE; border-right: 1px solid #E2EBF5;">
+                            ${sideHeaderNode.innerHTML}
+                        </div>
+                        <!-- Re-inject Main Timeline Header -->
+                        <div class="gantt-header-container" style="display: flex; flex-direction: column;">
+                            ${mainHeaderNode.innerHTML}
+                        </div>
+                        
+                        <!-- CHUNKED ROWS -->
+                        ${chunk.map(r => r.outerHTML).join('')}
+                    </div>
+                    <!-- GANTT FOOTER WITH PAGE NUMBERS -->
+                    <div style="margin-top: auto; padding-top: 20px; display: flex; justify-content: space-between; align-items: center; border-top: 2px solid #e2e8f0; font-size: 12px; color: #64748b; font-weight: 700; text-transform: uppercase;">
+                        <div>DANPREL ENGINEERING AUTOMATION PVT LTD</div>
+                        <div style="background: #001f3f; color: #ffffff; padding: 6px 16px; border-radius: 20px; font-weight: 800;">Page ${p + 1} of ${totalPages}</div>
+                    </div>
+                </div>`;
+            }
+
+            finalPdfHtml += `</div>`;
+
+            // Calculate precise JS PDF dimensions based on exact pixel boundaries
+            const width_pt = (calcWidth + 40) * 0.75;
+            const height_pt = 1400 * 0.75; // Massively increased page boundary to prevent any vertical slicing
+
+            const opt = {
+                margin: 0,
+                filename: `Baseline_Gantt_Plan_${project.code || 'DANPREL'}_${genDate.replace(/\//g, '-')}.pdf`,
+                image: { type: 'jpeg', quality: 1.0 },
+                html2canvas: {
+                    scale: 1.5, // Return to safe scale for wide documents
+                    useCORS: true,
+                    logging: false,
+                    width: calcWidth + 40,
+                    backgroundColor: '#ffffff',
+                    scrollY: 0,
+                    scrollX: 0
+                },
+                jsPDF: {
+                    unit: 'pt',
+                    format: [width_pt + 20, height_pt + 10],
                     orientation: 'landscape',
                     compress: true
                 }

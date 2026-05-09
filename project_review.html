@@ -487,6 +487,11 @@
             color: #e11d48;
         }
 
+        .sci-indigo {
+            background: #e0e7ff;
+            color: #4f46e5;
+        }
+
         .stat-chip-label {
             font-size: 0.7rem;
             font-weight: 700;
@@ -1073,6 +1078,18 @@
             background: #f0fdf4;
             color: #166534;
             border: 1px solid #dcfce7;
+        }
+
+        .st-ontime {
+            background: #e6fdf0;
+            color: #15803d;
+            border: 1px solid #bbf7d0;
+        }
+
+        .st-delay {
+            background: #fef2f2;
+            color: #b91c1c;
+            border: 1px solid #fecaca;
         }
 
         /* Removed hover underline decoration */
@@ -1863,6 +1880,13 @@
                 <div class="stat-chip-value" id="statClosed">0</div>
             </div>
         </div>
+        <div class="stat-chip">
+            <div class="stat-chip-icon sci-indigo"><i class="bi bi-percent"></i></div>
+            <div>
+                <div class="stat-chip-label">OTD against Dispatch %</div>
+                <div class="stat-chip-value" id="statOTD">0%</div>
+            </div>
+        </div>
         <div class="stat-chip admin-only">
             <div class="stat-chip-icon sci-rose"><i class="bi bi-currency-rupee"></i></div>
             <div>
@@ -1930,6 +1954,11 @@
                     <input type="text" class="search-input" placeholder="Search Project..." onkeyup="filterTable()"
                         autocomplete="one-time-code" spellcheck="false" name="real_search_field">
                 </div>
+                <a class="btn btn-sm btn-outline-light fw-bold px-3 py-2 rounded-pill d-flex align-items-center"
+                    href="visualize.html"
+                    style="border: 1.5px solid rgba(255,255,255,0.3); font-size: 0.75rem; text-decoration: none;">
+                    <i class="bi bi-calendar3 me-1"></i>VISUALIZE
+                </a>
                 <div class="dropdown">
                     <button class="btn btn-sm btn-outline-light dropdown-toggle fw-bold px-3 py-2 rounded-pill"
                         type="button" data-bs-toggle="dropdown" aria-expanded="false"
@@ -1966,7 +1995,8 @@
                         <!-- Row 1: Group Labels -->
                         <tr>
                             <th rowspan="2" style="width: 45px;">S.No</th>
-                            <th rowspan="2" style="width: 100px;">Code</th>
+                            <th rowspan="2" style="width: 120px;">Tracking Code</th>
+                            <th rowspan="2" style="width: 100px;">Project Code</th>
                             <th rowspan="2" class="col-exp" style="text-align: center; min-width: 150px;">Project
                                 Name
                             </th>
@@ -1985,6 +2015,8 @@
                                 Overall<br>(Inc. I&C)</th>
                             <th rowspan="2" style="min-width: 110px; border-left: 1px solid #e2e8f0 !important;">Status
                             </th>
+                            <th rowspan="2" style="min-width: 110px; border-left: 1px solid #e2e8f0 !important;">OTD
+                                against Dispatch</th>
                         </tr>
                         <!-- Row 2: Sub-columns -->
                         <tr>
@@ -2134,12 +2166,17 @@
                 <div class="modal-body p-4">
                     <input type="hidden" id="editProjId">
                     <div class="row g-3 mb-3">
-                        <div class="col-6">
+                        <div class="col-4">
+                            <div class="section-lbl">Tracking Code</div>
+                            <input type="text" id="pTrackingCode" class="form-control fw-bold"
+                                style="text-transform: uppercase;">
+                        </div>
+                        <div class="col-4">
                             <div class="section-lbl">Project Code</div>
                             <input type="text" id="pCode" class="form-control fw-bold"
                                 style="text-transform: uppercase;">
                         </div>
-                        <div class="col-6">
+                        <div class="col-4">
                             <div class="section-lbl">Project Name</div>
                             <input type="text" id="pName" class="form-control fw-bold">
                         </div>
@@ -2290,7 +2327,7 @@
 
         async function fetchProjects() {
             try {
-                const response = await fetch('/api/projects');
+                const response = await fetch('/api/projects?t=' + Date.now());
                 projects = await response.json();
                 renderProjects();
                 renderRevisions(); // Populate notification badges
@@ -2339,6 +2376,8 @@
             let dispatchedCount = 0; // Will track Dispatched + Closed for value calculation
             let closedCount = 0;     // Will track ONLY 100% Closed projects
             let projectsInIC = 0;
+            let deliveredCount = 0;
+            let deliveredOnTimeCount = 0;
 
             function formatDateDisplay(dateStr) {
                 if (!dateStr || dateStr === '—' || dateStr === '-') return '-';
@@ -2430,6 +2469,31 @@
                     inProgressCount++;
                 }
 
+                // Increment OTD metrics
+                const isOtdStatus = displayStatus === 'Dispatched' || displayStatus === 'Closed' || displayStatus === 'Completed';
+                const otdDispData = (p.detailed_phases && p.detailed_phases['dispatch_parent']) || {};
+                const otdActEnd = otdDispData.actual_end || '';
+                const otdPlanEnd = p.dispatch_date || '';
+
+                if (isOtdStatus && otdPlanEnd) {
+                    deliveredCount++;
+                    if (otdActEnd) {
+                        const planDate = new Date(otdPlanEnd);
+                        const actDate = new Date(otdActEnd);
+                        if (actDate <= planDate) {
+                            deliveredOnTimeCount++;
+                        }
+                    } else {
+                        const planDate = new Date(otdPlanEnd);
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        planDate.setHours(0, 0, 0, 0);
+                        if (today <= planDate) {
+                            deliveredOnTimeCount++;
+                        }
+                    }
+                }
+
                 const row = document.createElement('tr');
                 row.title = `Click to view ${p.name} phases`;
                 row.onclick = () => goToPhases(p._id);
@@ -2462,12 +2526,15 @@
                 row.innerHTML = `
                     <td class="cell-sno">${index + 1}</td>
                     <td>
-                        <div class="d-flex align-items-center">
+                        <div class="d-flex align-items-center justify-content-center">
                             <button class="btn-toggle-row" onclick="event.stopPropagation(); toggleTableCompression()" title="Toggle View Details">
                                 <i class="bi bi-chevron-right"></i>
                             </button>
-                            <span class="cell-code-badge">${p.code}</span>
+                            <span class="cell-code-badge" style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; font-weight: 800;">${p.tracking_code || '—'}</span>
                         </div>
+                    </td>
+                    <td>
+                        <span class="cell-code-badge" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; font-weight: 800;">${p.code}</span>
                     </td>
                     <td class="col-exp" style="text-align: center;">
                         <span class="cell-project-name">${p.name}</span>
@@ -2588,6 +2655,57 @@
                             ${displayStatus}
                         </span>
                     </td>
+
+                    <td style="text-align: center; border-left: 1px solid #e2e8f0; vertical-align: middle;">
+                        ${(() => {
+                        const isDelivered = displayStatus === 'Dispatched' || displayStatus === 'Closed' || displayStatus === 'Completed';
+                        if (!isDelivered) {
+                            return `<span style="color:#94a3b8; font-weight:800;">—</span>`;
+                        }
+
+                        let otdStatus = '—';
+                        let otdBadgeClass = '';
+                        let delayDays = 0;
+                        const dispData = (p.detailed_phases && p.detailed_phases['dispatch_parent']) || {};
+                        const actEndStr = dispData.actual_end || '';
+                        const planEndStr = p.dispatch_date || '';
+
+                        if (planEndStr) {
+                            if (actEndStr) {
+                                const planDate = new Date(planEndStr);
+                                const actDate = new Date(actEndStr);
+                                planDate.setHours(0, 0, 0, 0);
+                                actDate.setHours(0, 0, 0, 0);
+                                if (actDate <= planDate) {
+                                    otdStatus = 'On Time';
+                                    otdBadgeClass = 'status-badge st-ontime';
+                                } else {
+                                    delayDays = Math.ceil((actDate - planDate) / (1000 * 60 * 60 * 24));
+                                    otdStatus = `Delay ${delayDays}`;
+                                    otdBadgeClass = 'status-badge st-delay';
+                                }
+                            } else {
+                                const planDate = new Date(planEndStr);
+                                const today = new Date();
+                                today.setHours(0, 0, 0, 0);
+                                planDate.setHours(0, 0, 0, 0);
+                                if (today <= planDate) {
+                                    otdStatus = 'On Time';
+                                    otdBadgeClass = 'status-badge st-ontime';
+                                } else {
+                                    delayDays = Math.ceil((today - planDate) / (1000 * 60 * 60 * 24));
+                                    otdStatus = `Delay ${delayDays}`;
+                                    otdBadgeClass = 'status-badge st-delay';
+                                }
+                            }
+                        }
+
+                        if (otdBadgeClass) {
+                            return `<span class="${otdBadgeClass}">${otdStatus}</span>`;
+                        }
+                        return `<span style="color:#94a3b8; font-weight:800;">—</span>`;
+                    })()}
+                    </td>
                 `;
                 tbody.appendChild(row);
             });
@@ -2598,6 +2716,9 @@
             document.getElementById('statDispatchedValue').innerText = `₹${dispatchedVal.toLocaleString()}`;
             document.getElementById('statTotalValue').innerText = `₹${totalVal.toLocaleString()}`;
             document.getElementById('statICCount').innerText = projectsInIC;
+
+            const otdPct = deliveredCount > 0 ? Math.round((deliveredOnTimeCount / deliveredCount) * 100) + '%' : '—';
+            document.getElementById('statOTD').innerText = otdPct;
 
             updateManagerFilterDropdown();
         }
@@ -2649,7 +2770,7 @@
                 document.getElementById('p3').value +
                 document.getElementById('p4').value;
 
-            if (pin === '2122') { // Default PIN: 1234
+            if (pin === '2122') { // Default PIN: 2122
                 switchHubView('project');
             } else {
                 alert('Invalid PIN! Please try again.');
@@ -2668,6 +2789,7 @@
         function openAddProjectModal() {
             document.getElementById('projModalTitle').innerText = 'Create Project';
             document.getElementById('editProjId').value = '';
+            document.getElementById('pTrackingCode').value = '';
             document.getElementById('pName').value = '';
             document.getElementById('pCode').value = '';
             document.getElementById('pCustomer').value = '';
@@ -2682,6 +2804,7 @@
 
         async function saveProject() {
             const editId = document.getElementById('editProjId').value;
+            const tracking_code = document.getElementById('pTrackingCode').value.toUpperCase();
             const name = document.getElementById('pName').value;
             const code = document.getElementById('pCode').value.toUpperCase();
             const po_date = document.getElementById('pPoDate').value;
@@ -2693,7 +2816,7 @@
             if (!name || !code) return alert('Name and Code are required!');
 
             const payload = {
-                name, code, po_date, po_value, customer_name, sat_location, project_manager
+                tracking_code, name, code, po_date, po_value: po_value === '' ? null : parseFloat(po_value), customer_name, sat_location, project_manager
             };
 
             if (editId) {
@@ -2723,12 +2846,29 @@
                 });
 
                 if (response.ok) {
-                    bootstrap.Modal.getInstance(document.getElementById('projModal')).hide();
-                    bootstrap.Modal.getInstance(document.getElementById('projectHubModal')).hide();
+                    const savedProj = await response.json();
+                    console.log('✅ Save Successful:', savedProj);
+                    
+                    // Safely close the modals using getOrCreateInstance to prevent any null-reference crashes
+                    const projModalEl = document.getElementById('projModal');
+                    if (projModalEl) {
+                        const m = bootstrap.Modal.getOrCreateInstance(projModalEl);
+                        if (m) m.hide();
+                    }
+                    const hubModalEl = document.getElementById('projectHubModal');
+                    if (hubModalEl) {
+                        const m = bootstrap.Modal.getOrCreateInstance(hubModalEl);
+                        if (m) m.hide();
+                    }
+                    
                     fetchProjects();
+                } else {
+                    const errData = await response.json();
+                    alert('Save failed: ' + (errData.error || errData.message || 'Unknown Server Error'));
                 }
             } catch (err) {
-                alert('Save failed. Check server connection.');
+                console.error('❌ Save error:', err);
+                alert('Save failed. Check server connection: ' + err.message);
             }
         }
 
@@ -2944,6 +3084,7 @@
 
             document.getElementById('projModalTitle').innerText = 'Edit Project';
             document.getElementById('editProjId').value = p._id;
+            document.getElementById('pTrackingCode').value = p.tracking_code || '';
             document.getElementById('pName').value = p.name;
             document.getElementById('pCode').value = p.code;
             document.getElementById('pPoDate').value = p.po_date || '';
@@ -2974,7 +3115,11 @@
             try {
                 const response = await fetch(`/api/projects/${deleteProjectIdToProcess}`, { method: 'DELETE' });
                 if (response.ok) {
-                    bootstrap.Modal.getInstance(document.getElementById('deleteConfirmModal')).hide();
+                    const delModalEl = document.getElementById('deleteConfirmModal');
+                    if (delModalEl) {
+                        const m = bootstrap.Modal.getOrCreateInstance(delModalEl);
+                        if (m) m.hide();
+                    }
                     fetchProjects();
                     showToast('Project deleted successfully');
                 } else {
@@ -3038,7 +3183,7 @@
 
         async function fetchEmployees() {
             try {
-                const response = await fetch('/api/employees');
+                const response = await fetch('/api/employees?t=' + Date.now());
                 employees = await response.json();
                 populateManagerDropdown();
             } catch (err) {
@@ -3138,7 +3283,7 @@
             // Standard A3 landscape is 420mm x 297mm.
             // To increase the vertical length (height) to fit more rows, we use a custom format: [Width, Height] in mm.
             // You can change 500 to a larger value (e.g., 600, 700) to make the page even longer.
-            const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [300, 450] });
+            const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [300, 520] });
             const pageW = doc.internal.pageSize.getWidth();
             const dateStr = new Date().toLocaleDateString('en-GB');
 
@@ -3237,16 +3382,16 @@
 
             const head = [
                 [
-                    { content: '', colSpan: 8 },
+                    { content: '', colSpan: 9 },
                     { content: 'PROJECT TIMELINE', colSpan: 3, styles: { halign: 'center', fillColor: [1, 31, 63] } },
                     { content: 'PROJECT LIFE CYCLE PROGRESS (%)', colSpan: 9, styles: { halign: 'center', fillColor: [13, 148, 136] } },
-                    { content: '', colSpan: 3 }
+                    { content: '', colSpan: 4 }
                 ],
                 [
-                    'S.No', 'Code', 'Project Name', 'Customer', 'Location', 'PO Date', 'PO Value', 'Expeditor',
+                    'S.No', 'Tracking Code', 'Project Code', 'Project Name', 'Customer', 'Location', 'PO Date', 'PO Value', 'Expeditor',
                     'Start Date', 'Dispatch', 'MQ2/SAT',
                     ...phaseNames,
-                    'Overall\n(upto Disp)', 'Overall\n(Inc)', 'Status'
+                    'Overall\n(upto Disp)', 'Overall\n(Inc)', 'Status', 'OTD against\nDispatch'
                 ]
             ];
 
@@ -3278,9 +3423,9 @@
                 }
 
                 const managerMatch = selManager === 'All' || manager === selManager;
-                
+
                 // Concatenate searchable fields to match the DOM's text search behavior
-                const searchableText = `${p.code || ''} ${p.name || ''} ${p.customer_name || ''} ${p.sat_location || ''} ${p.project_manager || ''}`.toLowerCase();
+                const searchableText = `${p.tracking_code || ''} ${p.code || ''} ${p.name || ''} ${p.customer_name || ''} ${p.sat_location || ''} ${p.project_manager || ''}`.toLowerCase();
                 const globalSearchMatch = searchableText.includes(q);
 
                 return managerMatch && dateValid && globalSearchMatch;
@@ -3307,8 +3452,46 @@
                 const uptoDisp = wUD > 0 ? Math.round((sUD / wUD) * 100) : 0;
                 const overall = wAll > 0 ? Math.round((sAll / wAll) * 100) : 0;
 
+                // --- OTD against Dispatch calculation ---
+                let otdStatus = '—';
+                const pStatus = computeStatus(p);
+                const isDelivered = pStatus === 'Dispatched' || pStatus === 'Closed' || pStatus === 'Completed';
+
+                if (isDelivered) {
+                    const dispData = (p.detailed_phases && p.detailed_phases['dispatch_parent']) || {};
+                    const actEndStr = dispData.actual_end || '';
+                    const planEndStr = p.dispatch_date || '';
+
+                    if (planEndStr) {
+                        if (actEndStr) {
+                            const planDate = new Date(planEndStr);
+                            const actDate = new Date(actEndStr);
+                            planDate.setHours(0, 0, 0, 0);
+                            actDate.setHours(0, 0, 0, 0);
+                            if (actDate <= planDate) {
+                                otdStatus = 'On Time';
+                            } else {
+                                const delayDays = Math.ceil((actDate - planDate) / (1000 * 60 * 60 * 24));
+                                otdStatus = `Delay\n${delayDays}`;
+                            }
+                        } else {
+                            const planDate = new Date(planEndStr);
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            planDate.setHours(0, 0, 0, 0);
+                            if (today <= planDate) {
+                                otdStatus = 'On Time';
+                            } else {
+                                const delayDays = Math.ceil((today - planDate) / (1000 * 60 * 60 * 24));
+                                otdStatus = `Delay\n${delayDays}`;
+                            }
+                        }
+                    }
+                }
+
                 return [
                     i + 1,
+                    p.tracking_code || '-',
                     p.code || '-',
                     p.name || '-',
                     p.customer_name || '-',
@@ -3322,7 +3505,8 @@
                     ...phaseValues,
                     `${uptoDisp}%`,
                     `${overall}%`,
-                    computeStatus(p)
+                    computeStatus(p),
+                    otdStatus
                 ];
             });
 
@@ -3348,39 +3532,41 @@
                     halign: 'center'
                 },
                 columnStyles: {
-                    0: { cellWidth: 11 },
-                    1: { cellWidth: 14 },
-                    2: { cellWidth: 34 }, // Increased Project Name
-                    3: { cellWidth: 30 },
-                    4: { cellWidth: 20 },//location
-                    5: { cellWidth: 22 }, //po date
-                    6: { cellWidth: 29 },
-                    7: { cellWidth: 35 },
-                    8: { cellWidth: 22 }, // Increased Start Date
-                    9: { cellWidth: 22 }, // Increased Dispatch
-                    10: { cellWidth: 22 }, // Increased MQ2/SAT
-                    11: { cellWidth: 14 }, // Decreased phases
-                    12: { cellWidth: 14 },
-                    13: { cellWidth: 14 },
-                    14: { cellWidth: 14 },
-                    15: { cellWidth: 14 },
-                    16: { cellWidth: 14 },
-                    17: { cellWidth: 14 },
-                    18: { cellWidth: 14 },
-                    19: { cellWidth: 14 },
-                    20: { cellWidth: 15 }, // Overall upto disp
-                    21: { cellWidth: 15 }, // Overall inc
-                    22: { cellWidth: 24 }  // Decreased Status column
+                    0: { cellWidth: 13 },
+                    1: { cellWidth: 22 }, // Tracking Code
+                    2: { cellWidth: 17 }, // Code
+                    3: { cellWidth: 34 }, // Project Name
+                    4: { cellWidth: 31 }, // Customer
+                    5: { cellWidth: 20 }, // Location
+                    6: { cellWidth: 22 }, // PO date
+                    7: { cellWidth: 29 }, // PO value
+                    8: { cellWidth: 33 }, // Expeditor
+                    9: { cellWidth: 22 }, // Start Date
+                    10: { cellWidth: 22 }, // Dispatch
+                    11: { cellWidth: 22 }, // MQ2/SAT
+                    12: { cellWidth: 15 }, // phases
+                    13: { cellWidth: 15 },
+                    14: { cellWidth: 15 },
+                    15: { cellWidth: 15 },
+                    16: { cellWidth: 15 },
+                    17: { cellWidth: 15 },
+                    18: { cellWidth: 15 },
+                    19: { cellWidth: 15 },
+                    20: { cellWidth: 15 },
+                    21: { cellWidth: 15 }, // Overall upto disp
+                    22: { cellWidth: 15 }, // Overall inc
+                    23: { cellWidth: 24 }, // Status column
+                    24: { cellWidth: 21 }  // OTD against Dispatch column
                 },
                 alternateRowStyles: { fillColor: [245, 248, 252] },
                 didParseCell: function (data) {
-                    // 1. Make Code (1) and Expeditor (7) columns bold
-                    if ((data.column.index === 1 || data.column.index === 7) && data.section === 'body') {
+                    // 1. Make Tracking Code (1), Code (2) and Expeditor (8) columns bold
+                    if ((data.column.index === 1 || data.column.index === 2 || data.column.index === 8) && data.section === 'body') {
                         data.cell.styles.fontStyle = 'bold';
                     }
 
-                    // 2. Color Percentage columns (Indices 11 to 21)
-                    if (data.column.index >= 11 && data.column.index <= 21 && data.section === 'body') {
+                    // 2. Color Percentage columns (Indices 12 to 22)
+                    if (data.column.index >= 12 && data.column.index <= 22 && data.section === 'body') {
                         const cellRaw = data.cell.raw;
                         const isObject = typeof cellRaw === 'object' && cellRaw !== null;
                         const val = isObject ? cellRaw.val : parseInt(cellRaw);
@@ -3393,7 +3579,7 @@
                         } else {
                             data.cell.styles.fontStyle = 'bold';
 
-                            if (data.column.index === 20 || data.column.index === 21) {
+                            if (data.column.index === 21 || data.column.index === 22) {
                                 if (val > 0) {
                                     data.cell.styles.textColor = [3, 105, 161]; // Ocean Blue (matching 'Started' status)
                                 } else {
@@ -3433,12 +3619,25 @@
                         }
                     }
 
-                    // 3. Color status column (Last index)
-                    if (data.column.index === head[1].length - 1 && data.section === 'body') {
+                    // 3. Color status column (Index 23)
+                    if (data.column.index === 23 && data.section === 'body') {
                         const val = (data.cell.raw || '').toLowerCase();
                         if (val.includes('progress') || val.includes('pending')) data.cell.styles.textColor = [217, 119, 6];
                         else if (val.includes('closed') || val.includes('completed') || val.includes('dispatched')) data.cell.styles.textColor = [16, 185, 129];
                         else data.cell.styles.textColor = [3, 105, 161];
+                        data.cell.styles.fontStyle = 'bold';
+                    }
+
+                    // 4. Color OTD column (Last index)
+                    if (data.column.index === head[1].length - 1 && data.section === 'body') {
+                        const val = (data.cell.raw || '').toLowerCase();
+                        if (val.includes('on time')) {
+                            data.cell.styles.textColor = [21, 128, 61]; // green (15, 128, 61)
+                        } else if (val.includes('delay')) {
+                            data.cell.styles.textColor = [185, 28, 28]; // red (185, 28, 28)
+                        } else {
+                            data.cell.styles.textColor = [148, 163, 184]; // grey for '-'
+                        }
                         data.cell.styles.fontStyle = 'bold';
                     }
                 },
@@ -3492,10 +3691,10 @@
             const thead = tableClone.querySelector('thead');
             const dateStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
             const headerHtml = `
-                <tr><th colspan="20" style="font-size: 18px; font-weight: bold; text-align: left;">DANPREL - Engineering Automation Pvt Ltd</th></tr>
-                <tr><th colspan="20" style="font-size: 14px; font-weight: bold; text-align: left;">MASTER PROJECT REGISTRY</th></tr>
-                <tr><th colspan="20" style="text-align: left;">Generated Date: ${dateStr}</th></tr>
-                <tr><th colspan="20"></th></tr>
+                <tr><th colspan="24" style="font-size: 18px; font-weight: bold; text-align: left;">DANPREL - Engineering Automation Pvt Ltd</th></tr>
+                <tr><th colspan="24" style="font-size: 14px; font-weight: bold; text-align: left;">MASTER PROJECT REGISTRY</th></tr>
+                <tr><th colspan="24" style="text-align: left;">Generated Date: ${dateStr}</th></tr>
+                <tr><th colspan="24"></th></tr>
             `;
             if (thead) {
                 thead.insertAdjacentHTML('afterbegin', headerHtml);

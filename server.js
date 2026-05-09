@@ -14,6 +14,14 @@ app.use(express.json());
 app.use(cors());
 app.use(express.static('.')); // Serve static HTML files from the current folder
 
+// Middleware to prevent browser caching of dynamic API responses
+app.use('/api', (req, res, next) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    next();
+});
+
 // Connect to MongoDB
 const MONGODB_URI = process.env.MONGODB_URI;
 
@@ -55,6 +63,7 @@ transporter.verify((error, success) => {
 
 // --- DATA SCHEMA ---
 const ProjectSchema = new mongoose.Schema({
+    tracking_code: String,
     code: String,
     name: String,
     customer_name: String,
@@ -261,6 +270,150 @@ async function syncDataOnStartup() {
             }
         }
         console.log(`✅ Data Sync Complete. ${fixedCount} records updated.`);
+
+        // --- PROJECT DATES AGGREGATION & CLEANUP ---
+        console.log('🔧 Auditing Project Timeline Dates...');
+        const projects = await Project.find();
+        let projFixed = 0;
+        
+        const defaultPhases = [
+            { id: 'kickoff_1', parent: 'kickoff' }, { id: 'kickoff_2', parent: 'kickoff' },
+            { id: 'design_1', parent: 'design' }, { id: 'design_2', parent: 'design' },
+            { id: 'design_critical_approval', parent: 'design' }, { id: 'design_3', parent: 'design' },
+            { id: 'design_4', parent: 'design' }, { id: 'design_5', parent: 'design' },
+            { id: 'design_6', parent: 'design' }, { id: 'purchase_1', parent: 'purchase' },
+            { id: 'purchase_2', parent: 'purchase' }, { id: 'mech_assembly_1', parent: 'mech_assembly' },
+            { id: 'mech_assembly_2', parent: 'mech_assembly' }, { id: 'prog_plc_offline', parent: 'program' },
+            { id: 'prog_plc', parent: 'program' }, { id: 'prog_robot', parent: 'program' },
+            { id: 'prog_labview', parent: 'program' }, { id: 'inhouse_1', parent: 'inhouse' },
+            { id: 'inhouse_2', parent: 'inhouse' }, { id: 'mq1_fat_1', parent: 'mq1_fat' },
+            { id: 'mq1_fat_2', parent: 'mq1_fat' }, { id: 'mq1_fat_3', parent: 'mq1_fat' },
+            { id: 'dispatch_1', parent: 'dispatch_parent' }, { id: 'dispatch_2', parent: 'dispatch_parent' },
+            { id: 'inc_1', parent: 'inc_parent' }, { id: 'inc_2', parent: 'inc_parent' },
+            { id: 'inc_3', parent: 'inc_parent' }, { id: 'inc_4', parent: 'inc_parent' }
+        ];
+
+        const parentIds = ['kickoff', 'design', 'purchase', 'mech_assembly', 'program', 'inhouse', 'mq1_fat', 'dispatch_parent', 'inc_parent'];
+
+        for (const p of projects) {
+            if (!p.detailed_phases) continue;
+            let changed = false;
+
+            parentIds.forEach(parentId => {
+                const subs = defaultPhases.filter(s => s.parent === parentId);
+                let pStart = null, pEnd = null, rStart = null, rEnd = null, aStart = null, aEnd = null;
+
+                subs.forEach(s => {
+                    const sData = p.detailed_phases[s.id] || {};
+                    if (sData.is_excluded) return;
+
+                    if (sData.plan_start) {
+                        const dt = new Date(sData.plan_start);
+                        if (!isNaN(dt.getTime())) { if (!pStart || dt < pStart) pStart = dt; }
+                    }
+                    if (sData.plan_end) {
+                        const dt = new Date(sData.plan_end);
+                        if (!isNaN(dt.getTime())) { if (!pEnd || dt > pEnd) pEnd = dt; }
+                    }
+                    if (sData.actual_start) {
+                        const dt = new Date(sData.actual_start);
+                        if (!isNaN(dt.getTime())) { if (!aStart || dt < aStart) aStart = dt; }
+                    }
+                    if (sData.actual_end) {
+                        const dt = new Date(sData.actual_end);
+                        if (!isNaN(dt.getTime())) { if (!aEnd || dt > aEnd) aEnd = dt; }
+                    }
+
+                    if (sData.revisions && sData.revisions.length > 0) {
+                        const last = sData.revisions[sData.revisions.length - 1];
+                        if (last.start) {
+                            const dt = new Date(last.start);
+                            if (!isNaN(dt.getTime())) { if (!rStart || dt < rStart) rStart = dt; }
+                        }
+                        if (last.end) {
+                            const dt = new Date(last.end);
+                            if (!isNaN(dt.getTime())) { if (!rEnd || dt > rEnd) rEnd = dt; }
+                        }
+                    } else {
+                        if (sData.plan_start) {
+                            const dt = new Date(sData.plan_start);
+                            if (!isNaN(dt.getTime())) { if (!rStart || dt < rStart) rStart = dt; }
+                        }
+                        if (sData.plan_end) {
+                            const dt = new Date(sData.plan_end);
+                            if (!isNaN(dt.getTime())) { if (!rEnd || dt > rEnd) rEnd = dt; }
+                        }
+                    }
+                });
+
+                if (!p.detailed_phases[parentId]) p.detailed_phases[parentId] = {};
+                const dParent = p.detailed_phases[parentId];
+
+                const nPlanStart = pStart ? pStart.toISOString().split('T')[0] : '';
+                const nPlanEnd = pEnd ? pEnd.toISOString().split('T')[0] : '';
+                const nActualStart = aStart ? aStart.toISOString().split('T')[0] : '';
+                const nActualEnd = aEnd ? aEnd.toISOString().split('T')[0] : '';
+
+                let computedPlanStart = nPlanStart;
+                let computedPlanEnd = nPlanEnd;
+                if (!computedPlanStart && rStart) computedPlanStart = rStart.toISOString().split('T')[0];
+                if (!computedPlanEnd && rEnd) computedPlanEnd = rEnd.toISOString().split('T')[0];
+
+                const nReassignStart = rStart ? rStart.toISOString().split('T')[0] : '';
+                const nReassignEnd = rEnd ? rEnd.toISOString().split('T')[0] : '';
+
+                if (dParent.plan_start !== computedPlanStart ||
+                    dParent.plan_end !== computedPlanEnd ||
+                    dParent.actual_start !== nActualStart ||
+                    dParent.actual_end !== nActualEnd ||
+                    dParent.reassign_start !== nReassignStart ||
+                    dParent.reassign_end !== nReassignEnd) {
+                    
+                    dParent.plan_start = computedPlanStart;
+                    dParent.plan_end = computedPlanEnd;
+                    dParent.actual_start = nActualStart;
+                    dParent.actual_end = nActualEnd;
+                    dParent.reassign_start = nReassignStart;
+                    dParent.reassign_end = nReassignEnd;
+                    changed = true;
+                }
+            });
+
+            const kickoffData = p.detailed_phases['kickoff'] || {};
+            const nStartDate = kickoffData.reassign_start || kickoffData.plan_start || '';
+            const nReassignStart = (kickoffData.reassign_start && kickoffData.reassign_start !== kickoffData.plan_start) ? kickoffData.reassign_start : '';
+
+            const dispatchData = p.detailed_phases['dispatch_parent'] || {};
+            const nDispatchDate = dispatchData.reassign_end || dispatchData.plan_end || '';
+            const nReassignDispatch = (dispatchData.reassign_end && dispatchData.reassign_end !== dispatchData.plan_end) ? dispatchData.reassign_end : '';
+
+            const incData = p.detailed_phases['inc_parent'] || {};
+            const nMq2Date = incData.reassign_end || incData.plan_end || '';
+            const nReassignMq2 = (incData.reassign_end && incData.reassign_end !== incData.plan_end) ? incData.reassign_end : '';
+
+            if (p.start_date !== nStartDate ||
+                p.reassign_start_date !== nReassignStart ||
+                p.dispatch_date !== nDispatchDate ||
+                p.reassign_dispatch_date !== nReassignDispatch ||
+                p.mq2_date !== nMq2Date ||
+                p.reassign_mq2_date !== nReassignMq2) {
+                
+                p.start_date = nStartDate;
+                p.reassign_start_date = nReassignStart;
+                p.dispatch_date = nDispatchDate;
+                p.reassign_dispatch_date = nReassignDispatch;
+                p.mq2_date = nMq2Date;
+                p.reassign_mq2_date = nReassignMq2;
+                changed = true;
+            }
+
+            if (changed) {
+                p.markModified('detailed_phases');
+                await p.save();
+                projFixed++;
+            }
+        }
+        console.log(`✅ Project Timeline Dates Sanitized. ${projFixed} projects corrected.`);
     } catch (err) {
         console.error('❌ Data Sync Error:', err);
     }
@@ -342,8 +495,17 @@ app.get('/api/projects/:id', async (req, res) => {
 
 // 3. Create or Update Project
 app.post('/api/projects', async (req, res) => {
+    console.log('📡 [POST] /api/projects - Payload:', req.body);
     try {
         const data = req.body;
+        
+        // Clean po_value if it's an empty string to avoid Mongoose Cast To Number errors
+        if (data.po_value === '') {
+            data.po_value = null;
+        } else if (data.po_value !== undefined && data.po_value !== null) {
+            data.po_value = parseFloat(data.po_value);
+        }
+        
         let p;
         if (data._id) {
             p = await Project.findByIdAndUpdate(data._id, data, { returnDocument: 'after' });
@@ -353,6 +515,7 @@ app.post('/api/projects', async (req, res) => {
         }
         res.json(p);
     } catch (err) {
+        console.error('❌ [POST] /api/projects Error:', err.message);
         res.status(500).json({ error: err.message });
     }
 });

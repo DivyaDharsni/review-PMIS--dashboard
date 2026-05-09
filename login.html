@@ -351,7 +351,7 @@
             let role = '';
             // Allow dynamic passwords updated from "Forgot Password"
             let storedAdminPass = localStorage.getItem('pass_review@danprel') || 'mgt@2026';
-            let storedPmPass = localStorage.getItem('pass_projects@danprel') || 'danprel@2026';
+            let storedPmPass = localStorage.getItem('pass_projects@danprel') || 'projects@2026';
 
             if (u === 'review@danprel' && p === storedAdminPass) {
                 role = 'admin';
