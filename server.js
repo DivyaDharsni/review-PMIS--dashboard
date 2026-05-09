@@ -508,7 +508,7 @@ app.post('/api/projects', async (req, res) => {
         
         let p;
         if (data._id) {
-            p = await Project.findByIdAndUpdate(data._id, data, { returnDocument: 'after' });
+            p = await Project.findByIdAndUpdate(data._id, data, { new: true, runValidators: true });
         } else {
             p = new Project(data);
             await p.save();

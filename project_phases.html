@@ -1827,6 +1827,17 @@
                                                     <span style="font-weight: 700;">Export Gantt Plan (PDF)</span>
                                                 </a>
                                             </li>
+                                            <li>
+                                                <a class="dropdown-item d-flex align-items-center gap-2 py-2"
+                                                    href="javascript:void(0)" onclick="exportPhasesPlanExcel()"
+                                                    style="border-radius: 8px; color: #1F2A44; transition: all 0.2s;">
+                                                    <div class="export-icon-box"
+                                                        style="background: #ecfdf5; color: #10b981; width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 1rem;">
+                                                        <i class="bi bi-file-earmark-spreadsheet-fill"></i>
+                                                    </div>
+                                                    <span style="font-weight: 700;">Export Phases Page Plan (Excel)</span>
+                                                </a>
+                                            </li>
                                         </ul>
                                     </div>
 
@@ -4472,6 +4483,80 @@
 
             XLSX.utils.book_append_sheet(wb, ws, "Phase Plan Details");
             XLSX.writeFile(wb, `Phase_Export_${project.code}_${new Date().toLocaleDateString('en-GB').replace(/\//g, '-')}.xlsx`);
+            hideExportStatus();
+        }
+
+        function exportPhasesPlanExcel() {
+            showExportStatus('Generating Baseline Plan Excel...');
+
+            // Prepare Professional Metadata Header Rows
+            const metaHeader = [
+                ["COMPANY", "DANPREL ENGINEERING AUTOMATION PVT LTD"],
+                ["PROJECT NAME", project.name],
+                ["PROJECT CODE", project.code],
+                ["SAT LOCATION", project.sat_location || "N/A"],
+                ["CUSTOMER", project.customer_name || "N/A"],
+                ["REPORT TYPE", "BASELINE PLAN EXPORT"],
+                ["GENERATED ON", new Date().toLocaleDateString('en-GB')],
+                [] // Empty separator
+            ];
+
+            let pS = 0, sS = 0;
+            // Filter disabled phases and Map data row by row
+            const exportData = defaultPhases.filter(ph => {
+                const d = project.detailed_phases[ph.id] || {};
+                return !d.is_excluded;
+            }).map(ph => {
+                let sNum = "";
+                if (ph.type === 'parent' || ph.type === 'single') {
+                    pS++; sS = 0; sNum = pS + ". ";
+                } else if (ph.type === 'sub') {
+                    sS++; sNum = pS + "." + sS + " ";
+                }
+                const data = JSON.parse(JSON.stringify(project.detailed_phases[ph.id] || {}));
+                if (ph.type === 'parent') {
+                    const subs = defaultPhases.filter(s => s.parent === ph.id && !(project.detailed_phases[s.id]?.is_excluded));
+                    let pStart = null, pEnd = null;
+                    subs.forEach(s => {
+                        const sData = project.detailed_phases[s.id] || {};
+                        if (sData.plan_start) {
+                            const d = new Date(sData.plan_start);
+                            if (!pStart || d < pStart) pStart = d;
+                        }
+                        if (sData.plan_end) {
+                            const d = new Date(sData.plan_end);
+                            if (!pEnd || d > pEnd) pEnd = d;
+                        }
+                    });
+                    if (pStart) data.plan_start = pStart.toISOString().split('T')[0];
+                    if (pEnd) data.plan_end = pEnd.toISOString().split('T')[0];
+                }
+
+                const cleanFmtDate = (isoStr) => {
+                    if (!isoStr) return '---';
+                    const p = isoStr.split('-');
+                    return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : isoStr;
+                };
+
+                return {
+                    'Ref #': sNum.trim(),
+                    'Workstream / Phase': ph.name,
+                    'Plan Start': data.plan_start ? cleanFmtDate(data.plan_start) : '---',
+                    'Duration (Days)': (calcDays(data.plan_start, data.plan_end)).replace('d', ''),
+                    'Plan End': data.plan_end ? cleanFmtDate(data.plan_end) : '---',
+                    'Responsibility': data.responsibility || '—'
+                };
+            });
+
+            const wb = XLSX.utils.book_new();
+            // Start with company metadata
+            const ws = XLSX.utils.aoa_to_sheet(metaHeader);
+
+            // Append data below metadata starting at row 9 (A9)
+            XLSX.utils.sheet_add_json(ws, exportData, { origin: "A9" });
+
+            XLSX.utils.book_append_sheet(wb, ws, "Baseline Plan");
+            XLSX.writeFile(wb, `Baseline_Plan_Export_${project.code}_${new Date().toLocaleDateString('en-GB').replace(/\//g, '-')}.xlsx`);
             hideExportStatus();
         }
 

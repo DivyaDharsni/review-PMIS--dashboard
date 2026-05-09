@@ -2530,7 +2530,7 @@
                             <button class="btn-toggle-row" onclick="event.stopPropagation(); toggleTableCompression()" title="Toggle View Details">
                                 <i class="bi bi-chevron-right"></i>
                             </button>
-                            <span class="cell-code-badge" style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; font-weight: 800;">${p.tracking_code || '—'}</span>
+                            <span style="font-weight: 800; color: #334155; font-size: 0.85rem; white-space: nowrap; letter-spacing: 0.02em;">${p.tracking_code || '—'}</span>
                         </div>
                     </td>
                     <td>
@@ -2798,7 +2798,7 @@
             document.getElementById('pPoValue').value = '';
             document.getElementById('pManager').value = '';
 
-            const modal = new bootstrap.Modal(document.getElementById('projModal'));
+            const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('projModal'));
             modal.show();
         }
 
@@ -3075,7 +3075,7 @@
                 list.appendChild(item);
             });
 
-            new bootstrap.Modal(document.getElementById('selectorModal')).show();
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('selectorModal')).show();
         }
 
         function editProject(id) {
@@ -3093,7 +3093,7 @@
             document.getElementById('pSat').value = p.sat_location || '';
             document.getElementById('pManager').value = p.project_manager || '';
 
-            new bootstrap.Modal(document.getElementById('projModal')).show();
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('projModal')).show();
         }
 
         let deleteProjectIdToProcess = null;
@@ -3105,7 +3105,7 @@
             deleteProjectIdToProcess = id;
             document.getElementById('delProjName').innerText = p.name || p.code || 'this project';
 
-            const delModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+            const delModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('deleteConfirmModal'));
             delModal.show();
         }
 

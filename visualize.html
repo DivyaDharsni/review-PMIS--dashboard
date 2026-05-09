@@ -332,6 +332,7 @@
             padding: 16px 0;
             background-image: linear-gradient(to right, #f8fafc 1px, transparent 1px);
             background-size: 87.5px 100%; /* Spacing corresponding to 1 week */
+            overflow: hidden; /* Perfect clipping of spillover bars */
         }
 
         /* STACKED GANTT BARS */
@@ -341,7 +342,7 @@
             border-radius: 8px;
             display: flex;
             align-items: center;
-            justify-content: space-between; /* Push items to ends and center */
+            justify-content: center; /* Center the middle label perfectly */
             padding: 0 10px;
             color: white;
             font-size: 0.72rem;
@@ -364,6 +365,18 @@
             letter-spacing: 0.2px;
             flex-shrink: 0;
             display: inline-block;
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 10;
+        }
+
+        .bar-date-start {
+            left: 10px;
+        }
+
+        .bar-date-end {
+            right: 10px;
         }
 
         .bar-container:hover {
@@ -930,6 +943,47 @@
             }
         }
 
+        /**
+         * Computes high-fidelity, collision-free viewport positioning for Gantt bar contents.
+         * Keeps start date at visible left edge, end date at visible right edge, and status labels
+         * in the exact dead-center of the visible portion of the bar, matching any date filters perfectly.
+         */
+        function getBarInnerHtml(leftOffset, barWidth, totalTimelineWidth, startFmt, endFmt, centerLabelHtml, showCenter = true) {
+            const vStart = Math.max(0, leftOffset);
+            const vEnd = Math.min(totalTimelineWidth, leftOffset + barWidth);
+            const vWidth = vEnd - vStart;
+
+            if (vWidth < 40) {
+                // Extremely tight viewport slice: render a minimal centered indicator icon
+                const vCenter = vStart + (vWidth / 2);
+                const labelLeft = vCenter - leftOffset;
+                return `<span class="bar-label" style="position: absolute; left: ${labelLeft}px; top: 50%; transform: translate(-50%, -50%); margin: 0; display: inline-flex; align-items: center; justify-content: center;">${centerLabelHtml}</span>`;
+            }
+
+            const vCenter = vStart + (vWidth / 2);
+            const labelLeft = vCenter - leftOffset;
+
+            const startLeft = vStart - leftOffset + 10;
+            const endRight = (leftOffset + barWidth) - vEnd + 10;
+
+            if (vWidth >= 220 && showCenter) {
+                return `
+                    <span class="bar-date-start" style="position: absolute; left: ${startLeft}px; top: 50%; transform: translateY(-50%); z-index: 10;">${startFmt}</span>
+                    <span class="bar-label" style="position: absolute; left: ${labelLeft}px; top: 50%; transform: translate(-50%, -50%); z-index: 5; margin: 0; display: inline-flex; align-items: center; justify-content: center; height: 100%; white-space: nowrap;">${centerLabelHtml}</span>
+                    <span class="bar-date-end" style="position: absolute; right: ${endRight}px; top: 50%; transform: translateY(-50%); z-index: 10;">${endFmt}</span>
+                `;
+            } else if (vWidth >= 130) {
+                return `
+                    <span class="bar-date-start" style="position: absolute; left: ${startLeft}px; top: 50%; transform: translateY(-50%); z-index: 10;">${startFmt}</span>
+                    <span class="bar-date-end" style="position: absolute; right: ${endRight}px; top: 50%; transform: translateY(-50%); z-index: 10;">${endFmt}</span>
+                `;
+            } else {
+                return `
+                    <span class="bar-label" style="position: absolute; left: ${labelLeft}px; top: 50%; transform: translate(-50%, -50%); z-index: 5; margin: 0; display: inline-flex; align-items: center; justify-content: center; height: 100%; white-space: nowrap;">${centerLabelHtml}</span>
+                `;
+            }
+        }
+
         // Dynamically extract unique Project Managers/Expeditors from database
         function populateExpeditors() {
             const selector = document.getElementById('expeditorSelector');
@@ -1017,35 +1071,54 @@
             const container = document.getElementById('ganttContainer');
             container.innerHTML = '';
 
-            // 1. Compute dynamic date bounds (Default to today start, extending to extremes)
-            let earliest = new Date();
-            let latest = new Date();
-            latest.setMonth(latest.getMonth() + 4); // Default to 4 months lookahead
+            // 1. Compute dynamic date bounds based on custom filter selection or default projects extremes
+            const fromDateVal = document.getElementById('fromDateFilter')?.value;
+            const toDateVal = document.getElementById('toDateFilter')?.value;
 
-            projects.forEach(p => {
-                // Planned Dates
-                if (p.start_date) {
-                    const d = new Date(p.start_date);
-                    if (d < earliest) earliest = new Date(d);
-                }
-                if (p.dispatch_date) {
-                    const d = new Date(p.dispatch_date);
-                    if (d > latest) latest = new Date(d);
-                }
+            let earliest, latest;
 
-                // Actual Dates (Kickoff & Dispatch)
-                const kickoffActualStart = p.detailed_phases?.['kickoff']?.actual_start;
-                const dispatchActualEnd = p.detailed_phases?.['dispatch_parent']?.actual_end;
+            if (fromDateVal || toDateVal) {
+                // Lock timeline viewport start to user input if available, else default to today
+                earliest = fromDateVal ? new Date(fromDateVal) : new Date();
+                
+                // Lock timeline viewport end to user input if available, else default to 4 months forward
+                if (toDateVal) {
+                    latest = new Date(toDateVal);
+                } else {
+                    latest = new Date(earliest);
+                    latest.setMonth(latest.getMonth() + 4);
+                }
+            } else {
+                // Default: Today start, extending dynamically to fit all projects' active extremes
+                earliest = new Date();
+                latest = new Date();
+                latest.setMonth(latest.getMonth() + 4);
 
-                if (kickoffActualStart) {
-                    const d = new Date(kickoffActualStart);
-                    if (d < earliest) earliest = new Date(d);
-                }
-                if (dispatchActualEnd) {
-                    const d = new Date(dispatchActualEnd);
-                    if (d > latest) latest = new Date(d);
-                }
-            });
+                projects.forEach(p => {
+                    // Planned Dates
+                    if (p.start_date) {
+                        const d = new Date(p.start_date);
+                        if (d < earliest) earliest = new Date(d);
+                    }
+                    if (p.dispatch_date) {
+                        const d = new Date(p.dispatch_date);
+                        if (d > latest) latest = new Date(d);
+                    }
+
+                    // Actual Dates (Kickoff & Dispatch)
+                    const kickoffActualStart = p.detailed_phases?.['kickoff']?.actual_start;
+                    const dispatchActualEnd = p.detailed_phases?.['dispatch_parent']?.actual_end;
+
+                    if (kickoffActualStart) {
+                        const d = new Date(kickoffActualStart);
+                        if (d < earliest) earliest = new Date(d);
+                    }
+                    if (dispatchActualEnd) {
+                        const d = new Date(dispatchActualEnd);
+                        if (d > latest) latest = new Date(d);
+                    }
+                });
+            }
 
             // Adjust minDate to Monday of that week
             const minDate = new Date(earliest);
@@ -1054,8 +1127,10 @@
             const offsetToMonday = (startDay === 0) ? -6 : 1 - startDay;
             minDate.setDate(minDate.getDate() + offsetToMonday);
 
-            // Adjust maxDate to Sunday of that week + 4 weeks of padding
-            latest.setDate(latest.getDate() + 28);
+            // Adjust maxDate to Sunday of that week (add 28 days of lookahead padding only for default view)
+            if (!fromDateVal && !toDateVal) {
+                latest.setDate(latest.getDate() + 28);
+            }
             const maxDate = new Date(latest);
             maxDate.setHours(23,59,59,999);
             const endDay = maxDate.getDay();
@@ -1202,6 +1277,7 @@
                 const timelineArea = document.createElement('div');
                 timelineArea.className = 'timeline-area';
                 timelineArea.style.width = `${totalTimelineWidth}px`;
+                timelineArea.style.maxWidth = `${totalTimelineWidth}px`;
                 timelineArea.style.flexShrink = '0';
 
                 // RENDER BAR 1: Planned Schedule Baseline (Planned Start -> Planned Dispatch)
@@ -1211,8 +1287,14 @@
                     planStart.setHours(0,0,0,0);
                     planEnd.setHours(0,0,0,0);
 
-                    const leftOffset = Math.max(0, (planStart - minDate) / (1000 * 60 * 60 * 24) * pixelsPerDay);
-                    const barWidth = Math.max(40, (planEnd - planStart) / (1000 * 60 * 60 * 24) * pixelsPerDay);
+                    const leftOffset = (planStart - minDate) / (1000 * 60 * 60 * 24) * pixelsPerDay;
+                    let barWidth = Math.max(40, (planEnd - planStart) / (1000 * 60 * 60 * 24) * pixelsPerDay);
+
+                    // Clamp width mathematically to prevent spillover beyond the right side of the calendar grid
+                    const maxBarWidth = totalTimelineWidth - leftOffset;
+                    if (barWidth > maxBarWidth) {
+                        barWidth = maxBarWidth;
+                    }
 
                     const planBar = document.createElement('div');
                     planBar.className = 'bar-container bar-planned';
@@ -1221,22 +1303,8 @@
                     planBar.style.zIndex = '5';
                     const planStartFmt = fmtDateStr(p.start_date);
                     const planEndFmt = fmtDateStr(p.dispatch_date);
-                    if (barWidth >= 220) {
-                        planBar.innerHTML = `
-                            <span class="bar-date-start">${planStartFmt}</span>
-                            <span class="bar-label"><i class="bi bi-flag-fill me-1"></i>Planned</span>
-                            <span class="bar-date-end">${planEndFmt}</span>
-                        `;
-                    } else if (barWidth >= 130) {
-                        planBar.innerHTML = `
-                            <span class="bar-date-start">${planStartFmt}</span>
-                            <span class="bar-date-end">${planEndFmt}</span>
-                        `;
-                    } else {
-                        planBar.innerHTML = `
-                            <span class="bar-label" style="margin: 0;"><i class="bi bi-flag-fill"></i></span>
-                        `;
-                    }
+
+                    planBar.innerHTML = getBarInnerHtml(leftOffset, barWidth, totalTimelineWidth, planStartFmt, planEndFmt, `<i class="bi bi-flag-fill me-1"></i>Planned`);
 
                     // Tooltip bindings
                     setupTooltip(planBar, {
@@ -1283,8 +1351,14 @@
 
                             if (!hasIncRange) {
                                 const pointLeft = (mq2DateObj - minDate) / (1000 * 60 * 60 * 24) * pixelsPerDay;
-                                mq2Left = Math.max(0, pointLeft - 47.5);
+                                mq2Left = pointLeft - 47.5;
                                 mq2Width = 95;
+                            }
+
+                            // Clamp width mathematically to prevent spillover beyond the right side of the calendar grid
+                            const maxMq2Width = totalTimelineWidth - mq2Left;
+                            if (mq2Width > maxMq2Width) {
+                                mq2Width = maxMq2Width;
                             }
 
                             const mq2Bar = document.createElement('div');
@@ -1355,8 +1429,14 @@
                     actStart.setHours(0,0,0,0);
                     actEnd.setHours(0,0,0,0);
 
-                    const leftOffset = Math.max(0, (actStart - minDate) / (1000 * 60 * 60 * 24) * pixelsPerDay);
-                    const barWidth = Math.max(40, (actEnd - actStart) / (1000 * 60 * 60 * 24) * pixelsPerDay);
+                    const leftOffset = (actStart - minDate) / (1000 * 60 * 60 * 24) * pixelsPerDay;
+                    let barWidth = Math.max(40, (actEnd - actStart) / (1000 * 60 * 60 * 24) * pixelsPerDay);
+
+                    // Clamp width mathematically to prevent spillover beyond the right side of the calendar grid
+                    const maxBarWidth = totalTimelineWidth - leftOffset;
+                    if (barWidth > maxBarWidth) {
+                        barWidth = maxBarWidth;
+                    }
 
                     // Compute Status & Color Accent
                     let actualClass = '';
@@ -1409,22 +1489,8 @@
                     actualBar.style.zIndex = '6';
                     const actStartFmt = fmtDateStr(actStartStr);
                     const actEndFmt = actEndStr ? fmtDateStr(actEndStr) : 'Active';
-                    if (barWidth >= 220) {
-                        actualBar.innerHTML = `
-                            <span class="bar-date-start">${actStartFmt}</span>
-                            <span class="bar-label"><i class="bi bi-play-circle-fill me-1"></i>${statusLabel}</span>
-                            <span class="bar-date-end">${actEndFmt}</span>
-                        `;
-                    } else if (barWidth >= 130) {
-                        actualBar.innerHTML = `
-                            <span class="bar-date-start">${actStartFmt}</span>
-                            <span class="bar-date-end">${actEndFmt}</span>
-                        `;
-                    } else {
-                        actualBar.innerHTML = `
-                            <span class="bar-label" style="margin: 0;"><i class="bi bi-play-circle-fill"></i></span>
-                        `;
-                    }
+
+                    actualBar.innerHTML = getBarInnerHtml(leftOffset, barWidth, totalTimelineWidth, actStartFmt, actEndFmt, `<i class="bi bi-play-circle-fill me-1"></i>${statusLabel}`);
 
                     // Tooltip bindings
                     setupTooltip(actualBar, {
@@ -1441,7 +1507,7 @@
                 } else {
                     // Actual schedule has not started yet
                     actualBar.className = 'bar-container actual-notstarted';
-                    actualBar.style.left = p.start_date ? `${Math.max(0, (new Date(p.start_date) - minDate) / (1000 * 60 * 60 * 24) * pixelsPerDay)}px` : '0px';
+                    actualBar.style.left = p.start_date ? `${(new Date(p.start_date) - minDate) / (1000 * 60 * 60 * 24) * pixelsPerDay}px` : '0px';
                     actualBar.style.width = '180px';
                     actualBar.innerHTML = `<span class="bar-label"><i class="bi bi-clock me-1"></i>Not Started</span>`;
                 }
@@ -1483,8 +1549,14 @@
 
                         if (!hasActIncRange) {
                             const pointLeft = (actMq2DateObj - minDate) / (1000 * 60 * 60 * 24) * pixelsPerDay;
-                            actMq2Left = Math.max(0, pointLeft - 47.5);
+                            actMq2Left = pointLeft - 47.5;
                             actMq2Width = 95;
+                        }
+
+                        // Clamp width mathematically to prevent spillover beyond the right side of the calendar grid
+                        const maxActMq2Width = totalTimelineWidth - actMq2Left;
+                        if (actMq2Width > maxActMq2Width) {
+                            actMq2Width = maxActMq2Width;
                         }
 
                         const actMq2Bar = document.createElement('div');
@@ -1614,18 +1686,20 @@
             const dateStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
             let tableHtml = `
                 <thead>
-                    <tr><th colspan="8" style="font-size: 18px; font-weight: bold; text-align: left; background-color: #001f3f; color: #ffffff;">DANPREL - Engineering Automation Pvt Ltd</th></tr>
-                    <tr><th colspan="8" style="font-size: 14px; font-weight: bold; text-align: left; background-color: #001f3f; color: #ffffff;">MASTER PROJECT TIMELINES REPORT</th></tr>
-                    <tr><th colspan="8" style="text-align: left;">Generated Date: ${dateStr}</th></tr>
-                    <tr><th colspan="8"></th></tr>
+                    <tr><th colspan="10" style="font-size: 18px; font-weight: bold; text-align: left; background-color: #001f3f; color: #ffffff;">DANPREL - Engineering Automation Pvt Ltd</th></tr>
+                    <tr><th colspan="10" style="font-size: 14px; font-weight: bold; text-align: left; background-color: #001f3f; color: #ffffff;">MASTER PROJECT TIMELINES REPORT</th></tr>
+                    <tr><th colspan="10" style="text-align: left;">Generated Date: ${dateStr}</th></tr>
+                    <tr><th colspan="10"></th></tr>
                     <tr style="background-color: #f1f5f9; font-weight: bold;">
                         <th style="border: 1px solid #cbd5e1; padding: 8px;">Project Code</th>
                         <th style="border: 1px solid #cbd5e1; padding: 8px;">Project Name</th>
                         <th style="border: 1px solid #cbd5e1; padding: 8px;">Project Expeditor / PM</th>
                         <th style="border: 1px solid #cbd5e1; padding: 8px;">Planned Start Date</th>
                         <th style="border: 1px solid #cbd5e1; padding: 8px;">Planned Dispatch Date</th>
+                        <th style="border: 1px solid #cbd5e1; padding: 8px;">Planned MQ2 Date</th>
                         <th style="border: 1px solid #cbd5e1; padding: 8px;">Actual Start Date</th>
                         <th style="border: 1px solid #cbd5e1; padding: 8px;">Actual Dispatch Date</th>
+                        <th style="border: 1px solid #cbd5e1; padding: 8px;">Actual MQ2 Date</th>
                         <th style="border: 1px solid #cbd5e1; padding: 8px;">Schedule Status</th>
                     </tr>
                 </thead>
@@ -1636,6 +1710,9 @@
             projects.forEach(p => {
                 const actStartStr = p.detailed_phases?.['kickoff']?.actual_start;
                 const actEndStr = p.detailed_phases?.['dispatch_parent']?.actual_end;
+
+                const plannedMq2Str = p.reassign_mq2_date || p.mq2_date;
+                const actualMq2Str = p.detailed_phases?.['inc_2']?.actual_end || p.detailed_phases?.['inc_2']?.actual_start;
 
                 let statusLabel = 'Not Started';
                 if (actStartStr) {
@@ -1679,8 +1756,10 @@
                         <td style="border: 1px solid #cbd5e1; padding: 6px;">${p.project_manager || '---'}</td>
                         <td style="border: 1px solid #cbd5e1; padding: 6px; text-align: center;">${p.start_date ? new Date(p.start_date).toLocaleDateString('en-GB') : '---'}</td>
                         <td style="border: 1px solid #cbd5e1; padding: 6px; text-align: center;">${p.dispatch_date ? new Date(p.dispatch_date).toLocaleDateString('en-GB') : '---'}</td>
+                        <td style="border: 1px solid #cbd5e1; padding: 6px; text-align: center;">${plannedMq2Str ? new Date(plannedMq2Str).toLocaleDateString('en-GB') : '---'}</td>
                         <td style="border: 1px solid #cbd5e1; padding: 6px; text-align: center;">${actStartStr ? new Date(actStartStr).toLocaleDateString('en-GB') : '---'}</td>
                         <td style="border: 1px solid #cbd5e1; padding: 6px; text-align: center;">${actEndStr ? new Date(actEndStr).toLocaleDateString('en-GB') : '---'}</td>
+                        <td style="border: 1px solid #cbd5e1; padding: 6px; text-align: center;">${actualMq2Str ? new Date(actualMq2Str).toLocaleDateString('en-GB') : '---'}</td>
                         <td style="border: 1px solid #cbd5e1; padding: 6px; font-weight: bold;">${statusLabel}</td>
                     </tr>
                 `;
