@@ -4167,8 +4167,18 @@
             });
 
             // 2. A4 Layout Tuning
-            const itemsPerPage = 16;
-            const totalPages = Math.ceil(tableRows.length / itemsPerPage);
+            // 2. A4 Layout Tuning (Dynamic Pagination for Summary Block)
+            const firstPageItems = 13; // Less items on first page due to summary block
+            const otherPageItems = 16;
+            
+            const chunks = [];
+            let currentIdx = 0;
+            while (currentIdx < tableRows.length) {
+                const limit = chunks.length === 0 ? firstPageItems : otherPageItems;
+                chunks.push(tableRows.slice(currentIdx, currentIdx + limit));
+                currentIdx += limit;
+            }
+            const totalPages = chunks.length;
             const genDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
             const cleanFmtDate = (isoStr) => {
@@ -4177,11 +4187,32 @@
                 return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : isoStr;
             };
 
+            // Calculate Summaries
+            const calcDaysFromISO = (startIso, endIso) => {
+                if (!startIso || !endIso) return null;
+                const d1 = new Date(startIso); const d2 = new Date(endIso);
+                if (isNaN(d1) || isNaN(d2)) return null;
+                return Math.max(0, Math.ceil((d2 - d1) / (1000 * 60 * 60 * 24)));
+            };
+            
+            const pStart = tableRows.find(r => r.ph.id === 'kickoff')?.data?.plan_start;
+            const pDispatch = tableRows.find(r => r.ph.id === 'dispatch_parent')?.data?.plan_end;
+            const pInc = tableRows.find(r => r.ph.id === 'inc_parent')?.data?.plan_end;
+
+            const daysToDispatch = calcDaysFromISO(pStart, pDispatch);
+            const wksToDispatch = daysToDispatch !== null ? (daysToDispatch / 7).toFixed(1) : '-';
+            
+            const daysToInc = calcDaysFromISO(pDispatch, pInc);
+            const wksToInc = daysToInc !== null ? (daysToInc / 7).toFixed(1) : '-';
+            
+            const daysTotal = calcDaysFromISO(pStart, pInc);
+            const wksTotal = daysTotal !== null ? (daysTotal / 7).toFixed(1) : '-';
+
             // Container width set for A4 Landscape
             let finalHtml = `<div style="background: #ffffff; width: 1120px; font-family: 'Inter', sans-serif; padding-top: 1px;">`;
 
             for (let p = 0; p < totalPages; p++) {
-                const chunk = tableRows.slice(p * itemsPerPage, (p + 1) * itemsPerPage);
+                const chunk = chunks[p];
                 const pageBreakStyle = (p < totalPages - 1) ? 'page-break-after: always;' : '';
 
                 finalHtml += `
@@ -4196,12 +4227,33 @@
                      </div>
                 </div>
                 <div style="text-align: right; line-height: 1.2;">
-                     <h2 style="margin: 0 0 5px 0; color: #001f3f; font-size: 20px; font-weight: 900; text-transform: uppercase;">BASELINE PLAN REPORT</h2>
+                     <h2 style="margin: 0 0 5px 0; color: #001f3f; font-size: 20px; font-weight: 900; text-transform: uppercase;">SCHEDULED BASELINE REPORT</h2>
                      <div style="font-size: 11px; color: #475569; font-weight: 800;">Project: <span style="color: #0f172a;">${project.name || 'Untitled'} (${project.code || '---'})</span></div>
                      <div style="font-size: 10px; color: #475569; margin-top: 3px;">Customer: <span style="color: #0f172a; font-weight: 800;">${project.customer_name || '—'}</span> | SAT: <span style="color: #0f172a; font-weight: 800;">${project.sat_location || '—'}</span></div>
                      <div style="font-size: 10px; color: #94a3b8; margin-top: 3px;">Generated Date: ${genDate}</div>
                 </div>
             </div>
+
+            ${p === 0 ? `
+            <div style="display: flex; justify-content: space-between; background: #f8fafc; padding: 12px 20px; border-radius: 10px; border: 1px solid #e2e8f0; margin-bottom: 20px;">
+                <div style="text-align: center; width: 32%;">
+                    <div style="font-size: 9px; color: #64748b; font-weight: 800; text-transform: uppercase;">Start to Dispatch</div>
+                    <div style="font-size: 10px; color: #475569; font-weight: 700; margin-top: 3px;">${cleanFmtDate(pStart)} to ${cleanFmtDate(pDispatch)}</div>
+                    <div style="font-size: 14px; color: #001f3f; font-weight: 900; margin-top: 2px;">${daysToDispatch !== null ? daysToDispatch + ' Days' : '---'} <span style="font-size: 11px; color: #0284c7;">(${wksToDispatch} Wks)</span></div>
+                </div>
+                <div style="width: 1px; background: #cbd5e1;"></div>
+                <div style="text-align: center; width: 32%;">
+                    <div style="font-size: 9px; color: #64748b; font-weight: 800; text-transform: uppercase;">Dispatch to I&C End</div>
+                    <div style="font-size: 10px; color: #475569; font-weight: 700; margin-top: 3px;">${cleanFmtDate(pDispatch)} to ${cleanFmtDate(pInc)}</div>
+                    <div style="font-size: 14px; color: #001f3f; font-weight: 900; margin-top: 2px;">${daysToInc !== null ? daysToInc + ' Days' : '---'} <span style="font-size: 11px; color: #0284c7;">(${wksToInc} Wks)</span></div>
+                </div>
+                <div style="width: 1px; background: #cbd5e1;"></div>
+                <div style="text-align: center; width: 32%;">
+                    <div style="font-size: 9px; color: #64748b; font-weight: 800; text-transform: uppercase;">Total Project Duration</div>
+                    <div style="font-size: 10px; color: #475569; font-weight: 700; margin-top: 3px;">${cleanFmtDate(pStart)} to ${cleanFmtDate(pInc)}</div>
+                    <div style="font-size: 14px; color: #001f3f; font-weight: 900; margin-top: 2px;">${daysTotal !== null ? daysTotal + ' Days' : '---'} <span style="font-size: 11px; color: #0284c7;">(${wksTotal} Wks)</span></div>
+                </div>
+            </div>` : ''}
 
             <table style="width: 100%; border-collapse: separate; border-spacing: 0; font-size: 9.5px; table-layout: fixed; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden;">
                 <colgroup>
