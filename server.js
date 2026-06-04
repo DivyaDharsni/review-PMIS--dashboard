@@ -254,6 +254,109 @@ async function sendAutoReminder(task, timeLabel) {
     console.log(`📨 ${timeLabel} Reminder sent to ${task.email}`);
 }
 
+// --- DATE UTILITY FUNCTIONS ---
+function parseDate(dateStr) {
+    if (!dateStr) return null;
+    if (dateStr instanceof Date) return isNaN(dateStr.getTime()) ? null : dateStr;
+    dateStr = String(dateStr).trim();
+    if (dateStr === 'Select Date' || dateStr === '- Not Set -' || dateStr === '—' || dateStr === '') {
+        return null;
+    }
+    if (dateStr.includes('/')) {
+        const parts = dateStr.split('/');
+        if (parts.length === 3) {
+            const day = parseInt(parts[0], 10);
+            const month = parseInt(parts[1], 10) - 1;
+            const year = parseInt(parts[2], 10);
+            const d = new Date(year, month, day);
+            if (!isNaN(d.getTime())) return d;
+        }
+    }
+    if (dateStr.includes('-')) {
+        const parts = dateStr.split('-');
+        if (parts.length === 3) {
+            if (parts[0].length === 4) {
+                const year = parseInt(parts[0], 10);
+                const month = parseInt(parts[1], 10) - 1;
+                const day = parseInt(parts[2], 10);
+                const d = new Date(year, month, day);
+                if (!isNaN(d.getTime())) return d;
+            } else {
+                const day = parseInt(parts[0], 10);
+                const month = parseInt(parts[1], 10) - 1;
+                const year = parseInt(parts[2], 10);
+                const d = new Date(year, month, day);
+                if (!isNaN(d.getTime())) return d;
+            }
+        }
+    }
+    const d = new Date(dateStr);
+    return isNaN(d.getTime()) ? null : d;
+}
+
+function formatDateLocalISO(date) {
+    if (!date) return '';
+    if (!(date instanceof Date) || isNaN(date.getTime())) return '';
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+/**
+ * calcCpmDuration(items)
+ * 
+ * Proper CPM: groups overlapping (parallel) sub-phases together,
+ * takes the MAX duration within each group, then SUMs across sequential groups.
+ * Gaps between sub-phases are NOT counted.
+ * 
+ * Returns { totalDuration, pStart } where pStart is the earliest start date.
+ */
+function calcCpmDuration(items) {
+    // Filter to only items that have both start and end
+    const valid = items.filter(item => item.start && item.end && item.duration > 0);
+    if (valid.length === 0) {
+        // Fall back to duration-only items if no dates
+        const durOnly = items.filter(item => item.duration > 0);
+        const total = durOnly.reduce((sum, item) => sum + item.duration, 0);
+        return { totalDuration: total, pStart: null };
+    }
+
+    // Sort by start date
+    const sorted = [...valid].sort((a, b) => a.start - b.start);
+
+    // Group overlapping items (parallel) - merge intervals
+    const groups = [];
+    let currentGroup = [sorted[0]];
+    let currentGroupEnd = sorted[0].end;
+
+    for (let i = 1; i < sorted.length; i++) {
+        const item = sorted[i];
+        // If this item starts before the current group's latest end → overlapping (parallel)
+        if (item.start <= currentGroupEnd) {
+            currentGroup.push(item);
+            if (item.end > currentGroupEnd) currentGroupEnd = item.end;
+        } else {
+            // Sequential: start a new group
+            groups.push(currentGroup);
+            currentGroup = [item];
+            currentGroupEnd = item.end;
+        }
+    }
+    groups.push(currentGroup);
+
+    // For each group: take the max duration
+    // For sequential groups: sum them up
+    let totalDuration = 0;
+    for (const group of groups) {
+        const maxDur = group.reduce((max, item) => Math.max(max, item.duration), 0);
+        totalDuration += maxDur;
+    }
+
+    const pStart = new Date(Math.min(...valid.map(item => item.start)));
+    return { totalDuration, pStart };
+}
+
 // --- DATA AUTO-CORRECTION (Fixes dates for rescheduled tasks) ---
 async function syncDataOnStartup() {
     console.log('🔧 Running Data Sync Check...');
@@ -275,7 +378,7 @@ async function syncDataOnStartup() {
         console.log('🔧 Auditing Project Timeline Dates...');
         const projects = await Project.find();
         let projFixed = 0;
-        
+
         const defaultPhases = [
             { id: 'kickoff_1', parent: 'kickoff' }, { id: 'kickoff_2', parent: 'kickoff' },
             { id: 'design_1', parent: 'design' }, { id: 'design_2', parent: 'design' },
@@ -295,79 +398,203 @@ async function syncDataOnStartup() {
 
         const parentIds = ['kickoff', 'design', 'purchase', 'mech_assembly', 'program', 'inhouse', 'mq1_fat', 'dispatch_parent', 'inc_parent'];
 
+        function getTimelineType(project, parentId) {
+            const parentData = project.detailed_phases[parentId] || {};
+            if (parentData.timeline_type) {
+                return parentData.timeline_type;
+            }
+            if (parentId === 'purchase' || parentId === 'program') {
+                return 'parallel';
+            }
+            return 'sequential';
+        }
+
+        function checkOverlap(items) {
+            for (let i = 0; i < items.length; i++) {
+                for (let j = i + 1; j < items.length; j++) {
+                    const item1 = items[i];
+                    const item2 = items[j];
+                    if (item1.start && item1.end && item2.start && item2.end) {
+                        const s1 = parseDate(item1.start);
+                        const e1 = parseDate(item1.end);
+                        const s2 = parseDate(item2.start);
+                        const e2 = parseDate(item2.end);
+                        if (s1 && e1 && s2 && e2) {
+                            if (s1 <= e2 && s2 <= e1) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
         for (const p of projects) {
             if (!p.detailed_phases) continue;
             let changed = false;
 
             parentIds.forEach(parentId => {
                 const subs = defaultPhases.filter(s => s.parent === parentId);
-                let pStart = null, pEnd = null, rStart = null, rEnd = null, aStart = null, aEnd = null;
+                const timelineType = getTimelineType(p, parentId);
 
-                subs.forEach(s => {
+                const activeSubs = subs.filter(s => {
                     const sData = p.detailed_phases[s.id] || {};
-                    if (sData.is_excluded) return;
-
-                    if (sData.plan_start) {
-                        const dt = new Date(sData.plan_start);
-                        if (!isNaN(dt.getTime())) { if (!pStart || dt < pStart) pStart = dt; }
-                    }
-                    if (sData.plan_end) {
-                        const dt = new Date(sData.plan_end);
-                        if (!isNaN(dt.getTime())) { if (!pEnd || dt > pEnd) pEnd = dt; }
-                    }
-                    if (sData.actual_start) {
-                        const dt = new Date(sData.actual_start);
-                        if (!isNaN(dt.getTime())) { if (!aStart || dt < aStart) aStart = dt; }
-                    }
-                    if (sData.actual_end) {
-                        const dt = new Date(sData.actual_end);
-                        if (!isNaN(dt.getTime())) { if (!aEnd || dt > aEnd) aEnd = dt; }
-                    }
-
-                    if (sData.revisions && sData.revisions.length > 0) {
-                        const last = sData.revisions[sData.revisions.length - 1];
-                        if (last.start) {
-                            const dt = new Date(last.start);
-                            if (!isNaN(dt.getTime())) { if (!rStart || dt < rStart) rStart = dt; }
-                        }
-                        if (last.end) {
-                            const dt = new Date(last.end);
-                            if (!isNaN(dt.getTime())) { if (!rEnd || dt > rEnd) rEnd = dt; }
-                        }
-                    } else {
-                        if (sData.plan_start) {
-                            const dt = new Date(sData.plan_start);
-                            if (!isNaN(dt.getTime())) { if (!rStart || dt < rStart) rStart = dt; }
-                        }
-                        if (sData.plan_end) {
-                            const dt = new Date(sData.plan_end);
-                            if (!isNaN(dt.getTime())) { if (!rEnd || dt > rEnd) rEnd = dt; }
-                        }
-                    }
+                    return !sData.is_excluded;
                 });
+
+                let pStart = null, pEnd = null;
+                let rStart = null, rEnd = null;
+                let aStart = null, aEnd = null;
+                let parentRevisions = [];
+
+                if (activeSubs.length > 0) {
+                    // 1. Base Plan CPM
+                    const planItems = activeSubs.map(s => {
+                        const sData = p.detailed_phases[s.id] || {};
+                        let start = parseDate(sData.plan_start);
+                        let end = parseDate(sData.plan_end);
+                        let duration = 0;
+                        if (start && end) {
+                            duration = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
+                            if (duration < 0) duration = 0;
+                        } else if (sData.plan_duration) {
+                            duration = parseInt(sData.plan_duration) || 0;
+                        }
+                        return { start, end, duration };
+                    });
+
+                    // Use proper CPM: sum sequential durations, max parallel durations, no gaps
+                    const planCpm = calcCpmDuration(planItems);
+                    pStart = planCpm.pStart;
+                    if (pStart && planCpm.totalDuration > 0) {
+                        pEnd = new Date(pStart);
+                        pEnd.setDate(pEnd.getDate() + planCpm.totalDuration - 1);
+                    }
+
+                    // 2. Reassigned Plan CPM
+                    const reassignItems = activeSubs.map(s => {
+                        const sData = p.detailed_phases[s.id] || {};
+                        let start = null, end = null;
+                        if (sData.revisions && sData.revisions.length > 0) {
+                            const last = sData.revisions[sData.revisions.length - 1];
+                            if (last.start) start = parseDate(last.start);
+                            if (last.end) end = parseDate(last.end);
+                        } else {
+                            if (sData.plan_start) start = parseDate(sData.plan_start);
+                            if (sData.plan_end) end = parseDate(sData.plan_end);
+                        }
+                        let duration = 0;
+                        if (start && end) {
+                            duration = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
+                            if (duration < 0) duration = 0;
+                        } else if (sData.plan_duration) {
+                            duration = parseInt(sData.plan_duration) || 0;
+                        }
+                        return { start, end, duration };
+                    });
+
+                    // Use proper CPM: sum sequential durations, max parallel durations, no gaps
+                    const reassignCpm = calcCpmDuration(reassignItems);
+                    rStart = reassignCpm.pStart;
+                    if (rStart && reassignCpm.totalDuration > 0) {
+                        rEnd = new Date(rStart);
+                        rEnd.setDate(rEnd.getDate() + reassignCpm.totalDuration - 1);
+                    }
+
+                    // 3. Actuals CPM
+                    const actualItems = activeSubs.map(s => {
+                        const sData = p.detailed_phases[s.id] || {};
+                        let start = parseDate(sData.actual_start);
+                        let end = parseDate(sData.actual_end);
+                        let duration = 0;
+                        if (start && end) {
+                            duration = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
+                            if (duration < 0) duration = 0;
+                        }
+                        return { start, end, duration };
+                    });
+
+                    // Use proper CPM: sum sequential durations, max parallel durations, no gaps
+                    const actualCpm = calcCpmDuration(actualItems);
+                    aStart = actualCpm.pStart;
+                    const allActCompleted = actualItems.every(item => item.start !== null && item.end !== null);
+                    if (allActCompleted && aStart && actualCpm.totalDuration > 0) {
+                        aEnd = new Date(aStart);
+                        aEnd.setDate(aEnd.getDate() + actualCpm.totalDuration - 1);
+                    }
+
+                    // Dynamically calculate revisions history
+                    let maxRevs = 0;
+                    activeSubs.forEach(s => {
+                        const sData = p.detailed_phases[s.id] || {};
+                        if (sData.revisions && sData.revisions.length > maxRevs) {
+                            maxRevs = sData.revisions.length;
+                        }
+                    });
+
+                    for (let k = 0; k < maxRevs; k++) {
+                        const revItems = activeSubs.map(s => {
+                            const sData = p.detailed_phases[s.id] || {};
+                            let start = null, end = null;
+                            const sRevs = sData.revisions || [];
+                            if (sRevs.length > 0) {
+                                const revIndex = Math.min(k, sRevs.length - 1);
+                                const rev = sRevs[revIndex];
+                                if (rev.start) start = parseDate(rev.start);
+                                if (rev.end) end = parseDate(rev.end);
+                            } else {
+                                if (sData.plan_start) start = parseDate(sData.plan_start);
+                                if (sData.plan_end) end = parseDate(sData.plan_end);
+                            }
+
+                            let duration = 0;
+                            if (start && end) {
+                                duration = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
+                                if (duration < 0) duration = 0;
+                            } else if (sData.plan_duration) {
+                                duration = parseInt(sData.plan_duration) || 0;
+                            }
+                            return { start, end, duration };
+                        });
+
+                        // Use proper CPM: sum sequential durations, max parallel durations, no gaps
+                        const revCpm = calcCpmDuration(revItems);
+                        let rKStart = revCpm.pStart;
+                        let rKEnd = null;
+                        if (rKStart && revCpm.totalDuration > 0) {
+                            rKEnd = new Date(rKStart);
+                            rKEnd.setDate(rKEnd.getDate() + revCpm.totalDuration - 1);
+                        }
+
+                        parentRevisions.push({
+                            label: 'R' + (k + 1),
+                            start: rKStart ? formatDateLocalISO(rKStart) : '',
+                            end: rKEnd ? formatDateLocalISO(rKEnd) : ''
+                        });
+                    }
+                }
 
                 if (!p.detailed_phases[parentId]) p.detailed_phases[parentId] = {};
                 const dParent = p.detailed_phases[parentId];
 
-                const nPlanStart = pStart ? pStart.toISOString().split('T')[0] : '';
-                const nPlanEnd = pEnd ? pEnd.toISOString().split('T')[0] : '';
-                const nActualStart = aStart ? aStart.toISOString().split('T')[0] : '';
-                const nActualEnd = aEnd ? aEnd.toISOString().split('T')[0] : '';
+                const computedPlanStart = pStart ? formatDateLocalISO(pStart) : '';
+                const computedPlanEnd = pEnd ? formatDateLocalISO(pEnd) : '';
+                const nActualStart = aStart ? formatDateLocalISO(aStart) : '';
+                const nActualEnd = aEnd ? formatDateLocalISO(aEnd) : '';
+                const nReassignStart = rStart ? formatDateLocalISO(rStart) : '';
+                const nReassignEnd = rEnd ? formatDateLocalISO(rEnd) : '';
 
-                let computedPlanStart = nPlanStart;
-                let computedPlanEnd = nPlanEnd;
-                if (!computedPlanStart && rStart) computedPlanStart = rStart.toISOString().split('T')[0];
-                if (!computedPlanEnd && rEnd) computedPlanEnd = rEnd.toISOString().split('T')[0];
-
-                const nReassignStart = rStart ? rStart.toISOString().split('T')[0] : '';
-                const nReassignEnd = rEnd ? rEnd.toISOString().split('T')[0] : '';
+                // JSON compare helper for revisions list comparison
+                const areRevisionsEqual = (a1, a2) => JSON.stringify(a1 || []) === JSON.stringify(a2 || []);
 
                 if (dParent.plan_start !== computedPlanStart ||
                     dParent.plan_end !== computedPlanEnd ||
                     dParent.actual_start !== nActualStart ||
                     dParent.actual_end !== nActualEnd ||
                     dParent.reassign_start !== nReassignStart ||
-                    dParent.reassign_end !== nReassignEnd) {
+                    dParent.reassign_end !== nReassignEnd ||
+                    !areRevisionsEqual(dParent.revisions, parentRevisions)) {
                     
                     dParent.plan_start = computedPlanStart;
                     dParent.plan_end = computedPlanEnd;
@@ -375,6 +602,7 @@ async function syncDataOnStartup() {
                     dParent.actual_end = nActualEnd;
                     dParent.reassign_start = nReassignStart;
                     dParent.reassign_end = nReassignEnd;
+                    dParent.revisions = parentRevisions;
                     changed = true;
                 }
             });
@@ -425,11 +653,11 @@ async function runReminderCheck() {
         const now = new Date();
         const tomorrow = new Date(now);
         tomorrow.setDate(tomorrow.getDate() + 1);
-        const dateStr24 = tomorrow.toISOString().split('T')[0];
+        const dateStr24 = formatDateLocalISO(tomorrow);
 
         const yesterday = new Date(now);
         yesterday.setDate(yesterday.getDate() - 1);
-        const dateStrYesterday = yesterday.toISOString().split('T')[0];
+        const dateStrYesterday = formatDateLocalISO(yesterday);
 
         // 1. Check for 24-hour reminders FIRST
         const upcoming24 = await ActionPoint.find({ 
@@ -449,7 +677,7 @@ async function runReminderCheck() {
         // 2. Check for 48-hour reminders
         const dayAfterTomorrow = new Date(now);
         dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
-        const dateStr48 = dayAfterTomorrow.toISOString().split('T')[0];
+        const dateStr48 = formatDateLocalISO(dayAfterTomorrow);
 
         const upcoming48 = await ActionPoint.find({ 
             targetDate: { $gte: dateStrYesterday, $lte: dateStr48 }, 

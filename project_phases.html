@@ -2192,6 +2192,44 @@
             }
         }
 
+        function getTimelineType(parentId) {
+            if (!project || !project.detailed_phases) return 'sequential';
+            const parentData = project.detailed_phases[parentId] || {};
+            if (parentData.timeline_type) {
+                return parentData.timeline_type;
+            }
+            // Defaults:
+            if (parentId === 'purchase' || parentId === 'program') {
+                return 'parallel';
+            }
+            return 'sequential';
+        }
+
+        function checkOverlap(items) {
+            for (let i = 0; i < items.length; i++) {
+                for (let j = i + 1; j < items.length; j++) {
+                    const item1 = items[i];
+                    const item2 = items[j];
+                    if (item1.start && item1.end && item2.start && item2.end) {
+                        if (item1.start <= item2.end && item2.start <= item1.end) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        async function toggleTimelineType(parentId) {
+            if (!project || !project.detailed_phases) return;
+            if (!project.detailed_phases[parentId]) project.detailed_phases[parentId] = {};
+            const current = getTimelineType(parentId);
+            const next = current === 'sequential' ? 'parallel' : 'sequential';
+            project.detailed_phases[parentId].timeline_type = next;
+            
+            await syncProject();
+        }
+
         function initProjectData() {
             if (!project.detailed_phases) project.detailed_phases = {};
             if (!project.revision_requests) project.revision_requests = [];
@@ -2273,35 +2311,125 @@
             updateResponsibilityVisibility();
         }
 
+        function parseDate(dateStr) {
+            if (!dateStr) return null;
+            if (dateStr instanceof Date) return isNaN(dateStr.getTime()) ? null : dateStr;
+            dateStr = String(dateStr).trim();
+            if (dateStr === 'Select Date' || dateStr === '- Not Set -' || dateStr === '—' || dateStr === '') {
+                return null;
+            }
+            if (dateStr.includes('/')) {
+                const parts = dateStr.split('/');
+                if (parts.length === 3) {
+                    const day = parseInt(parts[0], 10);
+                    const month = parseInt(parts[1], 10) - 1;
+                    const year = parseInt(parts[2], 10);
+                    const d = new Date(year, month, day);
+                    if (!isNaN(d.getTime())) return d;
+                }
+            }
+            if (dateStr.includes('-')) {
+                const parts = dateStr.split('-');
+                if (parts.length === 3) {
+                    if (parts[0].length === 4) {
+                        const year = parseInt(parts[0], 10);
+                        const month = parseInt(parts[1], 10) - 1;
+                        const day = parseInt(parts[2], 10);
+                        const d = new Date(year, month, day);
+                        if (!isNaN(d.getTime())) return d;
+                    } else {
+                        const day = parseInt(parts[0], 10);
+                        const month = parseInt(parts[1], 10) - 1;
+                        const year = parseInt(parts[2], 10);
+                        const d = new Date(year, month, day);
+                        if (!isNaN(d.getTime())) return d;
+                    }
+                }
+            }
+            const d = new Date(dateStr);
+            return isNaN(d.getTime()) ? null : d;
+        }
+
+        function formatDateLocalISO(date) {
+            if (!date) return '';
+            if (!(date instanceof Date) || isNaN(date.getTime())) return '';
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        /**
+         * calcCpmDuration(items)
+         * Proper CPM: groups overlapping (parallel) sub-phases together,
+         * takes the MAX duration within each group, then SUMs across sequential groups.
+         * Gaps between sub-phases are NOT counted in total days.
+         */
+        function calcCpmDuration(items) {
+            const valid = items.filter(item => item.start && item.end && item.duration > 0);
+            if (valid.length === 0) {
+                const durOnly = items.filter(item => item.duration > 0);
+                const total = durOnly.reduce((sum, item) => sum + item.duration, 0);
+                return { totalDuration: total, pStart: null };
+            }
+            const sorted = [...valid].sort((a, b) => a.start - b.start);
+            const groups = [];
+            let currentGroup = [sorted[0]];
+            let currentGroupEnd = sorted[0].end;
+            for (let i = 1; i < sorted.length; i++) {
+                const item = sorted[i];
+                if (item.start <= currentGroupEnd) {
+                    currentGroup.push(item);
+                    if (item.end > currentGroupEnd) currentGroupEnd = item.end;
+                } else {
+                    groups.push(currentGroup);
+                    currentGroup = [item];
+                    currentGroupEnd = item.end;
+                }
+            }
+            groups.push(currentGroup);
+            let totalDuration = 0;
+            for (const group of groups) {
+                totalDuration += group.reduce((max, item) => Math.max(max, item.duration), 0);
+            }
+            const pStart = new Date(Math.min(...valid.map(item => item.start)));
+            return { totalDuration, pStart };
+        }
+
         function calcDays(start, end) {
             if (!start || !end) return '-';
-            const s = new Date(start), e = new Date(end);
+            const s = parseDate(start), e = parseDate(end);
+            if (!s || !e) return '-';
             const days = Math.round((e - s) / (1000 * 60 * 60 * 24)) + 1;
             return days >= 0 ? days + 'd' : '-';
         }
 
         function calcEstimatedEndISO(data) {
             if (!data.actual_start || !data.plan_start || !data.plan_end) return null;
-            const ps = new Date(data.plan_start);
-            const pe = new Date(data.plan_end);
+            const ps = parseDate(data.plan_start);
+            const pe = parseDate(data.plan_end);
+            if (!ps || !pe) return null;
             const dur = Math.ceil((pe - ps) / (1000 * 60 * 60 * 24));
             if (dur < 0) return null;
-            const ce = new Date(data.actual_start);
+            const ce = parseDate(data.actual_start);
+            if (!ce) return null;
             ce.setDate(ce.getDate() + dur);
-            return ce.toISOString().split('T')[0];
+            return formatDateLocalISO(ce);
         }
 
         function calcDaysInProgress(actualStart) {
             if (!actualStart) return '-';
-            const s = new Date(actualStart);
+            const s = parseDate(actualStart);
+            if (!s) return '-';
             const days = Math.floor((new Date() - s) / (1000 * 60 * 60 * 24));
             return days >= 0 ? days + 'd' : '0d';
         }
 
         function calcDelayStatus(planEnd, actualEnd) {
             if (!planEnd || !actualEnd) return { text: '-', color: 'inherit', weight: '500' };
-            const p = new Date(planEnd);
-            const a = new Date(actualEnd);
+            const p = parseDate(planEnd);
+            const a = parseDate(actualEnd);
+            if (!p || !a) return { text: '-', color: 'inherit', weight: '500' };
             const diff = Math.ceil((a - p) / (1000 * 60 * 60 * 24));
 
             if (diff > 0) return { text: '+' + diff + ' Days', color: '#ef4444', weight: '800' };
@@ -2311,10 +2439,8 @@
 
         function formatDate(dt) {
             if (!dt) return '<span class="empty-date">— Not Set —</span>';
-            const parts = dt.split('-');
-            if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
-            const d = new Date(dt);
-            if (isNaN(d.getTime())) return dt;
+            const d = parseDate(dt);
+            if (!d) return dt;
             const dd = String(d.getDate()).padStart(2, '0');
             const mm = String(d.getMonth() + 1).padStart(2, '0');
             return `${dd}/${mm}/${d.getFullYear()}`;
@@ -2324,9 +2450,11 @@
             if (!project || !project.detailed_phases) return '';
             const koData = project.detailed_phases['kickoff_1'] || project.detailed_phases['kickoff'];
             if (koData && koData.plan_start) {
-                const d = new Date(koData.plan_start);
-                d.setDate(d.getDate() - 5);
-                return d.toISOString().split('T')[0];
+                const d = parseDate(koData.plan_start);
+                if (d) {
+                    d.setDate(d.getDate() - 5);
+                    return formatDateLocalISO(d);
+                }
             }
             return '';
         }
@@ -2520,48 +2648,74 @@
                     const subs = defaultPhases.filter(s => s.parent === ph.id);
                     let subTotal = 0;
                     let subCount = 0;
-                    let pStart = null, pEnd = null, aStart = null;
-
-                    let aEnd = null;
-
                     subs.forEach(s => {
-                        const sData = project.detailed_phases[s.id] || { progress: 0, plan_start: '', plan_end: '', actual_start: '', is_excluded: false };
+                        const sData = project.detailed_phases[s.id] || { progress: 0, is_excluded: false };
                         if (!sData.is_excluded) {
                             subTotal += parseInt(sData.progress || 0);
                             subCount++;
                         }
-
-                        // Determine effective PLAN start/end for parent sync (Latest revision or original)
-                        let effStart = sData.plan_start;
-                        let effEnd = sData.plan_end;
-                        if (sData.revisions && sData.revisions.length > 0) {
-                            const last = sData.revisions[sData.revisions.length - 1];
-                            if (last.start) effStart = last.start;
-                            if (last.end) effEnd = last.end;
-                        }
-
-                        if (effStart) {
-                            const d = new Date(effStart);
-                            if (!pStart || d < pStart) pStart = d;
-                        }
-                        if (effEnd) {
-                            const d = new Date(effEnd);
-                            if (!pEnd || d > pEnd) pEnd = d;
-                        }
-                        if (sData.actual_start) {
-                            const d = new Date(sData.actual_start);
-                            if (!aStart || d < aStart) aStart = d;
-                        }
-                        if (sData.actual_end) {
-                            const d = new Date(sData.actual_end);
-                            if (!aEnd || d > aEnd) aEnd = d;
-                        }
                     });
                     data.progress = subCount ? Math.round(subTotal / subCount) : 0;
-                    data.plan_start = pStart ? pStart.toISOString().split('T')[0] : '';
-                    data.plan_end = pEnd ? pEnd.toISOString().split('T')[0] : '';
-                    data.actual_start = aStart ? aStart.toISOString().split('T')[0] : '';
-                    data.actual_end = aEnd ? aEnd.toISOString().split('T')[0] : '';
+
+                    const timelineType = getTimelineType(ph.id);
+                    const activeSubs = subs.filter(s => {
+                        const sData = project.detailed_phases[s.id] || {};
+                        return !sData.is_excluded;
+                    });
+
+                    let pStart = null, pEnd = null;
+                    let aStart = null, aEnd = null;
+
+                    if (activeSubs.length > 0) {
+                        // 1. Base Plan CPM
+                        const planItems = activeSubs.map(s => {
+                            const sData = project.detailed_phases[s.id] || {};
+                            let start = parseDate(sData.plan_start);
+                            let end = parseDate(sData.plan_end);
+                            let duration = 0;
+                            if (start && end) {
+                                duration = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
+                                if (duration < 0) duration = 0;
+                            } else if (sData.plan_duration) {
+                                duration = parseInt(sData.plan_duration) || 0;
+                            }
+                            return { start, end, duration };
+                        });
+
+                        // 3. Actuals CPM
+                        const actualItems = activeSubs.map(s => {
+                            const sData = project.detailed_phases[s.id] || {};
+                            let start = parseDate(sData.actual_start);
+                            let end = parseDate(sData.actual_end);
+                            let duration = 0;
+                            if (start && end) {
+                                duration = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
+                                if (duration < 0) duration = 0;
+                            }
+                            return { start, end, duration };
+                        });
+
+                        // Use proper CPM: sum sequential durations, max parallel durations, no gaps
+                        const planCpm = calcCpmDuration(planItems);
+                        pStart = planCpm.pStart;
+                        if (pStart && planCpm.totalDuration > 0) {
+                            pEnd = new Date(pStart);
+                            pEnd.setDate(pEnd.getDate() + planCpm.totalDuration - 1);
+                        }
+
+                        // Use proper CPM: sum sequential durations, max parallel durations, no gaps
+                        const actualCpm = calcCpmDuration(actualItems);
+                        aStart = actualCpm.pStart;
+                        const allActCompleted = actualItems.every(item => item.start !== null && item.end !== null);
+                        if (allActCompleted && aStart && actualCpm.totalDuration > 0) {
+                            aEnd = new Date(aStart);
+                            aEnd.setDate(aEnd.getDate() + actualCpm.totalDuration - 1);
+                        }
+                    }
+                    data.plan_start = formatDateLocalISO(pStart);
+                    data.plan_end = formatDateLocalISO(pEnd);
+                    data.actual_start = formatDateLocalISO(aStart);
+                    data.actual_end = formatDateLocalISO(aEnd);
                 }
 
                 if (ph.type !== 'parent' && !isExcluded) {
@@ -2589,6 +2743,14 @@
 
                 const exclusionCheckbox = `<input type="checkbox" class="form-check-input exclusion-check" ${isExcluded ? 'checked' : ''} onchange="requestToggleExclusion('${ph.id}', this.checked, this)" onclick="event.stopPropagation()" title="Disable phase">`;
 
+                const timelineType = getTimelineType(ph.id);
+                const activeSubsTemp = defaultPhases.filter(s => s.parent === ph.id && !(project.detailed_phases[s.id] || {}).is_excluded);
+                const planItemsTemp = activeSubsTemp.map(s => {
+                    const sData = project.detailed_phases[s.id] || {};
+                    let start = parseDate(sData.plan_start);
+                    let end = parseDate(sData.plan_end);
+                    return { start, end };
+                });
                 const phaseLabel = ph.type === 'parent' ?
                     `<div><i class="bi bi-chevron-right expand-icon"></i> <span class="phase-name">${serialPrefix}${ph.name}</span></div>` :
                     (ph.type === 'sub' ? `<div class="sub-phase-container"><span class="sub-phase-name">${serialPrefix}${ph.name}</span></div>` : `<span class="phase-name" style="padding-left: 24px;">${serialPrefix}${ph.name}</span>`);
@@ -3066,19 +3228,23 @@
             if (field === 'plan_start' && value) {
                 const dur = parseInt(d.plan_duration);
                 if (!isNaN(dur) && dur > 0) {
-                    const start = new Date(value);
-                    const end = new Date(start);
-                    end.setDate(end.getDate() + (dur - 1));
-                    d.plan_end = end.toISOString().split('T')[0];
+                    const start = parseDate(value);
+                    if (start) {
+                        const end = new Date(start);
+                        end.setDate(end.getDate() + (dur - 1));
+                        d.plan_end = formatDateLocalISO(end);
+                    }
                 }
             }
 
             // If manual End Date changed, update the internal duration store
             if (field === 'plan_end' && value && d.plan_start) {
-                const s = new Date(d.plan_start);
-                const e = new Date(value);
-                const dur = Math.round((e - s) / (1000 * 60 * 60 * 24)) + 1;
-                if (dur >= 1) d.plan_duration = dur;
+                const s = parseDate(d.plan_start);
+                const e = parseDate(value);
+                if (s && e) {
+                    const dur = Math.round((e - s) / (1000 * 60 * 60 * 24)) + 1;
+                    if (dur >= 1) d.plan_duration = dur;
+                }
             }
 
             renderTable(); // Update sibling fields on screen
@@ -3093,10 +3259,12 @@
             d.plan_duration = val;
 
             if (d.plan_start) {
-                const start = new Date(d.plan_start);
-                const end = new Date(start);
-                end.setDate(end.getDate() + (val - 1));
-                d.plan_end = end.toISOString().split('T')[0];
+                const start = parseDate(d.plan_start);
+                if (start) {
+                    const end = new Date(start);
+                    end.setDate(end.getDate() + (val - 1));
+                    d.plan_end = formatDateLocalISO(end);
+                }
             }
             renderTable();
         }
@@ -3168,10 +3336,12 @@
             const days = parseInt(document.getElementById('mRescheduleDays').value);
             const eInp = document.getElementById('mRescheduleEnd');
             if (s && !isNaN(days)) {
-                const start = new Date(s);
-                const end = new Date(start);
-                end.setDate(end.getDate() + days);
-                eInp.value = end.toISOString().split('T')[0];
+                const start = parseDate(s);
+                if (start) {
+                    const end = new Date(start);
+                    end.setDate(end.getDate() + days);
+                    eInp.value = formatDateLocalISO(end);
+                }
             }
         }
 
@@ -3620,72 +3790,206 @@
             // Recursively calculate parent dates from sub-phases to ensure aggregate accuracy before sync
             const syncParentDates = (parentId) => {
                 const subs = defaultPhases.filter(s => s.parent === parentId);
-                let pStart = null, pEnd = null, rStart = null, rEnd = null, aStart = null, aEnd = null;
+                const timelineType = getTimelineType(parentId);
 
-                subs.forEach(s => {
+                const activeSubs = subs.filter(s => {
                     const sData = d[s.id] || {};
-                    if (sData.is_excluded) return;
-
-                    // Base Plan
-                    if (sData.plan_start) {
-                        const dt = new Date(sData.plan_start);
-                        if (!pStart || dt < pStart) pStart = dt;
-                    }
-                    if (sData.plan_end) {
-                        const dt = new Date(sData.plan_end);
-                        if (!pEnd || dt > pEnd) pEnd = dt;
-                    }
-
-                    // Actuals
-                    if (sData.actual_start) {
-                        const dt = new Date(sData.actual_start);
-                        if (!aStart || dt < aStart) aStart = dt;
-                    }
-                    if (sData.actual_end) {
-                        const dt = new Date(sData.actual_end);
-                        if (!aEnd || dt > aEnd) aEnd = dt;
-                    }
-
-                    // Revisions
-                    if (sData.revisions && sData.revisions.length > 0) {
-                        const last = sData.revisions[sData.revisions.length - 1];
-                        if (last.start) {
-                            const dt = new Date(last.start);
-                            if (!rStart || dt < rStart) rStart = dt;
-                        }
-                        if (last.end) {
-                            const dt = new Date(last.end);
-                            if (!rEnd || dt > rEnd) rEnd = dt;
-                        }
-                    } else {
-                        if (sData.plan_start) {
-                            const dt = new Date(sData.plan_start);
-                            if (!rStart || dt < rStart) rStart = dt;
-                        }
-                        if (sData.plan_end) {
-                            const dt = new Date(sData.plan_end);
-                            if (!rEnd || dt > rEnd) rEnd = dt;
-                        }
-                    }
+                    return !sData.is_excluded;
                 });
 
+                let pStart = null, pEnd = null;
+                let rStart = null, rEnd = null;
+                let aStart = null, aEnd = null;
+                let parentRevisions = [];
+
+                if (activeSubs.length > 0) {
+                    // 1. Base Plan CPM
+                    const planItems = activeSubs.map(s => {
+                        const sData = d[s.id] || {};
+                        let start = parseDate(sData.plan_start);
+                        let end = parseDate(sData.plan_end);
+                        let duration = 0;
+                        if (start && end) {
+                            duration = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
+                            if (duration < 0) duration = 0;
+                        } else if (sData.plan_duration) {
+                            duration = parseInt(sData.plan_duration) || 0;
+                        }
+                        return { start, end, duration };
+                    });
+
+                    // 2. Reassigned Plan CPM
+                    const reassignItems = activeSubs.map(s => {
+                        const sData = d[s.id] || {};
+                        let start = null, end = null;
+                        if (sData.revisions && sData.revisions.length > 0) {
+                            const last = sData.revisions[sData.revisions.length - 1];
+                            if (last.start) start = parseDate(last.start);
+                            if (last.end) end = parseDate(last.end);
+                        } else {
+                            if (sData.plan_start) start = parseDate(sData.plan_start);
+                            if (sData.plan_end) end = parseDate(sData.plan_end);
+                        }
+                        let duration = 0;
+                        if (start && end) {
+                            duration = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
+                            if (duration < 0) duration = 0;
+                        } else if (sData.plan_duration) {
+                            duration = parseInt(sData.plan_duration) || 0;
+                        }
+                        return { start, end, duration };
+                    });
+
+                    // 3. Actuals CPM
+                    const actualItems = activeSubs.map(s => {
+                        const sData = d[s.id] || {};
+                        let start = parseDate(sData.actual_start);
+                        let end = parseDate(sData.actual_end);
+                        let duration = 0;
+                        if (start && end) {
+                            duration = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
+                            if (duration < 0) duration = 0;
+                        }
+                        return { start, end, duration };
+                    });
+
+                    // Sequential vs Parallel Logic based on actual overlap
+                    const isPlanParallel = (timelineType === 'parallel' || checkOverlap(planItems));
+                    if (!isPlanParallel) {
+                        const firstPlan = planItems.find(item => item.start !== null);
+                        pStart = firstPlan ? firstPlan.start : null;
+                        const totalPlanDur = planItems.reduce((sum, item) => sum + item.duration, 0);
+                        if (pStart && totalPlanDur > 0) {
+                            pEnd = new Date(pStart);
+                            pEnd.setDate(pEnd.getDate() + totalPlanDur - 1);
+                        }
+                    } else {
+                        const planStarts = planItems.map(item => item.start).filter(d => d !== null);
+                        pStart = planStarts.length > 0 ? new Date(Math.min(...planStarts)) : null;
+                        const maxPlanDur = planItems.reduce((max, item) => Math.max(max, item.duration), 0);
+                        if (pStart && maxPlanDur > 0) {
+                            pEnd = new Date(pStart);
+                            pEnd.setDate(pEnd.getDate() + maxPlanDur - 1);
+                        }
+                    }
+
+                    const isReassignParallel = (timelineType === 'parallel' || checkOverlap(reassignItems));
+                    if (!isReassignParallel) {
+                        const firstReassign = reassignItems.find(item => item.start !== null);
+                        rStart = firstReassign ? firstReassign.start : null;
+                        const totalReassignDur = reassignItems.reduce((sum, item) => sum + item.duration, 0);
+                        if (rStart && totalReassignDur > 0) {
+                            rEnd = new Date(rStart);
+                            rEnd.setDate(rEnd.getDate() + totalReassignDur - 1);
+                        }
+                    } else {
+                        const reassignStarts = reassignItems.map(item => item.start).filter(d => d !== null);
+                        rStart = reassignStarts.length > 0 ? new Date(Math.min(...reassignStarts)) : null;
+                        const maxReassignDur = reassignItems.reduce((max, item) => Math.max(max, item.duration), 0);
+                        if (rStart && maxReassignDur > 0) {
+                            rEnd = new Date(rStart);
+                            rEnd.setDate(rEnd.getDate() + maxReassignDur - 1);
+                        }
+                    }
+
+                    const isActualParallel = (timelineType === 'parallel' || checkOverlap(actualItems));
+                    if (!isActualParallel) {
+                        const firstActual = actualItems.find(item => item.start !== null);
+                        aStart = firstActual ? firstActual.start : null;
+                        const allActCompleted = actualItems.every(item => item.start !== null && item.end !== null);
+                        if (allActCompleted && aStart) {
+                            const totalActDur = actualItems.reduce((sum, item) => sum + item.duration, 0);
+                            if (totalActDur > 0) {
+                                aEnd = new Date(aStart);
+                                aEnd.setDate(aEnd.getDate() + totalActDur - 1);
+                            }
+                        }
+                    } else {
+                        const actualStarts = actualItems.map(item => item.start).filter(d => d !== null);
+                        aStart = actualStarts.length > 0 ? new Date(Math.min(...actualStarts)) : null;
+                        const allActCompleted = actualItems.every(item => item.start !== null && item.end !== null);
+                        if (allActCompleted && aStart) {
+                            const maxActDur = actualItems.reduce((max, item) => Math.max(max, item.duration), 0);
+                            if (maxActDur > 0) {
+                                aEnd = new Date(aStart);
+                                aEnd.setDate(aEnd.getDate() + maxActDur - 1);
+                            }
+                        }
+                    }
+
+                    // Calculate Parent Revisions dynamically
+                    let maxRevs = 0;
+                    activeSubs.forEach(s => {
+                        const sData = d[s.id] || {};
+                        if (sData.revisions && sData.revisions.length > maxRevs) {
+                            maxRevs = sData.revisions.length;
+                        }
+                    });
+
+                    for (let k = 0; k < maxRevs; k++) {
+                        const revItems = activeSubs.map(s => {
+                            const sData = d[s.id] || {};
+                            let start = null, end = null;
+                            const sRevs = sData.revisions || [];
+                            if (sRevs.length > 0) {
+                                const revIndex = Math.min(k, sRevs.length - 1);
+                                const rev = sRevs[revIndex];
+                                if (rev.start) start = parseDate(rev.start);
+                                if (rev.end) end = parseDate(rev.end);
+                            } else {
+                                if (sData.plan_start) start = parseDate(sData.plan_start);
+                                if (sData.plan_end) end = parseDate(sData.plan_end);
+                            }
+
+                            let duration = 0;
+                            if (start && end) {
+                                duration = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
+                                if (duration < 0) duration = 0;
+                            } else if (sData.plan_duration) {
+                                duration = parseInt(sData.plan_duration) || 0;
+                            }
+                            return { start, end, duration };
+                        });
+
+                        const isRevKParallel = (timelineType === 'parallel' || checkOverlap(revItems));
+                        let rKStart = null, rKEnd = null;
+                        if (!isRevKParallel) {
+                            const firstItem = revItems.find(item => item.start !== null);
+                            rKStart = firstItem ? firstItem.start : null;
+                            const totalDur = revItems.reduce((sum, item) => sum + item.duration, 0);
+                            if (rKStart && totalDur > 0) {
+                                rKEnd = new Date(rKStart);
+                                rKEnd.setDate(rKEnd.getDate() + totalDur - 1);
+                            }
+                        } else {
+                            const starts = revItems.map(item => item.start).filter(d => d !== null);
+                            rKStart = starts.length > 0 ? new Date(Math.min(...starts)) : null;
+                            const maxDur = revItems.reduce((max, item) => Math.max(max, item.duration), 0);
+                            if (rKStart && maxDur > 0) {
+                                rKEnd = new Date(rKStart);
+                                rKEnd.setDate(rKEnd.getDate() + maxDur - 1);
+                            }
+                        }
+
+                        parentRevisions.push({
+                            label: 'R' + (k + 1),
+                            start: formatDateLocalISO(rKStart),
+                            end: formatDateLocalISO(rKEnd)
+                        });
+                    }
+                }
+
                 if (!d[parentId]) d[parentId] = {};
-                d[parentId].plan_start = pStart ? pStart.toISOString().split('T')[0] : '';
-                d[parentId].plan_end = pEnd ? pEnd.toISOString().split('T')[0] : '';
+                d[parentId].plan_start = formatDateLocalISO(pStart);
+                d[parentId].plan_end = formatDateLocalISO(pEnd);
 
-                d[parentId].actual_start = aStart ? aStart.toISOString().split('T')[0] : '';
-                d[parentId].actual_end = aEnd ? aEnd.toISOString().split('T')[0] : '';
+                d[parentId].actual_start = formatDateLocalISO(aStart);
+                d[parentId].actual_end = formatDateLocalISO(aEnd);
 
-                // Baseline fallback from revisions
-                if (!d[parentId].plan_start && rStart) {
-                    d[parentId].plan_start = rStart.toISOString().split('T')[0];
-                }
-                if (!d[parentId].plan_end && rEnd) {
-                    d[parentId].plan_end = rEnd.toISOString().split('T')[0];
-                }
-
-                d[parentId].reassign_start = rStart ? rStart.toISOString().split('T')[0] : '';
-                d[parentId].reassign_end = rEnd ? rEnd.toISOString().split('T')[0] : '';
+                d[parentId].reassign_start = formatDateLocalISO(rStart);
+                d[parentId].reassign_end = formatDateLocalISO(rEnd);
+                
+                d[parentId].revisions = parentRevisions;
             };
 
             // Trigger aggregate sync for ALL relevant parent phases to ensure timeline integrity
@@ -3850,15 +4154,15 @@
                     subs.forEach(s => {
                         const sd = project.detailed_phases[s.id] || {};
                         subTotal += parseInt(sd.progress || 0);
-                        if (sd.plan_start) { const dBound = new Date(sd.plan_start); if (!pStart || dBound < pStart) pStart = dBound; }
-                        if (sd.plan_end) { const dBound = new Date(sd.plan_end); if (!pEnd || dBound > pEnd) pEnd = dBound; }
-                        if (sd.actual_start) { const dBound = new Date(sd.actual_start); if (!aStart || dBound < aStart) aStart = dBound; }
-                        if (sd.actual_end) { const dBound = new Date(sd.actual_end); if (!aEnd || dBound > aEnd) aEnd = dBound; }
+                        if (sd.plan_start) { const dBound = parseDate(sd.plan_start); if (!pStart || dBound < pStart) pStart = dBound; }
+                        if (sd.plan_end) { const dBound = parseDate(sd.plan_end); if (!pEnd || dBound > pEnd) pEnd = dBound; }
+                        if (sd.actual_start) { const dBound = parseDate(sd.actual_start); if (!aStart || dBound < aStart) aStart = dBound; }
+                        if (sd.actual_end) { const dBound = parseDate(sd.actual_end); if (!aEnd || dBound > aEnd) aEnd = dBound; }
                     });
-                    if (pStart) data.plan_start = pStart.toISOString().split('T')[0];
-                    if (pEnd) data.plan_end = pEnd.toISOString().split('T')[0];
-                    if (aStart) data.actual_start = aStart.toISOString().split('T')[0];
-                    if (aEnd) data.actual_end = aEnd.toISOString().split('T')[0];
+                    if (pStart) data.plan_start = formatDateLocalISO(pStart);
+                    if (pEnd) data.plan_end = formatDateLocalISO(pEnd);
+                    if (aStart) data.actual_start = formatDateLocalISO(aStart);
+                    if (aEnd) data.actual_end = formatDateLocalISO(aEnd);
                     data.progress = subs.length ? Math.round(subTotal / subs.length) : 0;
                 }
                 return { ph, data, ser };
@@ -4157,11 +4461,11 @@
                     let pStart = null, pEnd = null;
                     subs.forEach(s => {
                         const sd = project.detailed_phases[s.id] || {};
-                        if (sd.plan_start) { const dBound = new Date(sd.plan_start); if (!pStart || dBound < pStart) pStart = dBound; }
-                        if (sd.plan_end) { const dBound = new Date(sd.plan_end); if (!pEnd || dBound > pEnd) pEnd = dBound; }
+                        if (sd.plan_start) { const dBound = parseDate(sd.plan_start); if (!pStart || dBound < pStart) pStart = dBound; }
+                        if (sd.plan_end) { const dBound = parseDate(sd.plan_end); if (!pEnd || dBound > pEnd) pEnd = dBound; }
                     });
-                    if (pStart) data.plan_start = pStart.toISOString().split('T')[0];
-                    if (pEnd) data.plan_end = pEnd.toISOString().split('T')[0];
+                    if (pStart) data.plan_start = formatDateLocalISO(pStart);
+                    if (pEnd) data.plan_end = formatDateLocalISO(pEnd);
                 }
                 return { ph, data, ser };
             });
@@ -4478,21 +4782,21 @@
                     subs.forEach(s => {
                         const sData = project.detailed_phases[s.id] || {};
                         if (sData.plan_start) {
-                            const d = new Date(sData.plan_start);
+                            const d = parseDate(sData.plan_start);
                             if (!pStart || d < pStart) pStart = d;
                         }
                         if (sData.plan_end) {
-                            const d = new Date(sData.plan_end);
+                            const d = parseDate(sData.plan_end);
                             if (!pEnd || d > pEnd) pEnd = d;
                         }
                         if (sData.actual_start) {
-                            const d = new Date(sData.actual_start);
+                            const d = parseDate(sData.actual_start);
                             if (!aStart || d < aStart) aStart = d;
                         }
                     });
-                    if (pStart) data.plan_start = pStart.toISOString().split('T')[0];
-                    if (pEnd) data.plan_end = pEnd.toISOString().split('T')[0];
-                    if (aStart) data.actual_start = aStart.toISOString().split('T')[0];
+                    if (pStart) data.plan_start = formatDateLocalISO(pStart);
+                    if (pEnd) data.plan_end = formatDateLocalISO(pEnd);
+                    if (aStart) data.actual_start = formatDateLocalISO(aStart);
                 }
                 return {
                     'Ref #': sNum.trim(),
@@ -4505,13 +4809,13 @@
                     'Actual Start': data.actual_start || '',
                     'Calc. End': (() => {
                         if (data.actual_start && data.plan_start && data.plan_end) {
-                            const ps = new Date(data.plan_start);
-                            const pe = new Date(data.plan_end);
+                            const ps = parseDate(data.plan_start);
+                            const pe = parseDate(data.plan_end);
                             const dur = Math.ceil((pe - ps) / (1000 * 60 * 60 * 24));
                             if (dur >= 0) {
-                                const ce = new Date(data.actual_start);
+                                const ce = parseDate(data.actual_start);
                                 ce.setDate(ce.getDate() + dur);
-                                return ce.toISOString().split('T')[0];
+                                return formatDateLocalISO(ce);
                             }
                         }
                         return '';
@@ -4572,16 +4876,16 @@
                     subs.forEach(s => {
                         const sData = project.detailed_phases[s.id] || {};
                         if (sData.plan_start) {
-                            const d = new Date(sData.plan_start);
+                            const d = parseDate(sData.plan_start);
                             if (!pStart || d < pStart) pStart = d;
                         }
                         if (sData.plan_end) {
-                            const d = new Date(sData.plan_end);
+                            const d = parseDate(sData.plan_end);
                             if (!pEnd || d > pEnd) pEnd = d;
                         }
                     });
-                    if (pStart) data.plan_start = pStart.toISOString().split('T')[0];
-                    if (pEnd) data.plan_end = pEnd.toISOString().split('T')[0];
+                    if (pStart) data.plan_start = formatDateLocalISO(pStart);
+                    if (pEnd) data.plan_end = formatDateLocalISO(pEnd);
                 }
 
                 const cleanFmtDate = (isoStr) => {
