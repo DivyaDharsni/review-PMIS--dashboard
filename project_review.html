@@ -1788,7 +1788,13 @@
         </a>
 
 
-        <div class="sidebar-section-title" style="margin-top: 30px;">Account</div>
+        <div class="sidebar-section-title" style="margin-top: 20px;">Reports</div>
+        <button class="sidebar-btn" onclick="openActionPointExport()">
+            <div class="sb-icon" style="background: rgba(20,184,166,0.18);"><i class="bi bi-file-earmark-arrow-down-fill" style="color:#14b8a6;"></i></div>
+            Export Action Points
+        </button>
+
+        <div class="sidebar-section-title" style="margin-top: 10px;">Account</div>
         <button class="sidebar-btn" onclick="performLogout()">
             <div class="sb-icon"><i class="bi bi-box-arrow-right"></i></div>
             Logout
@@ -2329,6 +2335,30 @@
             try {
                 const response = await fetch('/api/projects?t=' + Date.now());
                 projects = await response.json();
+
+                // Fetch Action Points and attach to projects
+                try {
+                    const apRes = await fetch('/api/action-points?t=' + Date.now());
+                    const allAps = await apRes.json();
+                    
+                    const apMap = {};
+                    allAps.forEach(ap => {
+                        if (!apMap[ap.projectId]) apMap[ap.projectId] = [];
+                        apMap[ap.projectId].push(ap);
+                    });
+                    
+                    projects.forEach(p => {
+                        if (apMap[p._id] && apMap[p._id].length > 0) {
+                            p.meetings = apMap[p._id];
+                        } else {
+                            p.meetings = p.meetings || [];
+                        }
+                    });
+                } catch (apErr) {
+                    console.error('Error fetching action points:', apErr);
+                    projects.forEach(p => p.meetings = p.meetings || []);
+                }
+
                 renderProjects();
                 renderRevisions(); // Populate notification badges
             } catch (err) {
@@ -2618,8 +2648,8 @@
                                 }
 
                                 if (val >= 60) return '#2D68C4';
-                                if (val >= 25) return '#E5A23B';
-                                return '#C2CFE0';
+                                if (val > 0) return '#eab308'; // In Progress Yellow
+                                return '#e2e8f0'; // Empty/Started Grey
                             };
 
                             const barColor = getDynamicColor(val, d);
@@ -3147,11 +3177,13 @@
 
             const rows = document.querySelectorAll('#projectTableBody tr');
             let visibleIndex = 1;
+            const visibleProjectIds = new Set();
 
             rows.forEach(row => {
                 const text = row.textContent.toLowerCase();
-                const manager = row.cells[7].textContent.trim();
-                const rawDate = row.cells[5].textContent.trim(); // PO Date
+                // Cell[8] = PM/Project Expeditor
+                const manager = row.cells[8] ? row.cells[8].textContent.trim() : '';
+                const rawDate = row.cells[6] ? row.cells[6].textContent.trim() : ''; // PO Date
 
                 // Date Valid
                 let dateValid = true;
@@ -3174,9 +3206,109 @@
 
                 if (isVisible) {
                     row.cells[0].textContent = visibleIndex++;
+                    // Track which project IDs are visible via data attribute
+                    if (row.dataset.projId) visibleProjectIds.add(row.dataset.projId);
                 }
             });
+
+            // --- Recompute stat chips based on filtered projects ---
+            const filteredProjects = selManager === 'All' && !from && !to && !q
+                ? projects  // All filters cleared → use full list
+                : projects.filter(p => {
+                    // Manager filter
+                    if (selManager !== 'All' && (p.project_manager || '—') !== selManager) return false;
+                    // Date filter
+                    if (from || to) {
+                        const rawPo = p.po_date || '';
+                        const parts = rawPo.split('-');
+                        if (parts.length === 3) {
+                            const pd = new Date(rawPo);
+                            if (from && pd < new Date(from)) return false;
+                            if (to && pd > new Date(to)) return false;
+                        } else {
+                            if (from || to) return false;
+                        }
+                    }
+                    // Search filter
+                    if (q) {
+                        const searchText = [p.name, p.code, p.tracking_code, p.customer_name, p.sat_location, p.project_manager]
+                            .join(' ').toLowerCase();
+                        if (!searchText.includes(q)) return false;
+                    }
+                    return true;
+                });
+
+            const weights = [3, 15, 15, 20, 15, 10, 10, 2, 10];
+            const phaseIdMap = ['kickoff', 'design', 'purchase', 'mech_assembly', 'program', 'inhouse', 'mq1_fat', 'dispatch_parent', 'inc_parent'];
+
+            let totalVal = 0, dispatchedVal = 0, inProgressCount = 0, closedCount = 0;
+            let projectsInIC = 0, deliveredCount = 0, deliveredOnTimeCount = 0;
+
+            filteredProjects.forEach(p => {
+                const poVal = parseFloat(p.po_value || 0);
+                totalVal += poVal;
+
+                let activeWeightOverall = 0, activeWeightedSumOverall = 0;
+                let allActiveDone = true;
+
+                phaseIdMap.forEach((phId, idx) => {
+                    const d = (p.detailed_phases && p.detailed_phases[phId]) || {};
+                    const isEx = d.is_excluded === true;
+                    const prog = parseInt((p.phases && p.phases[idx] && p.phases[idx].progress) || 0);
+                    if (!isEx) {
+                        activeWeightOverall += weights[idx];
+                        activeWeightedSumOverall += (prog / 100) * weights[idx];
+                        if (prog < 100) allActiveDone = false;
+                    }
+                    if (phId === 'inc_parent' && prog > 0 && prog < 100 && !isEx) projectsInIC++;
+                });
+
+                const allDone = activeWeightOverall > 0 && allActiveDone;
+                const hasAnyProgress = (p.phases || []).some(ph => (parseFloat(ph.progress) || 0) > 0);
+                const hasAnyActualStart = Object.values(p.detailed_phases || {}).some(det => det && det.actual_start);
+                const dispatchPhase = (p.phases && p.phases[7]) ? parseInt(p.phases[7].progress || 0) : 0;
+
+                let displayStatus = p.status || 'Started';
+                if (displayStatus !== 'Closed') {
+                    if (allDone) displayStatus = 'Closed';
+                    else if (dispatchPhase === 100) displayStatus = 'Dispatched';
+                    else if (hasAnyProgress || hasAnyActualStart) displayStatus = 'In Progress';
+                    else displayStatus = 'Started';
+                }
+
+                if (displayStatus === 'Closed') { closedCount++; dispatchedVal += poVal; }
+                else if (displayStatus === 'Dispatched' || displayStatus === 'Completed') { dispatchedVal += poVal; }
+                else { inProgressCount++; }
+
+                const isOtdStatus = displayStatus === 'Dispatched' || displayStatus === 'Closed' || displayStatus === 'Completed';
+                const otdDispData = (p.detailed_phases && p.detailed_phases['dispatch_parent']) || {};
+                const otdActEnd = otdDispData.actual_end || '';
+                const otdPlanEnd = p.dispatch_date || '';
+                if (isOtdStatus && otdPlanEnd) {
+                    deliveredCount++;
+                    if (otdActEnd) {
+                        const pd = new Date(otdPlanEnd), ad = new Date(otdActEnd);
+                        if (ad <= pd) deliveredOnTimeCount++;
+                    } else {
+                        const pd = new Date(otdPlanEnd), today = new Date();
+                        today.setHours(0,0,0,0); pd.setHours(0,0,0,0);
+                        if (today <= pd) deliveredOnTimeCount++;
+                    }
+                }
+            });
+
+            // Update stat chips
+            document.getElementById('statTotal').innerText = filteredProjects.length;
+            document.getElementById('statInProgress').innerText = inProgressCount;
+            document.getElementById('statClosed').innerText = closedCount;
+            document.getElementById('statICCount').innerText = projectsInIC;
+            document.getElementById('statOTD').innerText = deliveredCount > 0
+                ? Math.round((deliveredOnTimeCount / deliveredCount) * 100) + '%' : '—';
+            document.getElementById('statDispatchedValue').innerText = `₹${dispatchedVal.toLocaleString('en-IN')}`;
+            document.getElementById('statTotalValue').innerText = `₹${totalVal.toLocaleString('en-IN')}`;
         }
+
+
 
         // --- Employee / Resource Logic (For Manager Dropdown) ---
         let employees = [];
@@ -3712,9 +3844,357 @@
         // Revision Request Logic
         // Revision Center logic now handled within Hub functions above
 
+
+        // =====================================================================
+        // EXPORT ALL ACTION POINTS FEATURE
+        // =====================================================================
+
+        function openActionPointExport() {
+            // Close sidebar
+            document.getElementById('sidebar').classList.remove('active');
+            document.getElementById('sidebarOverlay').classList.remove('active');
+
+            // Only show projects that actually have meetings
+            const withMeetings = projects.filter(p => p.meetings && p.meetings.length > 0);
+
+            const list = document.getElementById('apProjectList');
+            document.getElementById('apSelectAll').checked = false;
+            document.getElementById('apSearchInput').value = '';
+            document.getElementById('apSelectedCount').innerText = '0 selected';
+
+            if (withMeetings.length === 0) {
+                list.innerHTML = `<div style="text-align:center; padding:40px; color:#94a3b8; font-weight:700;"><i class="bi bi-inbox" style="font-size:2rem; display:block; margin-bottom:10px;"></i>No projects have action points yet.</div>`;
+            } else {
+                list.innerHTML = withMeetings.map((p, i) => {
+                    const completed = (p.meetings || []).filter(m => m.statusValue === 'Completed' || m.statusValue === 'Resolved').length;
+                    const total = (p.meetings || []).length;
+                    return `
+                    <label class="ap-project-row" data-name="${(p.name||'').toLowerCase()} ${(p.code||'').toLowerCase()}" style="display:flex; align-items:center; gap:14px; padding:12px 10px; border-radius:12px; cursor:pointer; border:1.5px solid #e2e8f0; margin-bottom:8px; background:white; transition:border-color .15s;" onmouseover="this.style.borderColor='#0284c7'" onmouseout="if(!this.querySelector('input').checked)this.style.borderColor='#e2e8f0'; else this.style.borderColor='#0284c7';">
+                        <input type="checkbox" class="ap-proj-cb" data-proj-id="${p._id}" onchange="apUpdateCount(); this.closest('label').style.borderColor=this.checked?'#0284c7':'#e2e8f0';" style="width:18px;height:18px;accent-color:#0284c7; flex-shrink:0;">
+                        <div style="flex:1; min-width:0;">
+                            <div style="font-weight:800; color:#001f3f; font-size:0.92rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${p.code} — ${p.name}</div>
+                            <div style="font-size:0.75rem; color:#64748b; margin-top:2px;">${p.customer_name || '—'} &nbsp;|&nbsp; ${total} action point${total!==1?'s':''}, ${completed} completed</div>
+                        </div>
+                        <div style="text-align:right; flex-shrink:0;">
+                            <span style="background:${completed===total?'#dcfce7':'#f1f5f9'}; color:${completed===total?'#16a34a':'#475569'}; font-size:0.72rem; font-weight:800; padding:3px 9px; border-radius:20px;">${completed}/${total}</span>
+                        </div>
+                    </label>`;
+                }).join('');
+            }
+
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('actionExportModal')).show();
+        }
+
+        function apToggleAll(checked) {
+            document.querySelectorAll('.ap-proj-cb').forEach(cb => {
+                const row = cb.closest('label');
+                if (row && row.style.display !== 'none') {
+                    cb.checked = checked;
+                    row.style.borderColor = checked ? '#0284c7' : '#e2e8f0';
+                }
+            });
+            apUpdateCount();
+        }
+
+        function apUpdateCount() {
+            const count = document.querySelectorAll('.ap-proj-cb:checked').length;
+            document.getElementById('apSelectedCount').innerText = count + ' selected';
+            document.getElementById('apSelectAll').checked =
+                count > 0 && count === document.querySelectorAll('.ap-proj-cb').length;
+        }
+
+        function apFilterList() {
+            const q = document.getElementById('apSearchInput').value.toLowerCase();
+            document.querySelectorAll('.ap-project-row').forEach(row => {
+                const name = row.dataset.name || '';
+                row.style.display = name.includes(q) ? '' : 'none';
+            });
+            apUpdateCount();
+        }
+
+        function apGetSelectedProjects() {
+            const ids = [...document.querySelectorAll('.ap-proj-cb:checked')].map(cb => cb.dataset.projId);
+            return projects.filter(p => ids.includes(p._id));
+        }
+
+        function apFmtDate(d) {
+            if (!d) return '-';
+            const parts = d.split('-');
+            return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : d;
+        }
+
+        async function apDoExport(format) {
+            const selected = apGetSelectedProjects();
+            if (selected.length === 0) { showToast('Please select at least one project.', true); return; }
+
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('actionExportModal')).hide();
+            showStatus(format === 'pdf' ? 'Generating PDF...' : 'Generating Excel...');
+
+            try {
+                if (format === 'pdf') await apExportPDF(selected);
+                else apExportExcel(selected);
+            } catch(e) {
+                console.error(e);
+                showToast('Export failed: ' + e.message, true);
+            } finally {
+                hideStatus();
+            }
+        }
+
+        // ---- PDF EXPORT ----
+        async function apExportPDF(selectedProjects) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+            const genDate = new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+            
+            const getBase64 = async (url) => {
+                try {
+                    const res = await fetch(url);
+                    const blob = await res.blob();
+                    return new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => resolve(reader.result);
+                        reader.readAsDataURL(blob);
+                    });
+                } catch { return null; }
+            }
+            const logoData = await getBase64('asset/image.png');
+
+            // Collect all rows
+            let allRows = [];
+            let globalIdx = 1;
+
+            selectedProjects.forEach(p => {
+                const meetings = (p.meetings || []).slice().sort((a,b) => new Date(b.reviewDate)-new Date(a.reviewDate));
+                if (meetings.length === 0) return;
+
+                meetings.forEach(m => {
+                    const revs = (m.revisions||[]).filter(r=>r.date);
+                    const latestDate = revs.length > 0 ? revs[revs.length-1].date : m.targetDate;
+                    const revStr = revs.length > 0
+                        ? revs.map((r,ri)=>`R${ri+1}: ${apFmtDate(r.date)}${r.remark?' ('+r.remark+')':''}`).join('\n')
+                        : '-';
+                    allRows.push([
+                        globalIdx++,
+                        p.code || p.name, // Project column
+                        apFmtDate(m.reviewDate),
+                        m.action || '',
+                        m.dept || '',
+                        m.personName || '',
+                        apFmtDate(m.targetDate),
+                        apFmtDate(latestDate),
+                        m.statusValue || '',
+                        revStr
+                    ]);
+                });
+            });
+
+            if (allRows.length === 0) return;
+
+            // 1. Draw Header Background
+            doc.setFillColor(0, 31, 63); // Deep Navy
+            doc.rect(10, 8, 277, 26, 'F'); // Increased height
+
+            // 2. Logo Box
+            doc.setFillColor(255, 255, 255);
+            doc.roundedRect(14, 11, 20, 20, 2, 2, 'F');
+            if (logoData) {
+                doc.addImage(logoData, 'PNG', 15.5, 12.5, 17, 17);
+            }
+
+            // 3. Header Texts
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(18); doc.setFont('helvetica', 'bold');
+            doc.text('DANPREL ENGINEERING AUTOMATION', 40, 18);
+
+            doc.setTextColor(148, 163, 184); // Light blue/gray
+            doc.setFontSize(11); doc.setFont('helvetica', 'normal');
+            doc.text('Review meeting summary', 40, 24);
+
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(8); doc.setFont('helvetica', 'bold');
+            doc.text(`DATE: ${genDate}`, 40, 30);
+
+            // 4. Render Table
+            doc.autoTable({
+                startY: 38,
+                head: [['#','Project','Review Date','Action Point','Dept','Responsible','Orig. Target','Current Target','Status','Revision History']],
+                body: allRows,
+                styles: { fontSize: 7, cellPadding: 2.5, font: 'helvetica', overflow: 'linebreak' },
+                headStyles: { fillColor: [0,31,63], textColor:[255,255,255], fontStyle:'bold', fontSize:7.5 },
+                alternateRowStyles: { fillColor: [245,249,255] },
+                columnStyles: {
+                    0: { cellWidth: 10, halign:'center' },
+                    1: { cellWidth: 16 },
+                    2: { cellWidth: 20 },
+                    3: { cellWidth: 58 },
+                    4: { cellWidth: 16 },
+                    5: { cellWidth: 28 },
+                    6: { cellWidth: 20 },
+                    7: { cellWidth: 20 },
+                    8: { cellWidth: 18 },
+                    9: { cellWidth: 65 }
+                },
+                didParseCell: function(data) {
+                    if (data.section === 'body' && data.column.index === 8) {
+                        const val = String(data.cell.raw || '').toLowerCase();
+                        if (val.includes('completed') || val.includes('resolved')) {
+                            data.cell.styles.textColor = [22, 163, 74]; // Green
+                            data.cell.styles.fontStyle = 'bold';
+                        } else if (val.includes('in progress')) {
+                            data.cell.styles.textColor = [202, 138, 4]; // Dark Yellow/Gold for legibility
+                            data.cell.styles.fontStyle = 'bold';
+                        } else if (val.includes('yet to start')) {
+                            data.cell.styles.textColor = [100, 116, 139]; // Grey
+                            data.cell.styles.fontStyle = 'bold';
+                        }
+                    }
+                },
+                didDrawPage: (data) => {
+                    doc.setFontSize(7); doc.setTextColor(150);
+                    doc.text(`DANPREL ENGINEERING AUTOMATION | Action Points | Page ${data.pageNumber}`, 148.5, 205, {align:'center'});
+                }
+            });
+
+            doc.save(`Danprel_ActionPoints_${new Date().getTime()}.pdf`);
+            showToast('PDF Downloaded Successfully');
+        }
+
+        // ---- EXCEL EXPORT ----
+        // ---- EXCEL EXPORT ----
+        function apExportExcel(selectedProjects) {
+            const wb = XLSX.utils.book_new();
+            const genDate = new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+
+            let allDataRows = [];
+            let total = 0;
+            let completed = 0;
+            let globalIdx = 1;
+
+            selectedProjects.forEach(p => {
+                const meetings = (p.meetings || []).slice().sort((a,b) => new Date(b.reviewDate)-new Date(a.reviewDate));
+                if (meetings.length === 0) return;
+
+                total += meetings.length;
+                completed += meetings.filter(m=>m.statusValue==='Completed'||m.statusValue==='Resolved').length;
+
+                meetings.forEach((m, i) => {
+                    const revs = (m.revisions||[]).filter(r=>r.date);
+                    const latestDate = revs.length > 0 ? revs[revs.length-1].date : m.targetDate;
+                    const revStr = revs.length > 0
+                        ? revs.map((r,ri)=>`R${ri+1}: ${apFmtDate(r.date)}${r.remark?' ('+r.remark+')':''}`).join('\n')
+                        : '-';
+                    
+                    allDataRows.push([
+                        globalIdx++,
+                        p.code || p.name, // Added Project Name
+                        apFmtDate(m.reviewDate),
+                        m.action || '',
+                        m.dept || '',
+                        m.personName || '',
+                        m.email || '',
+                        apFmtDate(m.targetDate),
+                        apFmtDate(latestDate),
+                        m.statusValue || '',
+                        revStr
+                    ]);
+                });
+            });
+
+            if (allDataRows.length === 0) {
+                showToast('No records found to export.', true);
+                return;
+            }
+
+            const headerRows = [
+                ['DANPREL ENGINEERING AUTOMATION PVT LTD','','','','','','','','','',''],
+                ['Review Meeting — Action Points Report','','','','','','','','','',''],
+                ['','','','','','','','','','',''],
+                ['Projects:', selectedProjects.length === 1 ? selectedProjects[0].code : 'Multiple','','','','Generated Date:', genDate,'','','',''],
+                ['Total Action Points:', total,'','','','Completed:', completed,'','','',''],
+                ['Open Action Points:', total-completed,'','','','','','','','',''],
+                ['','','','','','','','','','',''],
+                ['S.No','Project','Review Date','Action Point','Department','Responsible Person','Email','Original Target Date','Current Target Date','Status','Revision History']
+            ];
+
+            const allRows = [...headerRows, ...allDataRows];
+            const ws = XLSX.utils.aoa_to_sheet(allRows);
+
+            ws['!merges'] = [
+                { s: { r: 0, c: 0 }, e: { r: 0, c: 10 } },
+                { s: { r: 1, c: 0 }, e: { r: 1, c: 10 } },
+                { s: { r: 3, c: 1 }, e: { r: 3, c: 4 } },
+                { s: { r: 3, c: 6 }, e: { r: 3, c: 10 } },
+                { s: { r: 4, c: 1 }, e: { r: 4, c: 4 } },
+                { s: { r: 4, c: 6 }, e: { r: 4, c: 10 } },
+                { s: { r: 5, c: 1 }, e: { r: 5, c: 10 } }
+            ];
+
+            ws['!cols'] = [
+                {wch:6}, {wch:18}, {wch:14}, {wch:45}, {wch:14}, {wch:22}, {wch:26}, {wch:18}, {wch:18}, {wch:14}, {wch:55}
+            ];
+            ws['!rows'] = [{hpt:26},{hpt:16},{hpt:6},{hpt:15},{hpt:15},{hpt:15},{hpt:6},{hpt:18}];
+
+            XLSX.utils.book_append_sheet(wb, ws, "Action Points");
+            XLSX.writeFile(wb, `Danprel_ActionPoints_${new Date().getTime()}.xlsx`);
+            showToast('Excel Downloaded Successfully');
+        }
+
         fetchProjects();
         fetchEmployees();
     </script>
+    <!-- ===== ACTION POINT EXPORT MODAL ===== -->
+    <div class="modal fade" id="actionExportModal" tabindex="-1" aria-labelledby="actionExportModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content" style="border-radius:24px; overflow:hidden; border:none; box-shadow: 0 30px 80px rgba(0,31,63,0.18);">
+
+                <!-- Header -->
+                <div style="background: linear-gradient(135deg,#001f3f,#003366); padding:24px 28px; display:flex; align-items:center; justify-content:space-between;">
+                    <div>
+                        <div style="color:white; font-weight:900; font-size:1.15rem;"><i class="bi bi-file-earmark-arrow-down-fill me-2" style="color:#14b8a6;"></i>Export Review Action Points</div>
+                        <div style="color:#94a3b8; font-size:0.75rem; margin-top:4px;">Select projects and choose export format</div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body p-0">
+
+                    <!-- Select All + Search -->
+                    <div style="padding:16px 24px; background:#f8fafc; border-bottom:1px solid #e2e8f0; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                        <label style="display:flex; align-items:center; gap:8px; font-weight:800; color:#001f3f; cursor:pointer; user-select:none;">
+                            <input type="checkbox" id="apSelectAll" onchange="apToggleAll(this.checked)" style="width:18px;height:18px;accent-color:#0284c7;">
+                            Select All Projects
+                        </label>
+                        <div style="flex:1; min-width:180px;">
+                            <input type="text" id="apSearchInput" placeholder="Search project..." oninput="apFilterList()" style="width:100%; border:1.5px solid #e2e8f0; border-radius:10px; padding:8px 14px; font-size:0.88rem; font-family:inherit; outline:none;">
+                        </div>
+                        <span id="apSelectedCount" style="font-size:0.82rem; color:#64748b; font-weight:700; white-space:nowrap;">0 selected</span>
+                    </div>
+
+                    <!-- Project List -->
+                    <div id="apProjectList" style="max-height:340px; overflow-y:auto; padding:12px 24px;">
+                        <!-- Populated by JS -->
+                    </div>
+
+                </div>
+
+                <!-- Footer -->
+                <div style="padding:16px 24px; background:#f8fafc; border-top:1px solid #e2e8f0; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+                    <div style="font-size:0.8rem; color:#94a3b8;">Only projects with action points are shown</div>
+                    <div style="display:flex; gap:10px;">
+                        <button onclick="apDoExport('excel')" style="display:flex; align-items:center; gap:8px; background:#16a34a; color:white; border:none; border-radius:12px; padding:11px 22px; font-weight:800; font-size:0.9rem; cursor:pointer; transition:opacity .2s;" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+                            <i class="bi bi-file-earmark-excel-fill"></i> Export Excel
+                        </button>
+                        <button onclick="apDoExport('pdf')" style="display:flex; align-items:center; gap:8px; background:#001f3f; color:white; border:none; border-radius:12px; padding:11px 22px; font-weight:800; font-size:0.9rem; cursor:pointer; transition:opacity .2s;" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+                            <i class="bi bi-file-earmark-pdf-fill"></i> Export PDF
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
 </body>
 
 </html>

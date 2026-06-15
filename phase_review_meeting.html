@@ -2415,9 +2415,10 @@ Please ensure that all necessary work is on track for completion. If the task is
             let groupIndex = 0;
 
             const opt = {
-                margin: [30, 30, 30, 30],
+                margin: [60, 30, 30, 30],
                 filename: `Meeting_Records_${project.code}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
+                pagebreak: { mode: 'css', avoid: 'tr' },
                 html2canvas: {
                     scale: 2,
                     useCORS: true,
@@ -2483,32 +2484,52 @@ Please ensure that all necessary work is on track for completion. If the task is
 
                     <!-- RECORDS TABLE SECTION -->
                     <div style="margin-bottom: 10pt; font-size: 9pt; font-weight: 800; color: #001f3f; text-transform: uppercase; letter-spacing: 0.5pt;">Detailed Action Item History</div>
-                    <div style="border: 1pt solid #cbd5e1; border-radius: 4pt; overflow: hidden; background: white;">
+                    <div style="background: white;">
                         <table style="width: 100%; border-collapse: collapse; font-size: 8pt;">
-                            <thead style="background: #001f3f; color: white;">
+                            <thead style="background: #001f3f; color: white; border: 1pt solid #cbd5e1;">
                                 <tr>
                                     <th style="padding: 10pt 5pt; text-align: center; width: 25pt;">#</th>
                                     <th style="padding: 10pt 5pt; text-align: center; width: 60pt;">REVIEW DATE</th>
-                                    <th style="padding: 10pt 8pt; text-align: left;">ACTION POINT DETAILS</th>
+                                    <th style="padding: 10pt 8pt; text-align: center;">ACTION POINT DETAILS</th>
                                     <th style="padding: 10pt 5pt; text-align: center; width: 55pt;">DEPT</th>
                                     <th style="padding: 10pt 5pt; text-align: center; width: 65pt;">RESPONSIBLE</th>
-                                    <th style="padding: 10pt 5pt; text-align: center; width: 60pt;">TARGET</th>
+                                    <th style="padding: 10pt 5pt; text-align: center; width: 95pt;">TARGET DATE</th>
                                     <th style="padding: 10pt 5pt; text-align: center; width: 55pt;">STATUS</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                ${sortedMeetings.map((m) => {
+                                ${sortedMeetings.map((m, i) => {
                 const fmtDate = formatDate(m.reviewDate);
-                const isNewGroup = fmtDate !== lastDateGroup;
-                if (isNewGroup) { lastDateGroup = fmtDate; groupIndex++; }
 
                 const sc = STATUS_COLORS[m.statusValue] || { bg: "#f1f5f9", color: "#64748b" };
                 const dc = DEPT_COLORS[m.dept] || { bg: "#f1f5f9", color: "#64748b" };
 
+                // Compute effective (latest) target date
+                const revisionsWithDates = (m.revisions || []).filter(r => r.date);
+                const hasRevisions = revisionsWithDates.length > 0;
+
+                // Build target date cell: original (struck) + revision badges
+                let targetCellHtml = '';
+                if (hasRevisions) {
+                    targetCellHtml += `<div style="text-decoration:line-through;color:#94a3b8;font-size:6.5pt;margin-bottom:2pt;">${formatDate(m.targetDate)}<span style="font-size:5.5pt;margin-left:2pt;">(Orig)</span></div>`;
+                    revisionsWithDates.forEach((rev, rIdx) => {
+                        const isLast = rIdx === revisionsWithDates.length - 1;
+                        targetCellHtml += `<div style="display:flex;align-items:center;gap:2pt;margin-bottom:2pt;">`;
+                        targetCellHtml += `<span style="background:${isLast ? '#0284c7' : '#94a3b8'};color:white;padding:1pt 3pt;border-radius:2pt;font-size:5.5pt;font-weight:900;">R${rIdx + 1}</span>`;
+                        targetCellHtml += `<span style="font-weight:800;color:${isLast ? '#0369a1' : '#94a3b8'};font-size:7pt;${!isLast ? 'text-decoration:line-through;' : ''}">${formatDate(rev.date)}</span>`;
+                        targetCellHtml += `</div>`;
+                        if (isLast && rev.remark) {
+                            targetCellHtml += `<div style="font-size:6pt;color:#64748b;font-style:italic;margin-top:1pt;">&ldquo;${rev.remark}&rdquo;</div>`;
+                        }
+                    });
+                } else {
+                    targetCellHtml = `<div style="font-weight:800;color:#001f3f;">${formatDate(m.targetDate)}</div>`;
+                }
+
                 return `
-                                        <tr style="border-bottom: 0.5pt solid #e2e8f0; page-break-inside: avoid;">
-                                            <td style="padding: 10pt 5pt; text-align: center; font-weight: 800; color: #64748b; vertical-align: top;">${isNewGroup ? groupIndex : ''}</td>
-                                            <td style="padding: 10pt 5pt; text-align: center; font-weight: 800; color: #0f172a; vertical-align: top;">${isNewGroup ? fmtDate : ''}</td>
+                                        <tr style="border-left: 1pt solid #cbd5e1; border-right: 1pt solid #cbd5e1; border-bottom: 1pt solid #cbd5e1; page-break-inside: avoid;">
+                                            <td style="padding: 10pt 5pt; text-align: center; font-weight: 800; color: #64748b; vertical-align: top;">${i + 1}</td>
+                                            <td style="padding: 10pt 5pt; text-align: center; font-weight: 800; color: #0f172a; vertical-align: top;">${fmtDate}</td>
                                             <td style="padding: 10pt 8pt; font-weight: 600; line-height: 1.4; color: #334155; vertical-align: top; word-break: break-word;">
                                                 <div style="white-space: pre-wrap;">${esc(m.action)}</div>
                                             </td>
@@ -2516,7 +2537,7 @@ Please ensure that all necessary work is on track for completion. If the task is
                                                 <div style="background:${dc.bg};color:${dc.color};padding:2pt 4pt;border-radius:4pt;font-size:6.5pt;font-weight:900;text-transform:uppercase;">${m.dept}</div>
                                             </td>
                                             <td style="padding: 10pt 5pt; text-align: center; font-weight: 700; color: #1e293b; vertical-align: top;">${m.personName}</td>
-                                            <td style="padding: 10pt 5pt; text-align: center; font-weight: 800; color: #001f3f; vertical-align: top;">${formatDate(m.targetDate)}</td>
+                                            <td style="padding: 10pt 5pt; text-align: left; vertical-align: top; min-width: 65pt;">${targetCellHtml}</td>
                                             <td style="padding: 10pt 5pt; text-align: center; vertical-align: top;">
                                                 <span style="background:${sc.bg};color:${sc.color};padding:3pt 6pt;border-radius:20pt;font-size:7pt;font-weight:900;white-space:nowrap;">${m.statusValue}</span>
                                             </td>
@@ -2533,9 +2554,35 @@ Please ensure that all necessary work is on track for completion. If the task is
                 const totalPages = pdf.internal.getNumberOfPages();
                 for (let i = 1; i <= totalPages; i++) {
                     pdf.setPage(i);
+                    // Draw Footer
                     pdf.setFontSize(8);
                     pdf.setTextColor(150);
                     pdf.text(`DANPREL ENGINEERING AUTOMATION - Meeting Minutes | Project: ${project.code} | Page ${i} of ${totalPages}`, 40, 810);
+                    
+                    // On pages > 1, draw the repeating header!
+                    if (i > 1) {
+                        const topY = 30; // Fits perfectly in the 60pt margin!
+                        
+                        pdf.setFillColor(0, 31, 63);
+                        pdf.rect(30, topY, 535, 30, 'F');
+                        
+                        pdf.setDrawColor(203, 213, 225); // #cbd5e1
+                        pdf.setLineWidth(1);
+                        pdf.rect(30, topY, 535, 30, 'S');
+
+                        pdf.setTextColor(255, 255, 255);
+                        pdf.setFontSize(8);
+                        pdf.setFont('helvetica', 'bold');
+                        
+                        // We use the same widths as the HTML table th to align columns perfectly
+                        pdf.text('#', 42.5, topY + 19, { align: 'center' });
+                        pdf.text('REVIEW DATE', 85, topY + 19, { align: 'center' });
+                        pdf.text('ACTION POINT DETAILS', 205, topY + 19, { align: 'center' });
+                        pdf.text('DEPT', 322.5, topY + 19, { align: 'center' });
+                        pdf.text('RESPONSIBLE', 382.5, topY + 19, { align: 'center' });
+                        pdf.text('TARGET DATE', 462.5, topY + 19, { align: 'center' });
+                        pdf.text('STATUS', 537.5, topY + 19, { align: 'center' });
+                    }
                 }
             }).save().then(() => {
                 hideExportStatus();
@@ -2554,33 +2601,92 @@ Please ensure that all necessary work is on track for completion. If the task is
 
             const sortedMeetings = [...filteredMeetings].sort((a, b) => new Date(b.reviewDate) - new Date(a.reviewDate));
 
-            const data = sortedMeetings.map((m, idx) => ({
-                'S.No': idx + 1,
-                'Review Date': formatDate(m.reviewDate),
-                'Action Point': m.action,
-                'Department': m.dept,
-                'Responsible Person': m.personName,
-                'Email': m.email,
-                'Target Date': formatDate(m.targetDate),
-                'Status': m.statusValue,
-                'Next Target (if any)': m.revisions?.length ? formatDate((m.revisions.filter(r => r.date).pop() || {}).date) : '-'
-            }));
+            const genDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+            const total = filteredMeetings.length;
+            const completed = filteredMeetings.filter(m => m.statusValue === 'Completed' || m.statusValue === 'Resolved').length;
+            const open = total - completed;
 
-            const ws = XLSX.utils.json_to_sheet(data);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Meetings");
-
-            // Auto-width columns
-            const colWidths = [
-                { wch: 5 }, { wch: 15 }, { wch: 40 }, { wch: 15 }, { wch: 20 },
-                { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 15 }
+            // --- HEADER ROWS (Array of Arrays) ---
+            const headerRows = [
+                ['DANPREL ENGINEERING AUTOMATION PVT LTD', '', '', '', '', '', '', '', '', ''],
+                ['Review Meeting Action Points Report', '', '', '', '', '', '', '', '', ''],
+                ['', '', '', '', '', '', '', '', '', ''],
+                ['Project Name:', project.name || '-', '', '', 'Generated Date:', genDate, '', '', '', ''],
+                ['Project Code:', project.code || '-', '', '', 'Customer:', project.customer_name || '-', '', '', '', ''],
+                ['Total Action Points:', total, '', '', 'Completed:', completed, '', '', '', ''],
+                ['Open Action Points:', open, '', '', '', '', '', '', '', ''],
+                ['', '', '', '', '', '', '', '', '', ''],
+                // Column headers row
+                ['S.No', 'Review Date', 'Action Point', 'Department', 'Responsible Person', 'Email', 'Original Target Date', 'Current Target Date', 'Status', 'Revision History']
             ];
-            ws['!cols'] = colWidths;
+
+            // --- DATA ROWS ---
+            const dataRows = sortedMeetings.map((m, idx) => {
+                const revisionsWithDates = (m.revisions || []).filter(r => r.date);
+                const latestTargetDate = revisionsWithDates.length > 0
+                    ? revisionsWithDates[revisionsWithDates.length - 1].date
+                    : m.targetDate;
+                const revHistory = revisionsWithDates.length > 0
+                    ? revisionsWithDates.map((r, i) => `R${i+1}: ${formatDate(r.date)}${r.remark ? ' (' + r.remark + ')' : ''}`).join(' | ')
+                    : '-';
+                return [
+                    idx + 1,
+                    formatDate(m.reviewDate),
+                    m.action,
+                    m.dept,
+                    m.personName,
+                    m.email,
+                    formatDate(m.targetDate),
+                    formatDate(latestTargetDate),
+                    m.statusValue,
+                    revHistory
+                ];
+            });
+
+            const allRows = [...headerRows, ...dataRows];
+
+            const ws = XLSX.utils.aoa_to_sheet(allRows);
+
+            // --- MERGE CELLS for header ---
+            ws['!merges'] = [
+                { s: { r: 0, c: 0 }, e: { r: 0, c: 9 } },  // Company name spans all columns
+                { s: { r: 1, c: 0 }, e: { r: 1, c: 9 } },  // Report title spans all columns
+                { s: { r: 3, c: 1 }, e: { r: 3, c: 3 } },  // Project name value
+                { s: { r: 3, c: 5 }, e: { r: 3, c: 9 } },  // Generated date value
+                { s: { r: 4, c: 1 }, e: { r: 4, c: 3 } },  // Project code value
+                { s: { r: 4, c: 5 }, e: { r: 4, c: 9 } },  // Customer value
+                { s: { r: 5, c: 1 }, e: { r: 5, c: 3 } },  // Total value
+                { s: { r: 5, c: 5 }, e: { r: 5, c: 9 } },  // Completed value
+                { s: { r: 6, c: 1 }, e: { r: 6, c: 9 } },  // Open value
+            ];
+
+            // --- COLUMN WIDTHS ---
+            ws['!cols'] = [
+                { wch: 5 }, { wch: 15 }, { wch: 42 }, { wch: 15 }, { wch: 22 },
+                { wch: 28 }, { wch: 20 }, { wch: 20 }, { wch: 15 }, { wch: 55 }
+            ];
+
+            // --- ROW HEIGHTS ---
+            ws['!rows'] = [
+                { hpt: 28 }, // Row 1: Company name
+                { hpt: 18 }, // Row 2: Title
+                { hpt: 8  }, // Row 3: Spacer
+                { hpt: 16 }, // Row 4
+                { hpt: 16 }, // Row 5
+                { hpt: 16 }, // Row 6
+                { hpt: 16 }, // Row 7
+                { hpt: 8  }, // Row 8: Spacer
+                { hpt: 20 }, // Row 9: Column headers
+            ];
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Action Points Report');
 
             XLSX.writeFile(wb, `Meeting_Records_${project.code}.xlsx`);
             hideExportStatus();
             showToast('Excel Downloaded');
         }
+
     </script>
 </body>
 
