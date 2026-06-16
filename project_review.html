@@ -2331,6 +2331,20 @@
     <script>
         let projects = [];
 
+        function adjustStatFontSize(elementId) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            const text = el.innerText || '';
+            const len = text.length;
+            if (len > 12) {
+                el.style.fontSize = '1.05rem';
+            } else if (len > 9) {
+                el.style.fontSize = '1.25rem';
+            } else {
+                el.style.fontSize = '1.5rem';
+            }
+        }
+
         async function fetchProjects() {
             try {
                 const response = await fetch('/api/projects?t=' + Date.now());
@@ -2341,28 +2355,41 @@
                     const apRes = await fetch('/api/action-points?t=' + Date.now());
                     const allAps = await apRes.json();
                     
-                    const apMap = {};
-                    allAps.forEach(ap => {
-                        if (!apMap[ap.projectId]) apMap[ap.projectId] = [];
-                        apMap[ap.projectId].push(ap);
-                    });
-                    
-                    projects.forEach(p => {
-                        if (apMap[p._id] && apMap[p._id].length > 0) {
-                            p.meetings = apMap[p._id];
-                        } else {
-                            p.meetings = p.meetings || [];
+                    if (Array.isArray(allAps)) {
+                        const apMap = {};
+                        allAps.forEach(ap => {
+                            if (!apMap[ap.projectId]) apMap[ap.projectId] = [];
+                            apMap[ap.projectId].push(ap);
+                        });
+                        
+                        if (Array.isArray(projects)) {
+                            projects.forEach(p => {
+                                if (apMap[p._id] && apMap[p._id].length > 0) {
+                                    p.meetings = apMap[p._id];
+                                } else {
+                                    p.meetings = p.meetings || [];
+                                }
+                            });
                         }
-                    });
+                    } else {
+                        if (Array.isArray(projects)) projects.forEach(p => p.meetings = p.meetings || []);
+                    }
                 } catch (apErr) {
                     console.error('Error fetching action points:', apErr);
-                    projects.forEach(p => p.meetings = p.meetings || []);
+                    if (Array.isArray(projects)) projects.forEach(p => p.meetings = p.meetings || []);
+                }
+
+                if (!Array.isArray(projects)) {
+                    console.warn("Projects API returned non-array:", projects);
+                    projects = []; // Fallback to empty array
+                    alert("Warning: Could not load projects from the database. Please check your internet connection and MongoDB status.");
                 }
 
                 renderProjects();
                 renderRevisions(); // Populate notification badges
             } catch (err) {
                 console.error('Error fetching data:', err);
+                projects = [];
             }
         }
 
@@ -2419,7 +2446,7 @@
             }
 
             projects.forEach((p, index) => {
-                const poVal = parseFloat(p.po_value || 0);
+                const poVal = parseFloat(String(p.po_value || "0").replace(/,/g, '')) || 0;
                 totalVal += poVal;
 
                 // Move status-based count/val logic later after phases are computed
@@ -2459,10 +2486,7 @@
                         if (prog < 100) allActiveDone = false;
                     }
 
-                    // Restore Projects in I&C logic
-                    if (phId === 'inc_parent' && prog > 0 && prog < 100 && !isEx) {
-                        projectsInIC++;
-                    }
+                    // I&C logic moved to displayStatus calculation
                 });
 
                 const uptoDispatchAvg = activeWeightUptoDispatch > 0 ? Math.round((activeWeightedSumUptoDispatch / activeWeightUptoDispatch) * 100) : 0;
@@ -2495,6 +2519,7 @@
                 } else if (displayStatus === 'Dispatched' || displayStatus === 'Completed') {
                     dispatchedCount++;
                     dispatchedVal += poVal;
+                    projectsInIC++; // Automatically in I&C when Dispatched
                 } else {
                     inProgressCount++;
                 }
@@ -2572,7 +2597,7 @@
                     <td class="cell-customer col-exp">${p.customer_name || '—'}</td>
                     <td class="cell-location col-exp">${p.sat_location || '—'}</td>
                     <td class="cell-date col-exp">${formatDateDisplay(p.po_date)}</td>
-                    <td class="cell-value col-exp admin-only" style="font-weight: 800; color: #0f172a;">₹${poVal.toLocaleString('en-IN')}</td>
+                    <td class="cell-value col-exp admin-only" style="font-weight: 800; color: #0f172a;">₹${poVal.toLocaleString('en-US')}</td>
                     <td class="cell-manager col-exp" style="font-weight: 700; color: #475569;">${p.project_manager || '—'}</td>
 
                     <td class="cell-date col-exp">
@@ -2743,9 +2768,12 @@
             document.getElementById('statTotal').innerText = projects.length;
             document.getElementById('statInProgress').innerText = inProgressCount;
             document.getElementById('statClosed').innerText = closedCount;
-            document.getElementById('statDispatchedValue').innerText = `₹${dispatchedVal.toLocaleString()}`;
-            document.getElementById('statTotalValue').innerText = `₹${totalVal.toLocaleString()}`;
+            document.getElementById('statDispatchedValue').innerText = `₹${dispatchedVal.toLocaleString('en-US')}`;
+            document.getElementById('statTotalValue').innerText = `₹${totalVal.toLocaleString('en-US')}`;
             document.getElementById('statICCount').innerText = projectsInIC;
+
+            adjustStatFontSize('statDispatchedValue');
+            adjustStatFontSize('statTotalValue');
 
             const otdPct = deliveredCount > 0 ? Math.round((deliveredOnTimeCount / deliveredCount) * 100) + '%' : '—';
             document.getElementById('statOTD').innerText = otdPct;
@@ -2846,7 +2874,7 @@
             if (!name || !code) return alert('Name and Code are required!');
 
             const payload = {
-                tracking_code, name, code, po_date, po_value: po_value === '' ? null : parseFloat(po_value), customer_name, sat_location, project_manager
+                tracking_code, name, code, po_date, po_value: po_value === '' ? null : parseFloat(String(po_value).replace(/,/g, '')), customer_name, sat_location, project_manager
             };
 
             if (editId) {
@@ -3245,7 +3273,7 @@
             let projectsInIC = 0, deliveredCount = 0, deliveredOnTimeCount = 0;
 
             filteredProjects.forEach(p => {
-                const poVal = parseFloat(p.po_value || 0);
+                const poVal = parseFloat(String(p.po_value || "0").replace(/,/g, '')) || 0;
                 totalVal += poVal;
 
                 let activeWeightOverall = 0, activeWeightedSumOverall = 0;
@@ -3260,7 +3288,6 @@
                         activeWeightedSumOverall += (prog / 100) * weights[idx];
                         if (prog < 100) allActiveDone = false;
                     }
-                    if (phId === 'inc_parent' && prog > 0 && prog < 100 && !isEx) projectsInIC++;
                 });
 
                 const allDone = activeWeightOverall > 0 && allActiveDone;
@@ -3277,7 +3304,7 @@
                 }
 
                 if (displayStatus === 'Closed') { closedCount++; dispatchedVal += poVal; }
-                else if (displayStatus === 'Dispatched' || displayStatus === 'Completed') { dispatchedVal += poVal; }
+                else if (displayStatus === 'Dispatched' || displayStatus === 'Completed') { dispatchedVal += poVal; projectsInIC++; }
                 else { inProgressCount++; }
 
                 const isOtdStatus = displayStatus === 'Dispatched' || displayStatus === 'Closed' || displayStatus === 'Completed';
@@ -3304,8 +3331,11 @@
             document.getElementById('statICCount').innerText = projectsInIC;
             document.getElementById('statOTD').innerText = deliveredCount > 0
                 ? Math.round((deliveredOnTimeCount / deliveredCount) * 100) + '%' : '—';
-            document.getElementById('statDispatchedValue').innerText = `₹${dispatchedVal.toLocaleString('en-IN')}`;
-            document.getElementById('statTotalValue').innerText = `₹${totalVal.toLocaleString('en-IN')}`;
+            document.getElementById('statDispatchedValue').innerText = `₹${dispatchedVal.toLocaleString('en-US')}`;
+            document.getElementById('statTotalValue').innerText = `₹${totalVal.toLocaleString('en-US')}`;
+
+            adjustStatFontSize('statDispatchedValue');
+            adjustStatFontSize('statTotalValue');
         }
 
 
@@ -3317,9 +3347,14 @@
             try {
                 const response = await fetch('/api/employees?t=' + Date.now());
                 employees = await response.json();
+                if (!Array.isArray(employees)) {
+                    console.warn("Employees API returned non-array:", employees);
+                    employees = [];
+                }
                 populateManagerDropdown();
             } catch (err) {
                 console.error('Error fetching employees:', err);
+                employees = [];
             }
         }
 
@@ -3629,7 +3664,7 @@
                     p.customer_name || '-',
                     p.sat_location || '-',
                     fmtDate(p.po_date),
-                    p.po_value ? `Rs.${Number(p.po_value).toLocaleString('en-IN')}` : '-',
+                    p.po_value ? `Rs.${Number(p.po_value).toLocaleString('en-US')}` : '-',
                     p.project_manager || '-',
                     fmtDate(p.start_date),
                     fmtDate(p.dispatch_date),

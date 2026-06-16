@@ -731,7 +731,7 @@ app.post('/api/projects', async (req, res) => {
         if (data.po_value === '') {
             data.po_value = null;
         } else if (data.po_value !== undefined && data.po_value !== null) {
-            data.po_value = parseFloat(data.po_value);
+            data.po_value = parseFloat(String(data.po_value || "0").replace(/,/g, '')) || 0;
         }
         
         let p;
