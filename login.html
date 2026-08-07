@@ -269,6 +269,26 @@
             }
         }
     </style>
+
+    <script>
+        // PMIS_V24_API_TOKEN_FETCH
+        (() => {
+            if (window.__pmisV24FetchInstalled) return;
+            window.__pmisV24FetchInstalled = true;
+            const originalFetch = window.fetch.bind(window);
+            window.fetch = function(input, init = {}) {
+                const url = typeof input === 'string' ? input : String(input && input.url || '');
+                const isApi = url.startsWith('/api/') || url.includes('/api/');
+                if (!isApi) return originalFetch(input, init);
+
+                const token = localStorage.getItem('danprel_access_token') || '';
+                const sourceHeaders = init.headers || (input && input.headers) || {};
+                const headers = new Headers(sourceHeaders);
+                if (token) headers.set('Authorization', 'Bearer ' + token);
+                return originalFetch(input, { ...init, headers });
+            };
+        })();
+    </script>
 </head>
 
 <body>
@@ -342,32 +362,52 @@
             togglePass.classList.toggle('bi-eye-slash');
         });
 
-        function login() {
-            const u = document.getElementById('username').value.trim();
-            const p = document.getElementById('password').value.trim();
+        async function login() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
             const err = document.getElementById('error');
             const btn = document.querySelector('.btn-signin');
 
-            let role = '';
-            // Allow dynamic passwords updated from "Forgot Password"
-            let storedAdminPass = localStorage.getItem('pass_review@danprel') || 'mgt@2026';
-            let storedPmPass = localStorage.getItem('pass_projects@danprel') || 'projects@2026';
-
-            if (u === 'review@danprel' && p === storedAdminPass) {
-                role = 'admin';
-            } else if (u === 'projects@danprel' && p === storedPmPass) {
-                role = 'pm';
+            if (!username || !password) {
+                err.innerText = 'Enter your username and password.';
+                err.style.display = 'block';
+                return;
             }
 
-            if (role) {
+            err.style.display = 'none';
+            btn.innerHTML = 'Authenticating...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const result = await response.json().catch(() => ({}));
+
+                if (!response.ok || !result.success) {
+                    throw new Error(result.error || 'Invalid username or password.');
+                }
+
                 localStorage.setItem('danprel_auth', 'true');
-                localStorage.setItem('danprel_role', role);
-                btn.innerHTML = 'Authenticating...';
-                btn.disabled = true;
-                setTimeout(() => { window.location.href = 'project_review.html'; }, 800);
-            } else {
+                localStorage.setItem('danprel_role', result.role || 'pm');
+                localStorage.setItem('danprel_auth_role', result.authRole || result.role || 'pm');
+                localStorage.setItem('danprel_username', result.username || username);
+                localStorage.setItem('danprel_employee_id', result.employeeId || '');
+                localStorage.setItem('danprel_display_name', result.displayName || username);
+                localStorage.setItem('danprel_designation', result.designation || '');
+                localStorage.setItem('danprel_access_token', result.accessToken || '');
+
+                window.location.href = 'project_review.html';
+            } catch (error) {
+                err.innerText = error.message || 'Unable to sign in.';
                 err.style.display = 'block';
-                setTimeout(() => { err.style.display = 'none'; }, 4000);
+                setTimeout(() => { err.style.display = 'none'; }, 5000);
+            } finally {
+                btn.innerHTML = 'Sign In <i class="bi bi-arrow-right"></i>';
+                btn.disabled = false;
             }
         }
 

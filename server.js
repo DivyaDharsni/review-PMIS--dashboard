@@ -1,18 +1,68 @@
 require('dotenv').config();
+const crypto = require('crypto');
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
 const nodemailer = require('nodemailer');
 const cron = require('node-cron');
+const { hashPassword, verifyPassword, safeEqualText } = require('./auth-utils');
 
 const app = express();
 const PORT = 3000;
+const LOCAL_SAFE_MODE =
+    process.env.LOCAL_SAFE_MODE === 'true';
+const ALLOW_LOCAL_EDIT_WRITES =
+    process.env.ALLOW_LOCAL_EDIT_WRITES === 'true';
+const ALLOW_LOCAL_FEEDBACK_WRITES =
+    process.env.ALLOW_LOCAL_FEEDBACK_WRITES === 'true';
+const ALLOW_LOCAL_FEEDBACK_REQUIREMENT_WRITES =
+    process.env.ALLOW_LOCAL_FEEDBACK_REQUIREMENT_WRITES === 'true';
 
 // Middleware
 app.use(express.json());
 app.use(cors());
-app.use(express.static('.')); // Serve static HTML files from the current folder
+// Block production database changes while working locally.
+// Feedback writes are allowed locally only with ALLOW_LOCAL_FEEDBACK_WRITES=true.
+const blockedLocalWriteMethods = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+app.use('/api', (req, res, next) => {
+    const requestPath = String(req.originalUrl || '').split('?')[0];
+    const isLoginRequest =
+        req.method === 'POST' && requestPath === '/api/auth/login';
+    const isFeedbackWrite =
+        (req.method === 'POST' && requestPath === '/api/feedback') ||
+        (req.method === 'PATCH' && /^\/api\/feedback\/[^/]+\/status$/.test(requestPath));
+    const isCustomerFeedbackRequirementWrite =
+        req.method === 'PATCH' &&
+        /^\/api\/projects\/[^/]+\/customer-feedback-requirement$/.test(requestPath);
+    // PMIS_FILTER_EDIT_PERSISTENCE_V22: optional local testing for edits to existing records only.
+    const isExistingRecordEdit =
+        (req.method === 'PATCH' && /^\/api\/projects\/[^/]+$/.test(requestPath)) ||
+        (req.method === 'PATCH' && /^\/api\/action-points\/[^/]+$/.test(requestPath));
+    const isAllowedLocalWrite =
+        isLoginRequest ||
+        (ALLOW_LOCAL_FEEDBACK_WRITES && isFeedbackWrite) ||
+        isCustomerFeedbackRequirementWrite ||
+        (ALLOW_LOCAL_EDIT_WRITES && isExistingRecordEdit);
+
+    if (
+        LOCAL_SAFE_MODE &&
+        blockedLocalWriteMethods.has(req.method) &&
+        !isAllowedLocalWrite
+    ) {
+        console.warn(
+            `[LOCAL SAFE MODE] Blocked ${req.method} ${requestPath}`
+        );
+
+        return res.status(403).json({
+            error: 'Database changes are blocked in local safe mode.'
+        });
+    }
+
+    next();
+});
+app.use(express.static('.')); // Serve static HTML files from the current folder // Serve static HTML files from the current folder
 
 // Middleware to prevent browser caching of dynamic API responses
 app.use('/api', (req, res, next) => {
@@ -52,14 +102,28 @@ const transporter = nodemailer.createTransport({
 });
 
 // Verify connection
-transporter.verify((error, success) => {
-    if (error) {
-        console.error('📧 [SMTP] Connection Error:', error.message);
-        if (!process.env.SMTP_USER) console.error('⚠️ [SMTP] SMTP_USER is missing in environment variables!');
-    } else {
-        console.log('📧 [SMTP] Connected and ready');
-    }
-});
+if (!LOCAL_SAFE_MODE) {
+    transporter.verify((error) => {
+        if (error) {
+            console.error(
+                '[SMTP] Connection Error:',
+                error.message
+            );
+
+            if (!process.env.SMTP_USER) {
+                console.error(
+                    '[SMTP] SMTP_USER is missing.'
+                );
+            }
+        } else {
+            console.log('[SMTP] Connected and ready');
+        }
+    });
+} else {
+    console.log(
+        '[LOCAL SAFE MODE] SMTP verification disabled.'
+    );
+}
 
 // --- DATA SCHEMA ---
 const ProjectSchema = new mongoose.Schema({
@@ -82,6 +146,14 @@ const ProjectSchema = new mongoose.Schema({
     plan_status: { type: String, default: 'pending' },
     status: { type: String, default: 'Started' },
     current_phase: { type: String, default: 'Phase 1: Project Kick Off' },
+    // PMIS_REPORT_LAYOUT_FEEDBACK_NA_V19
+    customer_feedback_requirement: {
+        type: String,
+        enum: ['required', 'not_required'],
+        default: 'required'
+    },
+    customer_feedback_requirement_updated_at: Date,
+    customer_feedback_requirement_updated_by: { type: String, default: '' },
     detailed_phases: { type: mongoose.Schema.Types.Mixed, default: {} },
     phases: [
         { name: String, progress: { type: Number, default: 0 } }
@@ -110,6 +182,10 @@ const ProjectSchema = new mongoose.Schema({
             ]
         }
     ],
+    // PMIS_LESSONS_LEARNED_REGISTER_V32
+    // Structured register imported from the Lessons Learned Register format.
+    lessons_learned: { type: [mongoose.Schema.Types.Mixed], default: [] },
+
     // For Reschedule Requests (Phase Level)
     revision_requests: [
         {
@@ -137,14 +213,54 @@ const EmployeeSchema = new mongoose.Schema({
     employee_id: String,
     email: String,
     dept: String,
-    exp: String
+    exp: String,
+
+    // Individual PMIS login fields
+    username: { type: String, trim: true, uppercase: true },
+    passwordHash: { type: String, select: false },
+    authRole: {
+        type: String,
+        enum: ['project_manager', 'project_coordinator', null],
+        default: null
+    },
+    loginEnabled: { type: Boolean, default: false }
 }, { timestamps: true });
+
+EmployeeSchema.index(
+    { username: 1 },
+    {
+        unique: true,
+        partialFilterExpression: {
+            username: { $type: 'string' }
+        }
+    }
+);
 
 const Employee = mongoose.model('Employee', EmployeeSchema);
 
+// PMIS_PROJECT_FILTER_AND_ADMIN_FEEDBACK_V7
 const FeedbackSchema = new mongoose.Schema({
-    content: String,
-    sourcePage: String
+    content: { type: String, required: true, trim: true },
+    sourcePage: { type: String, default: 'Unknown' },
+    status: {
+        type: String,
+        enum: ['open', 'wip', 'closed'],
+        default: 'open'
+    },
+    submittedByName: { type: String, default: '' },
+    submittedByEmail: { type: String, default: '' },
+    submittedByEmployeeId: { type: String, default: '' },
+    submittedByUsername: { type: String, default: '' },
+    adminNote: { type: String, default: '' },
+    statusUpdatedAt: Date,
+    statusUpdatedBy: { type: String, default: '' },
+    statusHistory: [{
+        status: String,
+        note: String,
+        changedBy: String,
+        changedAt: { type: Date, default: Date.now },
+        emailNotified: { type: Boolean, default: false }
+    }]
 }, { timestamps: true });
 const Feedback = mongoose.model('Feedback', FeedbackSchema);
 
@@ -698,6 +814,210 @@ async function runReminderCheck() {
 }
 
 
+
+// PMIS_ALL_PO_ASSOCIATED_EDIT_GUARD_V24
+// Authenticated users may read all projects and PO values. Admin can write all
+// projects. PM/Coordinator logins can write only projects assigned to them.
+const PMIS_AUTH_SECRET = String(
+    process.env.PMIS_AUTH_SECRET ||
+    process.env.PMIS_ADMIN_PASSWORD ||
+    process.env.MONGODB_URI ||
+    'pmis-local-development-secret-change-me'
+);
+
+function pmisBase64UrlV24(value) {
+    return Buffer.from(value)
+        .toString('base64')
+        .replace(/=/g, '')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_');
+}
+
+function pmisDecodeBase64UrlV24(value) {
+    const normalized = String(value || '').replace(/-/g, '+').replace(/_/g, '/');
+    const padding = normalized.length % 4 ? '='.repeat(4 - (normalized.length % 4)) : '';
+    return Buffer.from(normalized + padding, 'base64').toString('utf8');
+}
+
+function issuePmisAccessTokenV24(user) {
+    const payload = {
+        role: String(user.role || 'pm'),
+        authRole: String(user.authRole || ''),
+        username: String(user.username || ''),
+        employeeId: String(user.employeeId || ''),
+        displayName: String(user.displayName || ''),
+        exp: Date.now() + (12 * 60 * 60 * 1000)
+    };
+    const encoded = pmisBase64UrlV24(JSON.stringify(payload));
+    const signature = crypto.createHmac('sha256', PMIS_AUTH_SECRET)
+        .update(encoded)
+        .digest('base64')
+        .replace(/=/g, '')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_');
+    return encoded + '.' + signature;
+}
+
+function verifyPmisAccessTokenV24(token) {
+    try {
+        const [encoded, signature] = String(token || '').split('.');
+        if (!encoded || !signature) return null;
+        const expected = crypto.createHmac('sha256', PMIS_AUTH_SECRET)
+            .update(encoded)
+            .digest('base64')
+            .replace(/=/g, '')
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_');
+        const actualBuffer = Buffer.from(signature);
+        const expectedBuffer = Buffer.from(expected);
+        if (actualBuffer.length !== expectedBuffer.length ||
+            !crypto.timingSafeEqual(actualBuffer, expectedBuffer)) return null;
+        const payload = JSON.parse(pmisDecodeBase64UrlV24(encoded));
+        if (!payload.exp || Number(payload.exp) < Date.now()) return null;
+        return payload;
+    } catch (error) {
+        return null;
+    }
+}
+
+function pmisRequestUserV24(req) {
+    const auth = String(req.headers.authorization || '');
+    const match = auth.match(/^Bearer\s+(.+)$/i);
+    return match ? verifyPmisAccessTokenV24(match[1]) : null;
+}
+
+function pmisNormalizeIdentityV24(value) {
+    return String(value || '')
+        .toUpperCase()
+        .replace(/[^A-Z0-9]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function pmisProjectAssociatedV24(project, user) {
+    if (!project || !user) return false;
+    if (String(user.role || '').toLowerCase() === 'admin') return true;
+
+    const employeeId = pmisNormalizeIdentityV24(user.employeeId || user.username);
+    const displayName = pmisNormalizeIdentityV24(user.displayName);
+    const storedEmployeeId = pmisNormalizeIdentityV24(
+        project.project_expeditor_employee_id ||
+        project.project_manager_employee_id || ''
+    );
+    if (employeeId && storedEmployeeId && employeeId === storedEmployeeId) return true;
+
+    return String(project.project_manager || '')
+        .split(/\s*(?:,|;|\/|\||&|\band\b)\s*/i)
+        .map(pmisNormalizeIdentityV24)
+        .filter(Boolean)
+        .some(person =>
+            (employeeId && person === employeeId) ||
+            (displayName && person === displayName) ||
+            (displayName && person.length >= 5 && displayName.length >= 5 &&
+                (person.includes(displayName) || displayName.includes(person)))
+        );
+}
+
+function pmisUnauthorizedV24(res, status, message) {
+    return res.status(status).json({ error: message });
+}
+
+// Add the signed token to successful login responses without changing the
+// existing credential-validation route.
+app.use('/api/auth/login', (req, res, next) => {
+    const originalJson = res.json.bind(res);
+    res.json = body => {
+        if (body && body.success && !body.accessToken) {
+            body.accessToken = issuePmisAccessTokenV24(body);
+        }
+        return originalJson(body);
+    };
+    next();
+});
+
+async function pmisAuthorizeProjectWriteV24(req, res, next) {
+    const method = String(req.method || '').toUpperCase();
+    if (!['POST','PUT','PATCH','DELETE'].includes(method)) return next();
+
+    const user = pmisRequestUserV24(req);
+    if (!user) return pmisUnauthorizedV24(res, 401, 'Please sign in again before making changes.');
+    if (String(user.role || '').toLowerCase() === 'admin') {
+        req.pmisUser = user;
+        return next();
+    }
+
+    const segments = String(req.path || '').split('/').filter(Boolean);
+    const projectId = String(req.body?._id || segments[0] || '').trim();
+
+    // Individual logins cannot create a brand-new project because it is not yet
+    // assigned. Admin creates and assigns projects.
+    if (method === 'POST' && !projectId) {
+        return pmisUnauthorizedV24(res, 403, 'Only Admin can create a new project.');
+    }
+    if (!projectId) return pmisUnauthorizedV24(res, 400, 'Project ID is required.');
+
+    try {
+        const project = await Project.findById(projectId);
+        if (!project) return pmisUnauthorizedV24(res, 404, 'Project not found.');
+        if (!pmisProjectAssociatedV24(project, user)) {
+            return pmisUnauthorizedV24(res, 403, 'View only: this project is assigned to another Project Expeditor.');
+        }
+
+        // Project assignment can be changed only by Admin. This prevents a user
+        // from taking ownership of another project or reassigning their project.
+        if (Object.prototype.hasOwnProperty.call(req.body || {}, 'project_manager')) {
+            const incoming = pmisNormalizeIdentityV24(req.body.project_manager);
+            const existing = pmisNormalizeIdentityV24(project.project_manager);
+            if (incoming !== existing) {
+                return pmisUnauthorizedV24(res, 403, 'Only Admin can change the Project Expeditor assignment.');
+            }
+        }
+
+        req.pmisUser = user;
+        req.pmisProject = project;
+        return next();
+    } catch (error) {
+        return pmisUnauthorizedV24(res, 500, error.message || 'Unable to verify project access.');
+    }
+}
+
+async function pmisAuthorizeActionPointWriteV24(req, res, next) {
+    const method = String(req.method || '').toUpperCase();
+    if (!['POST','PUT','PATCH','DELETE'].includes(method)) return next();
+
+    const user = pmisRequestUserV24(req);
+    if (!user) return pmisUnauthorizedV24(res, 401, 'Please sign in again before making changes.');
+    if (String(user.role || '').toLowerCase() === 'admin') {
+        req.pmisUser = user;
+        return next();
+    }
+
+    try {
+        let projectId = String(req.body?.projectId || '').trim();
+        if (!projectId) {
+            const actionPointId = String(req.path || '').split('/').filter(Boolean)[0] || '';
+            const actionPoint = actionPointId ? await ActionPoint.findById(actionPointId) : null;
+            projectId = String(actionPoint?.projectId || '').trim();
+        }
+        if (!projectId) return pmisUnauthorizedV24(res, 400, 'Action point project ID is required.');
+
+        const project = await Project.findById(projectId);
+        if (!project) return pmisUnauthorizedV24(res, 404, 'Project not found.');
+        if (!pmisProjectAssociatedV24(project, user)) {
+            return pmisUnauthorizedV24(res, 403, 'View only: action points can be changed only for your assigned project.');
+        }
+
+        req.pmisUser = user;
+        req.pmisProject = project;
+        return next();
+    } catch (error) {
+        return pmisUnauthorizedV24(res, 500, error.message || 'Unable to verify action-point access.');
+    }
+}
+
+app.use('/api/projects', pmisAuthorizeProjectWriteV24);
+app.use('/api/action-points', pmisAuthorizeActionPointWriteV24);
+
 // --- API ENDPOINTS ---
 
 // 1. Get All Projects
@@ -760,6 +1080,59 @@ app.patch('/api/projects/:id', async (req, res) => {
         res.json(p);
     } catch (err) {
         console.error(`❌ [PATCH] Error:`, err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// PMIS_REPORT_LAYOUT_FEEDBACK_NA_V19: Customer-feedback requirement workflow
+// PMIS_REPORT_NA_PDF_FIX_V20: exact Required/N/A route is permitted in local safe mode
+app.patch('/api/projects/:id/customer-feedback-requirement', async (req, res) => {
+    try {
+        const requirement = String(req.body?.requirement || '').trim().toLowerCase();
+        if (!['required', 'not_required'].includes(requirement)) {
+            return res.status(400).json({
+                error: 'Requirement must be required or not_required.'
+            });
+        }
+
+        const project = await Project.findById(req.params.id);
+        if (!project) return res.status(404).json({ error: 'Project not found.' });
+
+        const role = String(req.get('x-pmis-role') || '').trim().toLowerCase();
+        const displayName = String(req.get('x-pmis-display-name') || '').trim();
+        const employeeId = String(req.get('x-pmis-employee-id') || '').trim();
+        const username = String(req.get('x-pmis-username') || '').trim();
+        const normalizeIdentity = value =>
+            String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+        const assignment = normalizeIdentity(project.project_manager);
+        const identities = [displayName, employeeId, username]
+            .map(normalizeIdentity)
+            .filter(Boolean);
+        const isAssociated = Boolean(assignment) && identities.some(identity =>
+            assignment.includes(identity) || identity.includes(assignment)
+        );
+
+        if (role !== 'admin' && !isAssociated) {
+            return res.status(403).json({
+                error: 'You can update feedback requirement only for an associated project.'
+            });
+        }
+
+        project.customer_feedback_requirement = requirement;
+        project.customer_feedback_requirement_updated_at = new Date();
+        project.customer_feedback_requirement_updated_by =
+            displayName || employeeId || username || 'PMIS User';
+        await project.save();
+
+        res.json({
+            message: requirement === 'not_required'
+                ? 'Customer feedback marked as not required.'
+                : 'Customer feedback marked as required.',
+            project
+        });
+    } catch (err) {
+        console.error('[CUSTOMER FEEDBACK REQUIREMENT]', err.message);
         res.status(500).json({ error: err.message });
     }
 });
@@ -831,7 +1204,7 @@ app.delete('/api/action-points/:id', async (req, res) => {
 // 1. Get All Employees
 app.get('/api/employees', async (req, res) => {
     try {
-        const employees = await Employee.find().sort({ createdAt: -1 });
+        const employees = await Employee.find().select('-passwordHash').sort({ createdAt: -1 });
         res.json(employees);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -842,18 +1215,30 @@ app.get('/api/employees', async (req, res) => {
 app.post('/api/employees', async (req, res) => {
     console.log(`📥 [POST] /api/employees - Incoming Data:`, req.body);
     try {
-        const data = req.body;
+        const data = { ...req.body };
+
+        // Authentication fields are managed only through controlled auth/migration routes.
+        delete data.passwordHash;
+        delete data.username;
+        delete data.authRole;
+        delete data.loginEnabled;
+
         let emp;
         if (data._id) {
             const updateId = data._id;
             const updateData = { ...data };
             delete updateData._id; // Ensure we don't try to update the immutable _id field
 
-            emp = await Employee.findByIdAndUpdate(updateId, updateData, { new: true });
+            emp = await Employee.findByIdAndUpdate(
+                updateId,
+                updateData,
+                { new: true }
+            ).select('-passwordHash');
             console.log("✅ Updated Employee:", emp);
         } else {
             emp = new Employee(data);
             await emp.save();
+            emp = await Employee.findById(emp._id).select('-passwordHash');
             console.log("✅ Created New Employee:", emp);
         }
         res.json(emp);
@@ -873,45 +1258,236 @@ app.delete('/api/employees/:id', async (req, res) => {
     }
 });
 
+// --- AUTHENTICATION API ---
+const PMIS_ADMIN_USERNAME =
+    String(process.env.PMIS_ADMIN_USERNAME || 'review@danprel').trim();
+const PMIS_ADMIN_PASSWORD =
+    String(process.env.PMIS_ADMIN_PASSWORD || 'mgt@2026');
+
+function normalizeUsername(value) {
+    return String(value || '').trim().toUpperCase();
+}
+
+function employeeRoleToAuthRole(role) {
+    const normalized = String(role || '').trim().toLowerCase();
+    if (normalized.includes('coordinator')) return 'project_coordinator';
+    if (normalized.includes('manager')) return 'project_manager';
+    return null;
+}
+
+function escapeRegex(value) {
+    return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+app.post('/api/auth/login', async (req, res) => {
+    try {
+        const usernameInput = String(req.body?.username || '').trim();
+        const password = String(req.body?.password || '');
+
+        if (!usernameInput || !password) {
+            return res.status(400).json({
+                error: 'Username and password are required.'
+            });
+        }
+
+        if (
+            safeEqualText(usernameInput.toLowerCase(), PMIS_ADMIN_USERNAME.toLowerCase()) &&
+            safeEqualText(password, PMIS_ADMIN_PASSWORD)
+        ) {
+            return res.json({
+                success: true,
+                role: 'admin',
+                designation: 'Project Management Admin',
+                username: PMIS_ADMIN_USERNAME,
+                displayName: 'Project Management Admin'
+            });
+        }
+
+        if (mongoose.connection.readyState !== 1) {
+            return res.status(503).json({
+                error: 'Database connection is unavailable.'
+            });
+        }
+
+        const normalizedUsername = normalizeUsername(usernameInput);
+        const employee = await Employee.findOne({
+            $or: [
+                { username: normalizedUsername },
+                {
+                    employee_id: {
+                        $regex: `^${escapeRegex(normalizedUsername)}$`,
+                        $options: 'i'
+                    }
+                }
+            ]
+        }).select('+passwordHash');
+
+        if (
+            !employee ||
+            !employee.loginEnabled ||
+            !employee.passwordHash ||
+            !verifyPassword(password, employee.passwordHash)
+        ) {
+            return res.status(401).json({
+                error: 'Invalid username or password.'
+            });
+        }
+
+        const authRole =
+            employee.authRole || employeeRoleToAuthRole(employee.role);
+
+        if (!authRole) {
+            return res.status(403).json({
+                error: 'This employee is not authorized for PMIS login.'
+            });
+        }
+
+        return res.json({
+            success: true,
+            role: 'pm',
+            authRole,
+            designation: employee.role || '',
+            username: employee.username || employee.employee_id,
+            employeeId: employee.employee_id,
+            displayName: employee.name
+        });
+    } catch (err) {
+        console.error('[AUTH] Login error:', err.message);
+        return res.status(500).json({
+            error: 'Unable to complete login.'
+        });
+    }
+});
+
 // --- EMAIL API ENDPOINT ---
 // --- FORGOT PASSWORD API ---
 app.post('/api/auth/forgot-password', async (req, res) => {
-    const { username } = req.body;
-    if (!username) return res.status(400).json({ error: 'Username required' });
-
-    // Generate 6-digit code
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    resetCodes.set(username, code);
-
-    // Auto-expiry in 10 mins
-    setTimeout(() => resetCodes.delete(username), 600000);
-
-    const mailOptions = {
-        from: `Auth System <${process.env.SMTP_USER}>`,
-        to: 'danprelpmis@gmail.com',
-        subject: 'Verification Code for Password Reset',
-        html: `<h3>Password Reset Request</h3><p>User <b>${username}</b> requested a password reset.</p><p>Verification Code: <b style="font-size: 20px;">${code}</b></p>`
-    };
-
     try {
+        const username = String(req.body?.username || '').trim();
+        if (!username) {
+            return res.status(400).json({ error: 'Username is required.' });
+        }
+
+        const isAdmin =
+            username.toLowerCase() === PMIS_ADMIN_USERNAME.toLowerCase();
+
+        let employee = null;
+        if (!isAdmin) {
+            const normalizedUsername = normalizeUsername(username);
+            employee = await Employee.findOne({
+                $or: [
+                    { username: normalizedUsername },
+                    {
+                        employee_id: {
+                            $regex: `^${escapeRegex(normalizedUsername)}$`,
+                            $options: 'i'
+                        }
+                    }
+                ],
+                loginEnabled: true
+            });
+        }
+
+        if (!isAdmin && !employee) {
+            return res.status(404).json({ error: 'Username not found in PMIS.' });
+        }
+
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        const key = normalizeUsername(username);
+        resetCodes.set(key, {
+            code,
+            verified: false,
+            expiresAt: Date.now() + (10 * 60 * 1000)
+        });
+
+        const mailOptions = {
+            from: `Auth System <${process.env.SMTP_USER}>`,
+            to: process.env.PMIS_RESET_EMAIL || 'danprelpmis@gmail.com',
+            subject: `PMIS Password Reset - ${username}`,
+            html: `<h3>PMIS Password Reset</h3><p>User <b>${username}</b> requested a password reset.</p><p>Verification Code: <b style="font-size:20px">${code}</b></p><p>This code expires in 10 minutes.</p>`
+        };
+
         await transporter.sendMail(mailOptions);
-        console.log('✅ Forgot Password code sent to admin');
-        res.json({ message: 'Code sent to admin email' });
+        return res.json({ message: 'Verification code sent to management.' });
     } catch (err) {
-        console.error('❌ Forgot Password Email Failed:', err.message);
-        res.status(500).json({ error: 'Failed to send email: ' + err.message });
+        console.error('[AUTH] Forgot password error:', err.message);
+        return res.status(500).json({ error: 'Unable to send reset code.' });
     }
 });
 
 app.post('/api/auth/verify-code', (req, res) => {
-    const { username, code } = req.body;
-    const validCode = resetCodes.get(username);
+    const username = normalizeUsername(req.body?.username);
+    const code = String(req.body?.code || '').trim();
+    const reset = resetCodes.get(username);
 
-    if (validCode && validCode === code) {
-        res.json({ success: true });
-        resetCodes.delete(username); // One-time use
-    } else {
-        res.status(400).json({ error: 'Invalid or expired code' });
+    if (!reset || reset.expiresAt < Date.now()) {
+        resetCodes.delete(username);
+        return res.status(400).json({ error: 'Invalid or expired code.' });
+    }
+
+    if (!safeEqualText(code, reset.code)) {
+        return res.status(400).json({ error: 'Invalid or expired code.' });
+    }
+
+    reset.verified = true;
+    resetCodes.set(username, reset);
+    return res.json({ success: true });
+});
+
+app.post('/api/auth/reset-password', async (req, res) => {
+    try {
+        const username = normalizeUsername(req.body?.username);
+        const code = String(req.body?.code || '').trim();
+        const newPassword = String(req.body?.newPassword || '');
+        const reset = resetCodes.get(username);
+
+        if (newPassword.length < 8) {
+            return res.status(400).json({
+                error: 'Password must be at least 8 characters.'
+            });
+        }
+
+        if (
+            !reset ||
+            reset.expiresAt < Date.now() ||
+            !reset.verified ||
+            !safeEqualText(code, reset.code)
+        ) {
+            return res.status(400).json({ error: 'Reset authorization expired.' });
+        }
+
+        if (username === normalizeUsername(PMIS_ADMIN_USERNAME)) {
+            return res.status(400).json({
+                error: 'The admin password must be changed in Netlify environment variables.'
+            });
+        }
+
+        const employee = await Employee.findOne({
+            $or: [
+                { username },
+                {
+                    employee_id: {
+                        $regex: `^${escapeRegex(username)}$`,
+                        $options: 'i'
+                    }
+                }
+            ],
+            loginEnabled: true
+        }).select('+passwordHash');
+
+        if (!employee) {
+            return res.status(404).json({ error: 'PMIS user not found.' });
+        }
+
+        employee.passwordHash = hashPassword(newPassword);
+        employee.username = normalizeUsername(employee.username || employee.employee_id);
+        await employee.save();
+        resetCodes.delete(username);
+
+        return res.json({ success: true, message: 'Password updated.' });
+    } catch (err) {
+        console.error('[AUTH] Reset password error:', err.message);
+        return res.status(500).json({ error: 'Unable to reset password.' });
     }
 });
 
@@ -989,14 +1565,213 @@ app.post('/api/send-email', async (req, res) => {
     }
 });
 
-// 12. Submit Feedback
+// 12. Feedback workflow
+function getPmisRoleHeader(req) {
+    return String(req.get('x-pmis-role') || '').trim().toLowerCase();
+}
+
+function requirePmisAdmin(req, res, next) {
+    if (getPmisRoleHeader(req) !== 'admin') {
+        return res.status(403).json({ error: 'Admin access is required.' });
+    }
+    next();
+}
+
+async function resolveFeedbackSubmitter(req) {
+    const employeeId = String(
+        req.get('x-pmis-employee-id') || req.body?.employeeId || ''
+    ).trim();
+    const username = String(
+        req.get('x-pmis-username') || req.body?.username || ''
+    ).trim();
+    const displayName = String(
+        req.get('x-pmis-display-name') || req.body?.displayName || ''
+    ).trim();
+
+    let employee = null;
+    if (mongoose.connection.readyState === 1 && (employeeId || username)) {
+        const matchers = [];
+        if (employeeId) {
+            matchers.push({
+                employee_id: {
+                    $regex: '^' + escapeRegex(employeeId) + '$',
+                    $options: 'i'
+                }
+            });
+        }
+        if (username) matchers.push({ username: normalizeUsername(username) });
+        employee = await Employee.findOne({ $or: matchers }).lean();
+    }
+
+    return {
+        submittedByName: employee?.name || displayName || username || 'PMIS User',
+        submittedByEmail: employee?.email || '',
+        submittedByEmployeeId: employee?.employee_id || employeeId,
+        submittedByUsername: employee?.username || username
+    };
+}
+
 app.post('/api/feedback', async (req, res) => {
     try {
-        const { content, sourcePage } = req.body;
-        if (!content) return res.status(400).json({ message: 'Feedback content is empty' });
-        const fb = new Feedback({ content, sourcePage });
-        await fb.save();
-        res.json({ message: 'Feedback saved successfully' });
+        const content = String(req.body?.content || '').trim();
+        const sourcePage = String(req.body?.sourcePage || 'Unknown').trim();
+        if (!content) {
+            return res.status(400).json({ message: 'Feedback content is empty' });
+        }
+
+        const submitter = await resolveFeedbackSubmitter(req);
+        const feedback = new Feedback({
+            content,
+            sourcePage,
+            status: 'open',
+            ...submitter,
+            statusHistory: [{
+                status: 'open',
+                note: 'Feedback submitted',
+                changedBy: submitter.submittedByName || 'PMIS User',
+                changedAt: new Date(),
+                emailNotified: false
+            }]
+        });
+        await feedback.save();
+        res.json({ message: 'Feedback saved successfully', id: feedback._id });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/feedback/mine', async (req, res) => {
+    try {
+        const employeeId = String(req.get('x-pmis-employee-id') || '').trim();
+        const username = normalizeUsername(req.get('x-pmis-username') || '');
+
+        if (!employeeId && !username) {
+            return res.status(401).json({ error: 'Login identity is required.' });
+        }
+
+        let employee = null;
+        if (employeeId || username) {
+            employee = await Employee.findOne({
+                $or: [
+                    ...(employeeId ? [{ employee_id: { $regex: `^${escapeRegex(employeeId)}$`, $options: 'i' } }] : []),
+                    ...(username ? [{ username }, { employee_id: { $regex: `^${escapeRegex(username)}$`, $options: 'i' } }] : [])
+                ]
+            }).lean();
+        }
+
+        const identities = [];
+        if (employee?.employee_id || employeeId) identities.push({ submittedByEmployeeId: employee?.employee_id || employeeId });
+        if (employee?.username || username) identities.push({ submittedByUsername: employee?.username || username });
+        if (employee?.email) identities.push({ submittedByEmail: employee.email });
+
+        if (!identities.length) {
+            return res.json([]);
+        }
+
+        const feedbacks = await Feedback.find({ $or: identities })
+            .sort({ createdAt: -1 })
+            .lean();
+
+        res.json(feedbacks.map(item => ({
+            ...item,
+            status: item.status || 'open',
+            adminNote: item.adminNote || ''
+        })));
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/feedback/admin', requirePmisAdmin, async (req, res) => {
+    try {
+        const feedbacks = await Feedback.find({}).sort({ createdAt: -1 }).lean();
+        const normalized = feedbacks.map(item => ({
+            ...item,
+            status: item.status || 'open',
+            submittedByName: item.submittedByName || 'Legacy feedback',
+            submittedByEmail: item.submittedByEmail || '',
+            submittedByEmployeeId: item.submittedByEmployeeId || '',
+            adminNote: item.adminNote || ''
+        }));
+        res.json(normalized);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.patch('/api/feedback/:id/status', requirePmisAdmin, async (req, res) => {
+    try {
+        const status = String(req.body?.status || '').trim().toLowerCase();
+        const adminNote = String(req.body?.adminNote || '').trim();
+        const changedBy = String(
+            req.get('x-pmis-display-name') || req.get('x-pmis-username') || 'PMIS Admin'
+        ).trim();
+
+        if (!['open', 'wip', 'closed'].includes(status)) {
+            return res.status(400).json({ error: 'Status must be open, wip, or closed.' });
+        }
+
+        const feedback = await Feedback.findById(req.params.id);
+        if (!feedback) return res.status(404).json({ error: 'Feedback not found.' });
+
+        let emailNotified = false;
+        let notificationMessage = 'No submitter email is available for this feedback.';
+        const statusLabel = status === 'wip'
+            ? 'WIP'
+            : status.charAt(0).toUpperCase() + status.slice(1);
+
+        if (feedback.submittedByEmail && !LOCAL_SAFE_MODE) {
+            try {
+                const safeContent = String(feedback.content || '')
+                    .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                const safeNote = adminNote
+                    .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                const html =
+                    '<div style="font-family:Arial,sans-serif;line-height:1.6;color:#1e293b">' +
+                    '<h2 style="color:#003366">PMIS Feedback Update</h2>' +
+                    '<p>Hello ' + (feedback.submittedByName || 'Team Member') + ',</p>' +
+                    '<p>Your feedback submitted from <strong>' + (feedback.sourcePage || 'PMIS') +
+                    '</strong> is now marked as <strong>' + statusLabel + '</strong>.</p>' +
+                    '<p><strong>Your feedback:</strong><br>' + safeContent + '</p>' +
+                    (safeNote ? '<p><strong>Admin note:</strong><br>' + safeNote + '</p>' : '') +
+                    '<p>Regards,<br>Danprel PMIS Admin</p></div>';
+
+                await transporter.sendMail({
+                    from: process.env.SMTP_USER,
+                    to: feedback.submittedByEmail,
+                    subject: 'PMIS feedback status updated: ' + statusLabel,
+                    html
+                });
+                emailNotified = true;
+                notificationMessage = 'The submitter was notified by email.';
+            } catch (mailError) {
+                console.error('[FEEDBACK] Status notification failed:', mailError.message);
+                notificationMessage = 'Status updated, but the email notification failed.';
+            }
+        } else if (feedback.submittedByEmail && LOCAL_SAFE_MODE) {
+            notificationMessage = 'Status updated. Email was skipped in local safe mode.';
+        }
+
+        feedback.status = status;
+        feedback.adminNote = adminNote;
+        feedback.statusUpdatedAt = new Date();
+        feedback.statusUpdatedBy = changedBy;
+        feedback.statusHistory = feedback.statusHistory || [];
+        feedback.statusHistory.push({
+            status,
+            note: adminNote,
+            changedBy,
+            changedAt: new Date(),
+            emailNotified
+        });
+        await feedback.save();
+
+        res.json({
+            message: 'Feedback status updated.',
+            notificationMessage,
+            emailNotified,
+            feedback
+        });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -1026,17 +1801,33 @@ app.use((req, res, next) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-if (process.env.NODE_ENV !== 'production' || !process.env.NETLIFY) {
-    // --- AUTOMATED REMINDER CRON JOB (Every hour from 9:00 AM to 12:00 PM) ---
-    // Pattern '0 9-12 * * *' triggers at 9:00, 10:00, 11:00, and 12:00
-    cron.schedule('0 9-12 * * *', runReminderCheck);
+if (
+    process.env.NODE_ENV !== 'production' ||
+    !process.env.NETLIFY
+) {
+    if (!LOCAL_SAFE_MODE) {
+        cron.schedule(
+            '0 9-12 * * *',
+            runReminderCheck
+        );
+    } else {
+        console.log(
+            '[LOCAL SAFE MODE] Reminder cron disabled.'
+        );
+    }
 
     app.listen(PORT, () => {
-        console.log(`\n🚀 Server running at http://localhost:${PORT}/`);
-        console.log(`MongoDB storage is now active.\n`);
-        
-        // ONLY sync data on startup, DO NOT send emails immediately
-        syncDataOnStartup();
+        console.log(
+            `Server running at http://localhost:${PORT}/`
+        );
+
+        if (!LOCAL_SAFE_MODE) {
+            syncDataOnStartup();
+        } else {
+            console.log(
+                '[LOCAL SAFE MODE] Startup sync disabled.'
+            );
+        }
     });
 }
 

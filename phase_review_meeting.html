@@ -1068,6 +1068,391 @@
             }
         }
     </style>
+
+    <style id="pmis-navigation-v13-style">
+        .pmis-home-brand-v13 { cursor: pointer; }
+        .pmis-home-brand-v13:focus-visible { outline: 3px solid rgba(20,184,166,.65); outline-offset: 4px; border-radius: 14px; }
+        .pmis-nav-back-v13 { flex: 0 0 auto; }
+        @media (max-width: 575.98px) {
+            .pmis-nav-back-v13 { width: 40px !important; height: 40px !important; }
+        }
+    
+        /* PMIS_V17_UNIFIED_BACK_ARROW */
+        .pmis-parent-back-v16,
+        .pmis-context-back-v15,
+        .pmis-nav-back-v13,
+        .pmis-universal-back-v17 {
+            width: 44px !important;
+            height: 44px !important;
+            min-width: 44px !important;
+            min-height: 44px !important;
+            padding: 0 !important;
+            border-radius: 12px !important;
+            border: 1px solid rgba(255, 255, 255, 0.22) !important;
+            background: rgba(255, 255, 255, 0.08) !important;
+            color: #ffffff !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            font-family: inherit !important;
+            font-size: 22px !important;
+            font-weight: 700 !important;
+            line-height: 1 !important;
+            box-shadow: none !important;
+            opacity: 1 !important;
+            text-decoration: none !important;
+        }
+
+        .pmis-parent-back-v16:hover,
+        .pmis-context-back-v15:hover,
+        .pmis-nav-back-v13:hover,
+        .pmis-universal-back-v17:hover {
+            background: rgba(255, 255, 255, 0.16) !important;
+            border-color: rgba(255, 255, 255, 0.38) !important;
+            color: #ffffff !important;
+            transform: none !important;
+        }
+
+        .pmis-parent-back-v16 i,
+        .pmis-context-back-v15 i,
+        .pmis-nav-back-v13 i,
+        .pmis-universal-back-v17 i {
+            color: #ffffff !important;
+            font-family: "bootstrap-icons" !important;
+            font-size: 22px !important;
+            font-weight: 400 !important;
+            line-height: 1 !important;
+            opacity: 1 !important;
+        }
+</style>
+
+
+    <script>
+        // PMIS_V24_API_TOKEN_FETCH
+        (() => {
+            if (window.__pmisV24FetchInstalled) return;
+            window.__pmisV24FetchInstalled = true;
+            const originalFetch = window.fetch.bind(window);
+            window.fetch = function(input, init = {}) {
+                const url = typeof input === 'string' ? input : String(input && input.url || '');
+                const isApi = url.startsWith('/api/') || url.includes('/api/');
+                if (!isApi) return originalFetch(input, init);
+
+                const token = localStorage.getItem('danprel_access_token') || '';
+                const sourceHeaders = init.headers || (input && input.headers) || {};
+                const headers = new Headers(sourceHeaders);
+                if (token) headers.set('Authorization', 'Bearer ' + token);
+                return originalFetch(input, { ...init, headers });
+            };
+        })();
+    </script>
+    <style>
+        /* PMIS_V24_PROJECT_READ_ONLY */
+        .pmis-view-only-v24 [data-pmis-write-disabled-v24="true"] {
+            opacity: 0.45 !important;
+            cursor: not-allowed !important;
+            pointer-events: none !important;
+        }
+        .pmis-view-only-banner-v24 {
+            position: sticky;
+            top: 8px;
+            z-index: 1200;
+            max-width: 760px;
+            margin: 8px auto 14px;
+            padding: 11px 16px;
+            border-radius: 14px;
+            color: #7f1d1d;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            box-shadow: 0 8px 20px rgba(127,29,29,0.08);
+            font-size: 0.82rem;
+            font-weight: 800;
+            text-align: center;
+        }
+    </style>
+    <script>
+        // PMIS_V24_PROJECT_READ_ONLY
+        (() => {
+            function normalize(value) {
+                return String(value || '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+            }
+            function isAdmin() {
+                return String(localStorage.getItem('danprel_role') || '').toLowerCase() === 'admin';
+            }
+            function canEdit(project) {
+                if (isAdmin()) return true;
+                if (!project) return false;
+                const employeeId = normalize(localStorage.getItem('danprel_employee_id') || localStorage.getItem('danprel_username') || '');
+                const displayName = normalize(localStorage.getItem('danprel_display_name') || '');
+                const storedId = normalize(project.project_expeditor_employee_id || project.project_manager_employee_id || '');
+                if (employeeId && storedId && employeeId === storedId) return true;
+                return String(project.project_manager || '')
+                    .split(/\s*(?:,|;|\/|\||&|\band\b)\s*/i)
+                    .map(normalize)
+                    .filter(Boolean)
+                    .some(person =>
+                        (employeeId && person === employeeId) ||
+                        (displayName && person === displayName) ||
+                        (displayName && person.length >= 5 && displayName.length >= 5 &&
+                            (person.includes(displayName) || displayName.includes(person)))
+                    );
+            }
+
+            function writeSignature(element) {
+                return [
+                    element.getAttribute?.('onclick') || '',
+                    element.id || '',
+                    typeof element.className === 'string' ? element.className : '',
+                    element.getAttribute?.('title') || '',
+                    element.textContent || ''
+                ].join(' ').toLowerCase();
+            }
+
+            function shouldDisableButton(element) {
+                const signature = writeSignature(element);
+                const allow = /(export|download|print|back|logout|menu|close|cancel|filter|search|view|visual|history|previous|next)/.test(signature);
+                const write = /(save|edit|delete|remove|add|create|update|reschedule|actual|submit|approve|reject|lock|unlock|exclude|include|send mail|send reminder)/.test(signature);
+                return write && !allow;
+            }
+
+            function applyDisabledState() {
+                if (!window.PMIS_V24_VIEW_ONLY) return;
+                document.querySelectorAll('input, textarea').forEach(element => {
+                    const type = String(element.type || '').toLowerCase();
+                    const signature = writeSignature(element);
+                    if (type === 'search' || /filter|search/.test(signature)) return;
+                    element.disabled = true;
+                    element.dataset.pmisWriteDisabledV24 = 'true';
+                });
+                document.querySelectorAll('select').forEach(element => {
+                    const signature = writeSignature(element);
+                    if (/filter|search|export/.test(signature)) return;
+                    element.disabled = true;
+                    element.dataset.pmisWriteDisabledV24 = 'true';
+                });
+                document.querySelectorAll('button, a').forEach(element => {
+                    if (!shouldDisableButton(element)) return;
+                    if ('disabled' in element) element.disabled = true;
+                    element.dataset.pmisWriteDisabledV24 = 'true';
+                });
+            }
+
+            function wrapWriteFunctions() {
+                if (!window.PMIS_V24_VIEW_ONLY) return;
+                const names = [
+                    'syncProject','saveInlineField','updatePlanFromDays','saveRescheduleData','saveActualData',
+                    'setPlanStatus','saveRow','submitUpdate','deleteRecord','confirmDelete','addRow',
+                    'saveMasterProject','approveRevision','rejectRevision'
+                ];
+                names.forEach(name => {
+                    const original = window[name];
+                    if (typeof original !== 'function' || original.__pmisV24Wrapped) return;
+                    const wrapped = function(...args) {
+                        const message = 'View-only project: only the assigned Project Expeditor can make changes.';
+                        if (typeof window.showToast === 'function') window.showToast(message, true);
+                        else alert(message);
+                        return false;
+                    };
+                    wrapped.__pmisV24Wrapped = true;
+                    window[name] = wrapped;
+                });
+            }
+
+            window.pmisApplyProjectAccessV24 = function(project) {
+                const allowed = canEdit(project);
+                window.PMIS_V24_CAN_EDIT = allowed;
+                window.PMIS_V24_VIEW_ONLY = !allowed;
+                if (allowed) return true;
+
+                document.body.classList.add('pmis-view-only-v24');
+                if (!document.querySelector('.pmis-view-only-banner-v24')) {
+                    const banner = document.createElement('div');
+                    banner.className = 'pmis-view-only-banner-v24';
+                    banner.innerHTML = '<i class="bi bi-eye-fill me-2"></i>View only — this project is assigned to another Project Expeditor.';
+                    document.body.insertBefore(banner, document.body.firstChild);
+                }
+
+                setTimeout(() => { applyDisabledState(); wrapWriteFunctions(); }, 0);
+                const observer = new MutationObserver(() => {
+                    applyDisabledState();
+                    wrapWriteFunctions();
+                });
+                observer.observe(document.body, { childList: true, subtree: true });
+                return false;
+            };
+        })();
+    </script>
+
+    <style id="pmis-lessons-learned-v32-style">
+        /* PMIS_LESSONS_LEARNED_REGISTER_V32 */
+        .lesson-card-v32 {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 24px;
+            padding: 24px;
+            margin-top: 24px;
+            box-shadow: 0 14px 32px rgba(15, 23, 42, 0.06);
+        }
+        .lesson-head-v32 {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .lesson-head-v32 .lesson-icon-v32 {
+            width: 44px;
+            height: 44px;
+            border-radius: 14px;
+            display: grid;
+            place-items: center;
+            color: #ffffff;
+            background: linear-gradient(135deg, #003366, #0d9488);
+            box-shadow: 0 8px 18px rgba(13, 148, 136, 0.22);
+            font-size: 1.15rem;
+        }
+        .lesson-title-v32 {
+            margin: 0;
+            color: #001f3f;
+            font-weight: 900;
+            font-size: 1.06rem;
+        }
+        .lesson-subtitle-v32 {
+            color: #64748b;
+            font-size: 0.76rem;
+            font-weight: 600;
+        }
+        .lesson-grid-v32 {
+            display: grid;
+            grid-template-columns: repeat(12, minmax(0, 1fr));
+            gap: 14px;
+        }
+        .lesson-field-v32 { grid-column: span 3; }
+        .lesson-field-v32.wide { grid-column: span 6; }
+        .lesson-field-v32.full { grid-column: 1 / -1; }
+        .lesson-label-v32 {
+            display: block;
+            margin: 0 0 6px;
+            color: #475569;
+            font-size: 0.68rem;
+            font-weight: 900;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+        .lesson-input-v32 {
+            width: 100%;
+            min-height: 42px;
+            border: 1px solid #dbe4ef;
+            border-radius: 11px;
+            padding: 10px 12px;
+            background: #fbfdff;
+            color: #0f172a;
+            font-size: 0.82rem;
+            font-weight: 650;
+            outline: none;
+            transition: border-color .18s, box-shadow .18s, background .18s;
+        }
+        textarea.lesson-input-v32 { min-height: 78px; resize: vertical; line-height: 1.45; }
+        .lesson-input-v32:focus {
+            border-color: #0d9488;
+            background: #ffffff;
+            box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.12);
+        }
+        .lesson-input-v32[readonly] { background: #f1f5f9; color: #334155; }
+        .lesson-actions-v32 {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 18px;
+        }
+        .lesson-save-v32,
+        .lesson-clear-v32 {
+            border: 0;
+            border-radius: 999px;
+            padding: 11px 20px;
+            font-size: 0.8rem;
+            font-weight: 900;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .lesson-save-v32 { color: #ffffff; background: #001f3f; }
+        .lesson-clear-v32 { color: #475569; background: #eef2f7; }
+        .lesson-table-wrap-v32 {
+            margin-top: 22px;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            overflow: auto;
+            max-height: 520px;
+            background: #ffffff;
+        }
+        .lesson-table-v32 {
+            width: 100%;
+            min-width: 2450px;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 0.75rem;
+        }
+        .lesson-table-v32 th {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            padding: 11px 10px;
+            background: #001f3f;
+            color: #ffffff;
+            font-size: 0.66rem;
+            font-weight: 900;
+            letter-spacing: .02em;
+            text-transform: uppercase;
+            text-align: left;
+            white-space: nowrap;
+        }
+        .lesson-table-v32 td {
+            padding: 10px;
+            border-bottom: 1px solid #edf2f7;
+            color: #334155;
+            vertical-align: top;
+            line-height: 1.4;
+            background: #ffffff;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .lesson-table-v32 tbody tr:hover td { background: #f8fbff; }
+        .lesson-badge-v32 {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            padding: 4px 9px;
+            font-size: 0.66rem;
+            font-weight: 900;
+            white-space: nowrap;
+        }
+        .lesson-row-actions-v32 { display: flex; gap: 6px; white-space: nowrap; }
+        .lesson-row-btn-v32 {
+            width: 32px;
+            height: 32px;
+            border-radius: 9px;
+            border: 1px solid #dbe4ef;
+            background: #ffffff;
+            display: grid;
+            place-items: center;
+        }
+        .lesson-row-btn-v32.edit { color: #0369a1; }
+        .lesson-row-btn-v32.delete { color: #dc2626; }
+        .lesson-empty-v32 {
+            padding: 36px;
+            text-align: center;
+            color: #94a3b8;
+            font-weight: 750;
+        }
+        @media (max-width: 1100px) {
+            .lesson-field-v32, .lesson-field-v32.wide { grid-column: span 6; }
+        }
+        @media (max-width: 700px) {
+            .lesson-card-v32 { padding: 17px; }
+            .lesson-field-v32, .lesson-field-v32.wide, .lesson-field-v32.full { grid-column: 1 / -1; }
+        }
+    </style>
 </head>
 
 <body>
@@ -1123,10 +1508,12 @@
     <!-- ===== HEADER ===== -->
     <header class="app-header">
         <div class="d-flex align-items-center gap-3">
-            <button class="menu-toggle" onclick="toggleSidebar()">
+            <button class="menu-toggle" onclick="toggleSidebar()" title="Open menu">
                 <i class="bi bi-list"></i>
             </button>
-            <div class="brand-box">
+            <div class="brand-box pmis-home-brand-v13" role="button" tabindex="0"
+                title="Go to Project Dashboard" onclick="pmisGoHomeV15()"
+                onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();pmisGoHomeV15();}">
                 <div class="brand-logo-wrap">
                     <img src="asset/image.png" alt="Logo">
                 </div>
@@ -1142,9 +1529,10 @@
         </div>
 
         <div class="d-flex align-items-center gap-3">
-            <a id="btnBackPhases" href="#" class="btn-header-nav">
-                <i class="bi bi-arrow-left me-1"></i> Back to Phases
-            </a>
+            <button type="button" id="btnBackPhases" class="menu-toggle pmis-parent-back-v16 pmis-universal-back-v17"
+                title="Back" aria-label="Back">
+                <i class="bi bi-arrow-left"></i>
+            </button>
             <button class="menu-toggle" onclick="performLogout()" title="Logout" style="width: 44px; padding: 0;">
                 <i class="bi bi-box-arrow-right"></i>
             </button>
@@ -1332,6 +1720,135 @@
         </div>
     </div>
 
+
+    <!-- PMIS_LESSONS_LEARNED_REGISTER_V32: Lessons Learned Register -->
+    <div class="lesson-card-v32" id="lessonsLearnedSectionV32">
+        <div class="lesson-head-v32">
+            <div class="lesson-icon-v32"><i class="bi bi-lightbulb-fill"></i></div>
+            <div>
+                <h5 class="lesson-title-v32">Lessons Learned Register</h5>
+                <div class="lesson-subtitle-v32">Document the lesson, root cause, impact and preventive action stage-wise against this project.</div>
+            </div>
+            <span id="lessonLearnedCountV32" class="badge rounded-pill ms-auto" style="background:#e0f2fe;color:#075985;font-weight:900;padding:8px 12px;">0</span>
+        </div>
+
+        <input type="hidden" id="lessonEditIdV32">
+        <div class="lesson-grid-v32">
+            <div class="lesson-field-v32">
+                <label class="lesson-label-v32">Process Group *</label>
+                <select id="lessonProcessGroupV32" class="lesson-input-v32">
+                    <option value="">Select process group</option>
+                    <option value="Initiation">Initiation</option>
+                    <option value="Planning">Planning</option>
+                    <option value="Execution">Execution</option>
+                    <option value="Monitoring & Control">Monitoring &amp; Control</option>
+                    <option value="Closure">Closure</option>
+                </select>
+            </div>
+            <div class="lesson-field-v32 wide">
+                <label class="lesson-label-v32">Project Phase / Stage *</label>
+                <select id="lessonProjectPhaseV32" class="lesson-input-v32"><option value="">Select project phase</option></select>
+            </div>
+            <div class="lesson-field-v32">
+                <label class="lesson-label-v32">Priority *</label>
+                <select id="lessonPriorityV32" class="lesson-input-v32">
+                    <option value="Low">Low</option>
+                    <option value="Medium" selected>Medium</option>
+                    <option value="High">High</option>
+                    <option value="Critical">Critical</option>
+                </select>
+            </div>
+
+            <div class="lesson-field-v32 wide">
+                <label class="lesson-label-v32">Observation / Lesson Learned *</label>
+                <textarea id="lessonObservationV32" class="lesson-input-v32" placeholder="What happened and what should the team learn from it?"></textarea>
+            </div>
+            <div class="lesson-field-v32 wide">
+                <label class="lesson-label-v32">Root Cause</label>
+                <textarea id="lessonRootCauseV32" class="lesson-input-v32" placeholder="Underlying technical, process, material, communication or planning cause"></textarea>
+            </div>
+
+            <div class="lesson-field-v32 wide">
+                <label class="lesson-label-v32">Impact - Cost</label>
+                <input id="lessonImpactCostV32" class="lesson-input-v32" placeholder="Example: rework cost, additional material, no cost impact">
+            </div>
+            <div class="lesson-field-v32 wide">
+                <label class="lesson-label-v32">Impact - Schedule</label>
+                <input id="lessonImpactScheduleV32" class="lesson-input-v32" placeholder="Example: 3-day delay, no schedule impact">
+            </div>
+
+            <div class="lesson-field-v32 wide">
+                <label class="lesson-label-v32">Corrective Action Taken</label>
+                <textarea id="lessonCorrectiveActionV32" class="lesson-input-v32" placeholder="Immediate action taken to correct the issue"></textarea>
+            </div>
+            <div class="lesson-field-v32 wide">
+                <label class="lesson-label-v32">Preventive Action Recommended</label>
+                <textarea id="lessonPreventiveActionV32" class="lesson-input-v32" placeholder="Action that should prevent recurrence in future projects"></textarea>
+            </div>
+
+            <div class="lesson-field-v32 full">
+                <label class="lesson-label-v32">Standard / SOP Update Required</label>
+                <textarea id="lessonSopUpdateV32" class="lesson-input-v32" placeholder="Mention the SOP, checklist, standard, drawing note or workflow that must be updated. Enter N/A when not required."></textarea>
+            </div>
+
+            <div class="lesson-field-v32">
+                <label class="lesson-label-v32">Owner Name *</label>
+                <select id="lessonOwnerV32" class="lesson-input-v32"><option value="">Select owner</option></select>
+            </div>
+            <div class="lesson-field-v32 wide">
+                <label class="lesson-label-v32">Project Manager</label>
+                <input id="lessonProjectManagerV32" class="lesson-input-v32" readonly>
+            </div>
+            <div class="lesson-field-v32">
+                <label class="lesson-label-v32">Target Date *</label>
+                <input type="date" id="lessonTargetDateV32" class="lesson-input-v32">
+            </div>
+            <div class="lesson-field-v32">
+                <label class="lesson-label-v32">Status *</label>
+                <select id="lessonStatusV32" class="lesson-input-v32">
+                    <option value="Started">Started</option>
+                    <option value="WIP">WIP</option>
+                    <option value="Completed">Completed</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="lesson-actions-v32">
+            <button type="button" class="lesson-save-v32" onclick="saveLessonLearnedV32()">
+                <i class="bi bi-check-circle-fill"></i><span id="lessonSaveTextV32">Save Lesson</span>
+            </button>
+            <button type="button" class="lesson-clear-v32" onclick="resetLessonLearnedFormV32()">
+                <i class="bi bi-arrow-counterclockwise"></i>Clear
+            </button>
+        </div>
+
+        <div class="lesson-table-wrap-v32">
+            <table class="lesson-table-v32">
+                <thead>
+                    <tr>
+                        <th style="width:46px;">S.No</th>
+                        <th style="width:125px;">Process Group</th>
+                        <th style="width:190px;">Project Phase</th>
+                        <th style="width:260px;">Observation / Lesson Learned</th>
+                        <th style="width:220px;">Root Cause</th>
+                        <th style="width:150px;">Impact - Cost</th>
+                        <th style="width:150px;">Impact - Schedule</th>
+                        <th style="width:230px;">Corrective Action Taken</th>
+                        <th style="width:240px;">Preventive Action Recommended</th>
+                        <th style="width:220px;">Standard / SOP Update Required</th>
+                        <th style="width:90px;">Priority</th>
+                        <th style="width:150px;">Owner</th>
+                        <th style="width:160px;">Project Manager</th>
+                        <th style="width:110px;">Target Date</th>
+                        <th style="width:90px;">Status</th>
+                        <th style="width:88px;">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="lessonLearnedBodyV32"></tbody>
+            </table>
+        </div>
+    </div>
+
     <!-- MODALS -->
     <div class="modal fade" id="updateModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
@@ -1469,6 +1986,427 @@
         let meetings = [];
         let employees = []; // To be fetched from server
 
+
+        // PMIS_LESSONS_LEARNED_REGISTER_V32
+        const LESSON_PHASE_GROUPS_V32 = [
+            { name: 'Kickoff', items: ['Kickoff','PO receipt & acknowledgement','Knowledge transfer from tech sales to project team'] },
+            { name: 'Design', items: ['Design','Concept Design','Detailed Design','Critical Elements Approval','Pre-DAP','Final DAP schedule with MOM updation','Standard parts (mechanical & electrical) release to purchase','Fabrication parts release to purchase'] },
+            { name: 'Purchase', items: ['Purchase','Standard parts receipt','Fabrication parts receipt'] },
+            { name: 'Machine Assembly', items: ['Machine Assembly','Mechanical assembly','Electrical integration'] },
+            { name: 'Programming', items: ['Programming','PLC offline programming','PLC online programming, IO checking and manual mode','Robot programming','LabVIEW programming'] },
+            { name: 'Inhouse Trials', items: ['Inhouse Trials','Automated testing / dry run','Machine trials with customer components'] },
+            { name: 'MQ1 / FAT', items: ['MQ1 / FAT (Machine Qualification)','Customer factory visit for MQ1','MQ1 points updation','Customer acceptance for dispatch'] },
+            { name: 'Machine Dispatch', items: ['Machine Dispatch','Machine packaging and dispatch','Transportation and machine delivery at customer site'] },
+            { name: 'Installation & Commissioning', items: ['Installation & Commissioning','Machine unloading, positioning and power on','MQ2 / SAT','Training to customer','Sign-off and handover'] }
+        ];
+        let lessonsLearnedV32 = [];
+
+        function lessonEscapeV32(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function lessonFormatDateV32(value) {
+            if (!value) return '-';
+            const parts = String(value).slice(0,10).split('-');
+            if (parts.length !== 3) return String(value);
+            return parts[2] + '/' + parts[1] + '/' + parts[0];
+        }
+
+        function lessonCanWriteV32() {
+            if (window.PMIS_V24_VIEW_ONLY === true) {
+                if (typeof showToast === 'function') showToast('View-only project: only the assigned Project Expeditor can change lessons learned.', true);
+                else alert('View-only project: only the assigned Project Expeditor can change lessons learned.');
+                return false;
+            }
+            return true;
+        }
+
+        function initLessonsLearnedV32() {
+            if (!project) return;
+            lessonsLearnedV32 = Array.isArray(project.lessons_learned)
+                ? project.lessons_learned.map(item => ({ ...item }))
+                : [];
+
+            const phaseSelect = document.getElementById('lessonProjectPhaseV32');
+            if (phaseSelect && phaseSelect.options.length <= 1) {
+                LESSON_PHASE_GROUPS_V32.forEach(group => {
+                    const optgroup = document.createElement('optgroup');
+                    optgroup.label = group.name;
+                    group.items.forEach((item, index) => {
+                        const option = document.createElement('option');
+                        option.value = item;
+                        option.textContent = index === 0 ? item : '  - ' + item;
+                        optgroup.appendChild(option);
+                    });
+                    phaseSelect.appendChild(optgroup);
+                });
+            }
+
+            const ownerSelect = document.getElementById('lessonOwnerV32');
+            if (ownerSelect) {
+                const currentOwner = ownerSelect.value;
+                const names = [...new Set((employees || []).map(item => String(item.name || '').trim()).filter(Boolean))]
+                    .sort((a,b) => a.localeCompare(b));
+                ownerSelect.innerHTML = '<option value="">Select owner</option>' + names
+                    .map(name => '<option value="' + lessonEscapeV32(name) + '">' + lessonEscapeV32(name) + '</option>')
+                    .join('');
+                if (currentOwner && names.includes(currentOwner)) ownerSelect.value = currentOwner;
+            }
+
+            const pm = document.getElementById('lessonProjectManagerV32');
+            if (pm) pm.value = project.project_manager || '-';
+            renderLessonsLearnedV32();
+            resetLessonLearnedFormV32();
+        }
+
+        
+        // PMIS_LESSONS_OWNER_EMAIL_V38
+        function lessonNormalizeOwnerV38(value) {
+            return String(value || '')
+                .toUpperCase()
+                .replace(/[^A-Z0-9]+/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
+        function lessonOwnerContactV38(ownerName) {
+            const normalized = lessonNormalizeOwnerV38(ownerName);
+            if (!normalized) return { name: '', email: '', employeeId: '' };
+
+            const owner = (employees || []).find(item => {
+                const name = lessonNormalizeOwnerV38(item?.name);
+                return name && name === normalized;
+            });
+
+            return {
+                name: String(owner?.name || ownerName || '').trim(),
+                email: String(owner?.email || '').trim(),
+                employeeId: String(owner?.employee_id || owner?.employeeId || '').trim()
+            };
+        }
+
+        function prepareLessonOwnerNotificationV38(data, editId) {
+            const contact = lessonOwnerContactV38(data?.owner);
+            data.ownerEmail = contact.email;
+            data.ownerEmployeeId = contact.employeeId;
+
+            let previousOwner = '';
+            if (editId) {
+                const previous = lessonsLearnedV32.find(
+                    row => String(row.id || row._id || '') === String(editId)
+                );
+                previousOwner = String(previous?.owner || '').trim();
+            }
+
+            const ownerChanged = !!editId &&
+                lessonNormalizeOwnerV38(previousOwner) !== lessonNormalizeOwnerV38(data?.owner);
+
+            return {
+                shouldNotify: !editId || ownerChanged,
+                isUpdate: !!editId,
+                ownerChanged,
+                ownerName: contact.name || String(data?.owner || '').trim(),
+                ownerEmail: contact.email,
+                ownerEmployeeId: contact.employeeId,
+                projectCode: String(project?.code || project?.project_code || '').trim(),
+                projectName: String(project?.name || project?.project_name || '').trim(),
+                projectManager: String(data?.projectManager || project?.project_manager || '').trim(),
+                processGroup: String(data?.processGroup || '').trim(),
+                projectPhase: String(data?.projectPhase || '').trim(),
+                observation: String(data?.observation || '').trim(),
+                rootCause: String(data?.rootCause || '').trim(),
+                correctiveAction: String(data?.correctiveAction || '').trim(),
+                preventiveAction: String(data?.preventiveAction || '').trim(),
+                priority: String(data?.priority || '').trim(),
+                targetDate: String(data?.targetDate || '').trim(),
+                status: String(data?.status || '').trim()
+            };
+        }
+
+        async function notifyLessonOwnerV38(context) {
+            if (!context?.shouldNotify) return { skipped: true, reason: 'owner-unchanged' };
+
+            if (!context.ownerEmail) {
+                const message = 'Lesson saved, but no email is available in Employee Master for owner: ' +
+                    (context.ownerName || 'Selected owner');
+                console.warn('[LESSONS] ' + message);
+                if (typeof showToast === 'function') showToast(message, true);
+                return { skipped: true, reason: 'missing-email' };
+            }
+
+            const esc = value => lessonEscapeV32(value || '-');
+            const formattedTarget = lessonFormatDateV32(context.targetDate);
+            const subjectPrefix = context.ownerChanged ? 'Lesson Learned Ownership Assigned' : 'Lesson Learned Assigned';
+            const projectLabel = [context.projectCode, context.projectName].filter(Boolean).join(' - ') || 'PMIS Project';
+
+            const body = `
+                <div style="font-family:Arial,Helvetica,sans-serif;max-width:680px;margin:0 auto;color:#0f172a;">
+                    <div style="background:#001f3f;color:#ffffff;padding:22px 26px;border-radius:16px 16px 0 0;">
+                        <div style="font-size:20px;font-weight:800;">Lesson Learned Notification</div>
+                        <div style="font-size:13px;color:#cbd5e1;margin-top:5px;">DANPREL Project Management Information System</div>
+                    </div>
+                    <div style="border:1px solid #dbe4ee;border-top:none;padding:26px;background:#ffffff;border-radius:0 0 16px 16px;">
+                        <p style="margin-top:0;">Dear <strong>${esc(context.ownerName)}</strong>,</p>
+                        <p>
+                            A lesson learned record has been assigned to you as the <strong>Owner</strong>
+                            for project <strong>${esc(projectLabel)}</strong>.
+                        </p>
+
+                        <table style="width:100%;border-collapse:collapse;margin:20px 0;font-size:14px;">
+                            <tr><td style="padding:9px;background:#f8fafc;width:34%;font-weight:700;">Process Group</td><td style="padding:9px;border-bottom:1px solid #e2e8f0;">${esc(context.processGroup)}</td></tr>
+                            <tr><td style="padding:9px;background:#f8fafc;font-weight:700;">Project Phase / Stage</td><td style="padding:9px;border-bottom:1px solid #e2e8f0;">${esc(context.projectPhase)}</td></tr>
+                            <tr><td style="padding:9px;background:#f8fafc;font-weight:700;">Lesson Learned</td><td style="padding:9px;border-bottom:1px solid #e2e8f0;">${esc(context.observation)}</td></tr>
+                            <tr><td style="padding:9px;background:#f8fafc;font-weight:700;">Priority</td><td style="padding:9px;border-bottom:1px solid #e2e8f0;">${esc(context.priority)}</td></tr>
+                            <tr><td style="padding:9px;background:#f8fafc;font-weight:700;">Target Date</td><td style="padding:9px;border-bottom:1px solid #e2e8f0;">${esc(formattedTarget)}</td></tr>
+                            <tr><td style="padding:9px;background:#f8fafc;font-weight:700;">Status</td><td style="padding:9px;border-bottom:1px solid #e2e8f0;">${esc(context.status)}</td></tr>
+                            <tr><td style="padding:9px;background:#f8fafc;font-weight:700;">Project Manager</td><td style="padding:9px;">${esc(context.projectManager)}</td></tr>
+                        </table>
+
+                        ${context.rootCause ? '<p><strong>Root Cause / Background:</strong><br>' + esc(context.rootCause) + '</p>' : ''}
+                        ${context.correctiveAction ? '<p><strong>Corrective Action Taken:</strong><br>' + esc(context.correctiveAction) + '</p>' : ''}
+                        ${context.preventiveAction ? '<p><strong>Preventive Action Recommended:</strong><br>' + esc(context.preventiveAction) + '</p>' : ''}
+
+                        <p style="margin-bottom:0;color:#475569;font-size:13px;">
+                            Please review the lesson and coordinate any required follow-up through PMIS.
+                        </p>
+                    </div>
+                </div>
+            `;
+
+            try {
+                const response = await fetch('/api/send-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        to: context.ownerEmail,
+                        subject: subjectPrefix + ' | ' + (context.projectCode || context.projectName || 'PMIS'),
+                        body
+                    })
+                });
+                const result = await response.json().catch(() => ({}));
+
+                if (!response.ok) {
+                    throw new Error(result.error || 'Email could not be sent.');
+                }
+
+                if (typeof showToast === 'function') {
+                    showToast('Lesson learned notification sent to ' + context.ownerName + '.');
+                }
+                console.log('[LESSONS] Owner notification sent to', context.ownerEmail);
+                return { sent: true };
+            } catch (error) {
+                console.error('[LESSONS] Owner notification failed:', error);
+                if (typeof showToast === 'function') {
+                    showToast(
+                        'Lesson saved, but the owner email notification failed: ' +
+                        (error.message || 'Unknown email error'),
+                        true
+                    );
+                }
+                return { sent: false, error: error.message || String(error) };
+            }
+        }
+
+function collectLessonLearnedV32() {
+            const ownerName = document.getElementById('lessonOwnerV32').value.trim();
+            const ownerContact = lessonOwnerContactV38(ownerName);
+            return {
+                processGroup: document.getElementById('lessonProcessGroupV32').value.trim(),
+                projectPhase: document.getElementById('lessonProjectPhaseV32').value.trim(),
+                observation: document.getElementById('lessonObservationV32').value.trim(),
+                rootCause: document.getElementById('lessonRootCauseV32').value.trim(),
+                impactCost: document.getElementById('lessonImpactCostV32').value.trim(),
+                impactSchedule: document.getElementById('lessonImpactScheduleV32').value.trim(),
+                correctiveAction: document.getElementById('lessonCorrectiveActionV32').value.trim(),
+                preventiveAction: document.getElementById('lessonPreventiveActionV32').value.trim(),
+                sopUpdateRequired: document.getElementById('lessonSopUpdateV32').value.trim(),
+                priority: document.getElementById('lessonPriorityV32').value.trim(),
+                owner: ownerName,
+                ownerEmail: ownerContact.email,
+                ownerEmployeeId: ownerContact.employeeId,
+                projectManager: project?.project_manager || document.getElementById('lessonProjectManagerV32').value.trim(),
+                targetDate: document.getElementById('lessonTargetDateV32').value,
+                status: document.getElementById('lessonStatusV32').value.trim()
+            };
+        }
+
+        async function persistLessonsLearnedV32(nextRows, successMessage) {
+            const response = await fetch('/api/projects/' + encodeURIComponent(projectId), {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ lessons_learned: nextRows })
+            });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(result.error || result.message || 'Unable to save lessons learned.');
+
+            project = result;
+            lessonsLearnedV32 = Array.isArray(result.lessons_learned)
+                ? result.lessons_learned.map(item => ({ ...item }))
+                : nextRows.map(item => ({ ...item }));
+            renderLessonsLearnedV32();
+            resetLessonLearnedFormV32();
+            if (typeof showToast === 'function') showToast(successMessage || 'Lesson learned saved.');
+        }
+
+        async function saveLessonLearnedV32() {
+            if (!lessonCanWriteV32()) return false;
+            const data = collectLessonLearnedV32();
+            if (!data.processGroup || !data.projectPhase || !data.observation || !data.owner || !data.targetDate || !data.status) {
+                if (typeof showToast === 'function') showToast('Complete Process Group, Project Phase, Lesson, Owner, Target Date and Status.', true);
+                else alert('Complete all required lesson fields.');
+                return false;
+            }
+
+            const editId = document.getElementById('lessonEditIdV32').value;
+            const lessonNotifyContextV38 = prepareLessonOwnerNotificationV38(data, editId);
+            const now = new Date().toISOString();
+            const nextRows = lessonsLearnedV32.map(item => ({ ...item }));
+            if (editId) {
+                const index = nextRows.findIndex(item => String(item.id || item._id) === editId);
+                if (index < 0) return false;
+                nextRows[index] = { ...nextRows[index], ...data, updatedAt: now };
+            } else {
+                nextRows.push({
+                    id: 'LL-' + Date.now() + '-' + Math.random().toString(36).slice(2,7).toUpperCase(),
+                    ...data,
+                    createdAt: now,
+                    updatedAt: now
+                });
+            }
+
+            const button = document.querySelector('.lesson-save-v32');
+            if (button) button.disabled = true;
+            try {
+                await persistLessonsLearnedV32(nextRows, editId ? 'Lesson learned updated.' : 'Lesson learned added.');
+                await notifyLessonOwnerV38(lessonNotifyContextV38);
+            } catch (error) {
+                console.error(error);
+                if (typeof showToast === 'function') showToast(error.message || 'Unable to save lesson learned.', true);
+                else alert(error.message || 'Unable to save lesson learned.');
+            } finally {
+                if (button) button.disabled = false;
+            }
+            return false;
+        }
+
+        function editLessonLearnedV32(id) {
+            if (!lessonCanWriteV32()) return false;
+            const item = lessonsLearnedV32.find(row => String(row.id || row._id) === String(id));
+            if (!item) return false;
+            document.getElementById('lessonEditIdV32').value = String(item.id || item._id);
+            document.getElementById('lessonProcessGroupV32').value = item.processGroup || '';
+            document.getElementById('lessonProjectPhaseV32').value = item.projectPhase || '';
+            document.getElementById('lessonObservationV32').value = item.observation || '';
+            document.getElementById('lessonRootCauseV32').value = item.rootCause || '';
+            document.getElementById('lessonImpactCostV32').value = item.impactCost || '';
+            document.getElementById('lessonImpactScheduleV32').value = item.impactSchedule || '';
+            document.getElementById('lessonCorrectiveActionV32').value = item.correctiveAction || '';
+            document.getElementById('lessonPreventiveActionV32').value = item.preventiveAction || '';
+            document.getElementById('lessonSopUpdateV32').value = item.sopUpdateRequired || '';
+            document.getElementById('lessonPriorityV32').value = item.priority || 'Medium';
+            document.getElementById('lessonOwnerV32').value = item.owner || '';
+            document.getElementById('lessonProjectManagerV32').value = item.projectManager || project?.project_manager || '-';
+            document.getElementById('lessonTargetDateV32').value = String(item.targetDate || '').slice(0,10);
+            document.getElementById('lessonStatusV32').value = item.status || 'Started';
+            document.getElementById('lessonSaveTextV32').textContent = 'Update Lesson';
+            document.getElementById('lessonsLearnedSectionV32').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            return false;
+        }
+
+        async function deleteLessonLearnedV32(id) {
+            if (!lessonCanWriteV32()) return false;
+            const item = lessonsLearnedV32.find(row => String(row.id || row._id) === String(id));
+            if (!item) return false;
+            if (!confirm('Delete this lesson learned record?')) return false;
+            const nextRows = lessonsLearnedV32.filter(row => String(row.id || row._id) !== String(id));
+            try {
+                await persistLessonsLearnedV32(nextRows, 'Lesson learned deleted.');
+            } catch (error) {
+                console.error(error);
+                if (typeof showToast === 'function') showToast(error.message || 'Unable to delete lesson learned.', true);
+                else alert(error.message || 'Unable to delete lesson learned.');
+            }
+            return false;
+        }
+
+        function resetLessonLearnedFormV32() {
+            const ids = [
+                'lessonEditIdV32','lessonProcessGroupV32','lessonProjectPhaseV32','lessonObservationV32',
+                'lessonRootCauseV32','lessonImpactCostV32','lessonImpactScheduleV32','lessonCorrectiveActionV32',
+                'lessonPreventiveActionV32','lessonSopUpdateV32','lessonOwnerV32','lessonTargetDateV32'
+            ];
+            ids.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) element.value = '';
+            });
+            const priority = document.getElementById('lessonPriorityV32');
+            if (priority) priority.value = 'Medium';
+            const status = document.getElementById('lessonStatusV32');
+            if (status) status.value = 'Started';
+            const pm = document.getElementById('lessonProjectManagerV32');
+            if (pm) pm.value = project?.project_manager || '-';
+            const saveText = document.getElementById('lessonSaveTextV32');
+            if (saveText) saveText.textContent = 'Save Lesson';
+        }
+
+        function renderLessonsLearnedV32() {
+            const body = document.getElementById('lessonLearnedBodyV32');
+            const count = document.getElementById('lessonLearnedCountV32');
+            if (!body) return;
+            const rows = lessonsLearnedV32.slice().sort((a,b) =>
+                String(b.updatedAt || b.createdAt || '').localeCompare(String(a.updatedAt || a.createdAt || ''))
+            );
+            if (count) count.textContent = String(rows.length);
+            if (!rows.length) {
+                body.innerHTML = '<tr><td colspan="16"><div class="lesson-empty-v32"><i class="bi bi-journal-check" style="font-size:1.7rem;display:block;margin-bottom:8px;"></i>No lessons learned have been documented for this project.</div></td></tr>';
+                return;
+            }
+
+            const priorityStyle = {
+                Low: ['#ecfdf5','#047857'],
+                Medium: ['#eff6ff','#1d4ed8'],
+                High: ['#fff7ed','#c2410c'],
+                Critical: ['#fef2f2','#b91c1c']
+            };
+            const statusStyle = {
+                Started: ['#e0f2fe','#0369a1'],
+                WIP: ['#fef3c7','#b45309'],
+                Completed: ['#dcfce7','#15803d']
+            };
+
+            body.innerHTML = rows.map((item,index) => {
+                const id = lessonEscapeV32(item.id || item._id || '');
+                const p = priorityStyle[item.priority] || priorityStyle.Medium;
+                const s = statusStyle[item.status] || statusStyle.Started;
+                return '<tr>' +
+                    '<td style="font-weight:900;color:#64748b;text-align:center;">' + (index + 1) + '</td>' +
+                    '<td>' + lessonEscapeV32(item.processGroup || '-') + '</td>' +
+                    '<td style="font-weight:800;color:#003366;">' + lessonEscapeV32(item.projectPhase || '-') + '</td>' +
+                    '<td>' + lessonEscapeV32(item.observation || '-') + '</td>' +
+                    '<td>' + lessonEscapeV32(item.rootCause || '-') + '</td>' +
+                    '<td>' + lessonEscapeV32(item.impactCost || '-') + '</td>' +
+                    '<td>' + lessonEscapeV32(item.impactSchedule || '-') + '</td>' +
+                    '<td>' + lessonEscapeV32(item.correctiveAction || '-') + '</td>' +
+                    '<td>' + lessonEscapeV32(item.preventiveAction || '-') + '</td>' +
+                    '<td>' + lessonEscapeV32(item.sopUpdateRequired || '-') + '</td>' +
+                    '<td><span class="lesson-badge-v32" style="background:' + p[0] + ';color:' + p[1] + ';">' + lessonEscapeV32(item.priority || 'Medium') + '</span></td>' +
+                    '<td style="font-weight:800;">' + lessonEscapeV32(item.owner || '-') + '</td>' +
+                    '<td>' + lessonEscapeV32(item.projectManager || project?.project_manager || '-') + '</td>' +
+                    '<td style="font-weight:800;white-space:nowrap;">' + lessonFormatDateV32(item.targetDate) + '</td>' +
+                    '<td><span class="lesson-badge-v32" style="background:' + s[0] + ';color:' + s[1] + ';">' + lessonEscapeV32(item.status || 'Started') + '</span></td>' +
+                    '<td><div class="lesson-row-actions-v32">' +
+                        '<button type="button" class="lesson-row-btn-v32 edit" title="Edit lesson" data-lesson-id="' + id + '" onclick="editLessonLearnedV32(this.dataset.lessonId)"><i class="bi bi-pencil-square"></i></button>' +
+                        '<button type="button" class="lesson-row-btn-v32 delete" title="Delete lesson" data-lesson-id="' + id + '" onclick="deleteLessonLearnedV32(this.dataset.lessonId)"><i class="bi bi-trash3-fill"></i></button>' +
+                    '</div></td>' +
+                '</tr>';
+            }).join('');
+        }
+
         async function fetchInitialData() {
             try {
                 // Fetch employees first for dropdowns
@@ -1477,6 +2415,7 @@
 
                 const res = await fetch(`/api/projects/${projectId}`);
                 project = await res.json();
+                if (typeof pmisApplyProjectAccessV24 === 'function') pmisApplyProjectAccessV24(project);
                 if (!project) { alert('Project not found!'); window.location.href = 'project_review.html'; return; }
 
                 // Fetch Action Points from specialized table
@@ -1485,12 +2424,13 @@
 
                 document.getElementById('pName').innerText = project.name;
                 document.getElementById('pCode').innerText = project.code;
-                document.getElementById('btnBackPhases').href = 'project_phases.html?id=' + encodeURIComponent(projectId);
+                document.getElementById('btnBackPhases').dataset.fallbackUrl = 'project_phases.html?id=' + encodeURIComponent(projectId);
                 document.getElementById('reviewDate').value = new Date().toISOString().split('T')[0];
 
                 populateFilterDepts();
                 renderHistory();
                 updateTopStats();
+                initLessonsLearnedV32();
                 addRow();
             } catch (err) {
                 console.error('Fetch error:', err);
@@ -1904,95 +2844,54 @@
             updateModalObj.show();
         }
         async function submitUpdate() {
+            // PMIS_FILTER_EDIT_PERSISTENCE_V22: server-confirmed action-point editing.
             const rid = document.getElementById('modalRecordId').value;
             const newStatus = document.getElementById('modalStatus').value;
             const newNext = document.getElementById('modalNextDate').value;
             const remarks = document.getElementById('modalRemarks').value.trim();
+            const index = meetings.findIndex(item => String(item._id) === String(rid));
+            if (index === -1) return;
 
-            const idx = meetings.findIndex(m => m._id === rid);
-            if (idx === -1) return;
-
-            const rec = meetings[idx];
-
-            // Validate remarks if a new date is assigned
             if (newNext && !remarks) {
                 showToast('Please provide a remark for the new target date', true);
                 return;
             }
 
-            // Update status
-            rec.statusValue = newStatus;
-
-            // Handle revision if a new date is provided
+            const current = meetings[index];
+            const revisions = Array.isArray(current.revisions) ? current.revisions.slice() : [];
             if (newNext) {
-                if (!rec.revisions) rec.revisions = [];
-                rec.revisions.push({
-                    date: newNext,
-                    remark: remarks,
-                    timestamp: new Date().toISOString()
-                });
+                revisions.push({ date: newNext, remark: remarks, timestamp: new Date().toISOString() });
             } else if (remarks) {
-                // If only remarks are provided without a new date, store it for general update
-                if (!rec.revisions) rec.revisions = [];
-                rec.revisions.push({
-                    statusOnly: true,
-                    remark: remarks,
-                    timestamp: new Date().toISOString()
+                revisions.push({ statusOnly: true, remark: remarks, timestamp: new Date().toISOString() });
+            }
+
+            try {
+                const response = await fetch('/api/action-points/' + encodeURIComponent(rid), {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
+                    cache: 'no-store',
+                    body: JSON.stringify({
+                        statusValue: newStatus,
+                        targetDate: newNext || current.targetDate,
+                        revisions
+                    })
                 });
+                const saved = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(saved.error || saved.message || 'Failed to update record');
+
+                meetings[index] = { ...current, ...saved };
+                if (newNext && !saved.targetDate) meetings[index].targetDate = newNext;
+                meetings[index].statusValue = saved.statusValue || newStatus;
+                meetings[index].revisions = Array.isArray(saved.revisions) ? saved.revisions : revisions;
+
+                updateModalObj.hide();
+                showToast('Progress updated successfully');
+                renderHistory();
+                updateTopStats();
+            } catch (error) {
+                console.error('Action-point update failed:', error);
+                showToast('Update failed: ' + error.message, true);
             }
-
-            // Save to specialized table
-            const apRes = await fetch(`/api/action-points/${rec._id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    statusValue: rec.statusValue,
-                    targetDate: newNext || rec.targetDate,
-                    revisions: rec.revisions
-                })
-            });
-
-            if (!apRes.ok) throw new Error('Failed to update record on server');
-
-            // Sync with Project Master Phases
-            if (newNext && project) {
-                const phaseId = DEPT_TO_PHASE[rec.dept];
-                if (phaseId) {
-                    if (!project.detailed_phases) project.detailed_phases = {};
-                    if (!project.detailed_phases[phaseId]) {
-                        project.detailed_phases[phaseId] = { plan_start: rec.reviewDate, plan_end: newNext, progress: 0, revisions: [] };
-                    }
-
-                    const phData = project.detailed_phases[phaseId];
-                    if (!phData.revisions) phData.revisions = [];
-
-                    // Add revision to Phase if different from current end
-                    const currentEnd = phData.plan_end;
-                    const latestRev = phData.revisions.length > 0 ? phData.revisions[phData.revisions.length - 1] : null;
-                    const prevEnd = latestRev ? latestRev.end : currentEnd;
-
-                    if (newNext !== prevEnd) {
-                        const nextRevNum = phData.revisions.length + 1;
-                        phData.revisions.push({
-                            start: phData.plan_start || rec.reviewDate,
-                            end: newNext,
-                            label: 'R' + nextRevNum,
-                            remark: `From Meeting: ${remarks}`
-                        });
-                        // Update reassign dates for dashboard sync
-                        phData.reassign_start = phData.plan_start || rec.reviewDate;
-                        phData.reassign_end = newNext;
-                    }
-
-                    // Save full project object back to server
-                    await saveMasterProject();
-                }
-            }
-
-            updateModalObj.hide();
-            showToast('Progress updated successfully');
-            renderHistory();
-            updateTopStats();
         }
 
         /* saveMasterProject is no longer needed for action points */
@@ -2357,6 +3256,7 @@ Please ensure that all necessary work is on track for completion. If the task is
         function performLogout() {
             localStorage.removeItem('danprel_auth');
             localStorage.removeItem('danprel_role');
+            localStorage.removeItem('danprel_access_token');
             window.location.replace('login.html');
         }
 
@@ -2469,6 +3369,11 @@ Please ensure that all necessary work is on track for completion. If the task is
                                 <tr>
                                     <td style="padding: 8pt 0; border-bottom: 1px solid #f1f5f9; color: #64748b; font-weight: 700;">MQ2 / SAT LOCATION</td>
                                     <td style="padding: 8pt 0; border-bottom: 1px solid #f1f5f9; color: #0f172a; font-weight: 800;">: ${project.sat_location || 'N/A'}</td>
+                                </tr>
+                                <!-- PMIS_EXPORT_REPORT_ENHANCEMENTS_V26 -->
+                                <tr>
+                                    <td style="padding: 8pt 0; border-bottom: 1px solid #f1f5f9; color: #64748b; font-weight: 700;">PROJECT MANAGER</td>
+                                    <td style="padding: 8pt 0; border-bottom: 1px solid #f1f5f9; color: #0f172a; font-weight: 800;">: ${project.project_manager || 'N/A'}</td>
                                 </tr>
                                 <tr>
                                     <td style="padding: 8pt 0; border-bottom: 1px solid #f1f5f9; color: #64748b; font-weight: 700;">REPORT GENERATED</td>
@@ -2613,6 +3518,7 @@ Please ensure that all necessary work is on track for completion. If the task is
                 ['', '', '', '', '', '', '', '', '', ''],
                 ['Project Name:', project.name || '-', '', '', 'Generated Date:', genDate, '', '', '', ''],
                 ['Project Code:', project.code || '-', '', '', 'Customer:', project.customer_name || '-', '', '', '', ''],
+                ['Project Manager:', project.project_manager || '-', '', '', 'MQ2 / SAT Location:', project.sat_location || '-', '', '', '', ''], // PMIS_EXPORT_REPORT_ENHANCEMENTS_V26
                 ['Total Action Points:', total, '', '', 'Completed:', completed, '', '', '', ''],
                 ['Open Action Points:', open, '', '', '', '', '', '', '', ''],
                 ['', '', '', '', '', '', '', '', '', ''],
@@ -2649,15 +3555,17 @@ Please ensure that all necessary work is on track for completion. If the task is
 
             // --- MERGE CELLS for header ---
             ws['!merges'] = [
-                { s: { r: 0, c: 0 }, e: { r: 0, c: 9 } },  // Company name spans all columns
-                { s: { r: 1, c: 0 }, e: { r: 1, c: 9 } },  // Report title spans all columns
-                { s: { r: 3, c: 1 }, e: { r: 3, c: 3 } },  // Project name value
-                { s: { r: 3, c: 5 }, e: { r: 3, c: 9 } },  // Generated date value
-                { s: { r: 4, c: 1 }, e: { r: 4, c: 3 } },  // Project code value
-                { s: { r: 4, c: 5 }, e: { r: 4, c: 9 } },  // Customer value
-                { s: { r: 5, c: 1 }, e: { r: 5, c: 3 } },  // Total value
-                { s: { r: 5, c: 5 }, e: { r: 5, c: 9 } },  // Completed value
-                { s: { r: 6, c: 1 }, e: { r: 6, c: 9 } },  // Open value
+                { s: { r: 0, c: 0 }, e: { r: 0, c: 9 } },
+                { s: { r: 1, c: 0 }, e: { r: 1, c: 9 } },
+                { s: { r: 3, c: 1 }, e: { r: 3, c: 3 } },
+                { s: { r: 3, c: 5 }, e: { r: 3, c: 9 } },
+                { s: { r: 4, c: 1 }, e: { r: 4, c: 3 } },
+                { s: { r: 4, c: 5 }, e: { r: 4, c: 9 } },
+                { s: { r: 5, c: 1 }, e: { r: 5, c: 3 } },
+                { s: { r: 5, c: 5 }, e: { r: 5, c: 9 } },
+                { s: { r: 6, c: 1 }, e: { r: 6, c: 3 } },
+                { s: { r: 6, c: 5 }, e: { r: 6, c: 9 } },
+                { s: { r: 7, c: 1 }, e: { r: 7, c: 9 } }
             ];
 
             // --- COLUMN WIDTHS ---
@@ -2668,15 +3576,16 @@ Please ensure that all necessary work is on track for completion. If the task is
 
             // --- ROW HEIGHTS ---
             ws['!rows'] = [
-                { hpt: 28 }, // Row 1: Company name
-                { hpt: 18 }, // Row 2: Title
-                { hpt: 8  }, // Row 3: Spacer
-                { hpt: 16 }, // Row 4
-                { hpt: 16 }, // Row 5
-                { hpt: 16 }, // Row 6
-                { hpt: 16 }, // Row 7
-                { hpt: 8  }, // Row 8: Spacer
-                { hpt: 20 }, // Row 9: Column headers
+                { hpt: 28 },
+                { hpt: 18 },
+                { hpt: 8 },
+                { hpt: 16 },
+                { hpt: 16 },
+                { hpt: 16 },
+                { hpt: 16 },
+                { hpt: 16 },
+                { hpt: 8 },
+                { hpt: 20 }
             ];
 
             const wb = XLSX.utils.book_new();
@@ -2688,6 +3597,133 @@ Please ensure that all necessary work is on track for completion. If the task is
         }
 
     </script>
+
+<script id="pmis-parent-navigation-v16">
+(function () {
+    'use strict';
+
+    const DASHBOARD_URL = 'project_review.html';
+
+    function currentPageName() {
+        const parts = window.location.pathname.split('/');
+        return parts[parts.length - 1] || DASHBOARD_URL;
+    }
+
+    function currentProjectId() {
+        const params = new URLSearchParams(window.location.search);
+        return params.get('id') || params.get('Id') || '';
+    }
+
+    function parentUrlForCurrentPage() {
+        const page = currentPageName();
+        const projectId = currentProjectId();
+
+        // Fixed parent hierarchy prevents a back-navigation loop.
+        if (page === 'phase_review_meeting.html') {
+            return projectId
+                ? 'project_phases.html?id=' + encodeURIComponent(projectId)
+                : 'project_review.html';
+        }
+
+        if (page === 'project_phases.html') {
+            return 'project_review.html';
+        }
+
+        if (page === 'review_meeting.html') {
+            return 'project_review.html';
+        }
+
+        if (page === 'resource_hub.html') {
+            return 'project_review.html';
+        }
+
+        if (page === 'visualize.html') {
+            return 'project_review.html';
+        }
+
+        return DASHBOARD_URL;
+    }
+
+    function goHome() {
+        window.location.assign(new URL(DASHBOARD_URL, window.location.href).href);
+    }
+
+    function goBack() {
+        window.location.assign(new URL(parentUrlForCurrentPage(), window.location.href).href);
+    }
+
+    // Keep every older inline alias functional.
+    window.pmisGoHomeV16 = goHome;
+    window.pmisGoBackV16 = goBack;
+    window.pmisGoHomeV15 = goHome;
+    window.pmisGoBackV15 = goBack;
+    window.pmisGoHomeV14 = goHome;
+    window.pmisGoBackV14 = goBack;
+    window.pmisGoHomeV13 = goHome;
+    window.pmisGoBackV13 = goBack;
+
+    function makeHomeTarget(element) {
+        if (!element || element.dataset.pmisHomeReadyV16 === 'true') return;
+        element.dataset.pmisHomeReadyV16 = 'true';
+        element.style.cursor = 'pointer';
+        element.setAttribute('role', 'link');
+        element.setAttribute('tabindex', '0');
+        element.setAttribute('title', 'Go to Project Dashboard');
+
+        element.addEventListener('click', function (event) {
+            if (event.target.closest('button, a, input, select, textarea')) return;
+            event.preventDefault();
+            event.stopPropagation();
+            goHome();
+        }, true);
+
+        element.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                goHome();
+            }
+        });
+    }
+
+    function prepareBackButton(button) {
+        if (!button || button.dataset.pmisBackReadyV16 === 'true') return;
+        button.dataset.pmisBackReadyV16 = 'true';
+        button.setAttribute('title', 'Back');
+        button.setAttribute('aria-label', 'Back');
+        button.removeAttribute('href');
+        button.onclick = function (event) {
+            if (event) event.preventDefault();
+            goBack();
+        };
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll(
+            '.pmis-home-brand-v13, .pmis-home-brand-v14, .pmis-home-brand-v15, .pmis-home-brand-v16, ' +
+            '.brand-box, .brand-logo-wrap, .app-header .brand-name'
+        ).forEach(function (element) {
+            const target = element.closest(
+                '.pmis-home-brand-v13, .pmis-home-brand-v14, .pmis-home-brand-v15, .pmis-home-brand-v16, .brand-box'
+            ) || element;
+            makeHomeTarget(target);
+        });
+
+        document.querySelectorAll('img[src="asset/image.png"], img[src$="/asset/image.png"]')
+            .forEach(function (logo) {
+                const target = logo.closest(
+                    '.pmis-home-brand-v13, .pmis-home-brand-v14, .pmis-home-brand-v15, .pmis-home-brand-v16, ' +
+                    '.brand-box, .app-header > div, header > div'
+                );
+                makeHomeTarget(target || logo);
+            });
+
+        document.querySelectorAll(
+            '.pmis-parent-back-v16, .pmis-smart-back-v15, .pmis-nav-back-v13, .pmis-nav-back-v14, #btnBackPhases, [data-pmis-back]'
+        ).forEach(prepareBackButton);
+    });
+})();
+</script>
+
 </body>
 
 </html>

@@ -1667,6 +1667,220 @@
             }
         }
     </style>
+
+    <style id="pmis-navigation-v13-style">
+        .pmis-home-brand-v13 { cursor: pointer; }
+        .pmis-home-brand-v13:focus-visible { outline: 3px solid rgba(20,184,166,.65); outline-offset: 4px; border-radius: 14px; }
+        .pmis-nav-back-v13 { flex: 0 0 auto; }
+        @media (max-width: 575.98px) {
+            .pmis-nav-back-v13 { width: 40px !important; height: 40px !important; }
+        }
+    
+        /* PMIS_V17_UNIFIED_BACK_ARROW */
+        .pmis-parent-back-v16,
+        .pmis-context-back-v15,
+        .pmis-nav-back-v13,
+        .pmis-universal-back-v17 {
+            width: 44px !important;
+            height: 44px !important;
+            min-width: 44px !important;
+            min-height: 44px !important;
+            padding: 0 !important;
+            border-radius: 12px !important;
+            border: 1px solid rgba(255, 255, 255, 0.22) !important;
+            background: rgba(255, 255, 255, 0.08) !important;
+            color: #ffffff !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            font-family: inherit !important;
+            font-size: 22px !important;
+            font-weight: 700 !important;
+            line-height: 1 !important;
+            box-shadow: none !important;
+            opacity: 1 !important;
+            text-decoration: none !important;
+        }
+
+        .pmis-parent-back-v16:hover,
+        .pmis-context-back-v15:hover,
+        .pmis-nav-back-v13:hover,
+        .pmis-universal-back-v17:hover {
+            background: rgba(255, 255, 255, 0.16) !important;
+            border-color: rgba(255, 255, 255, 0.38) !important;
+            color: #ffffff !important;
+            transform: none !important;
+        }
+
+        .pmis-parent-back-v16 i,
+        .pmis-context-back-v15 i,
+        .pmis-nav-back-v13 i,
+        .pmis-universal-back-v17 i {
+            color: #ffffff !important;
+            font-family: "bootstrap-icons" !important;
+            font-size: 22px !important;
+            font-weight: 400 !important;
+            line-height: 1 !important;
+            opacity: 1 !important;
+        }
+</style>
+
+
+    <script>
+        // PMIS_V24_API_TOKEN_FETCH
+        (() => {
+            if (window.__pmisV24FetchInstalled) return;
+            window.__pmisV24FetchInstalled = true;
+            const originalFetch = window.fetch.bind(window);
+            window.fetch = function(input, init = {}) {
+                const url = typeof input === 'string' ? input : String(input && input.url || '');
+                const isApi = url.startsWith('/api/') || url.includes('/api/');
+                if (!isApi) return originalFetch(input, init);
+
+                const token = localStorage.getItem('danprel_access_token') || '';
+                const sourceHeaders = init.headers || (input && input.headers) || {};
+                const headers = new Headers(sourceHeaders);
+                if (token) headers.set('Authorization', 'Bearer ' + token);
+                return originalFetch(input, { ...init, headers });
+            };
+        })();
+    </script>
+    <style>
+        /* PMIS_V24_PROJECT_READ_ONLY */
+        .pmis-view-only-v24 [data-pmis-write-disabled-v24="true"] {
+            opacity: 0.45 !important;
+            cursor: not-allowed !important;
+            pointer-events: none !important;
+        }
+        .pmis-view-only-banner-v24 {
+            position: sticky;
+            top: 8px;
+            z-index: 1200;
+            max-width: 760px;
+            margin: 8px auto 14px;
+            padding: 11px 16px;
+            border-radius: 14px;
+            color: #7f1d1d;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            box-shadow: 0 8px 20px rgba(127,29,29,0.08);
+            font-size: 0.82rem;
+            font-weight: 800;
+            text-align: center;
+        }
+    </style>
+    <script>
+        // PMIS_V24_PROJECT_READ_ONLY
+        (() => {
+            function normalize(value) {
+                return String(value || '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+            }
+            function isAdmin() {
+                return String(localStorage.getItem('danprel_role') || '').toLowerCase() === 'admin';
+            }
+            function canEdit(project) {
+                if (isAdmin()) return true;
+                if (!project) return false;
+                const employeeId = normalize(localStorage.getItem('danprel_employee_id') || localStorage.getItem('danprel_username') || '');
+                const displayName = normalize(localStorage.getItem('danprel_display_name') || '');
+                const storedId = normalize(project.project_expeditor_employee_id || project.project_manager_employee_id || '');
+                if (employeeId && storedId && employeeId === storedId) return true;
+                return String(project.project_manager || '')
+                    .split(/\s*(?:,|;|\/|\||&|\band\b)\s*/i)
+                    .map(normalize)
+                    .filter(Boolean)
+                    .some(person =>
+                        (employeeId && person === employeeId) ||
+                        (displayName && person === displayName) ||
+                        (displayName && person.length >= 5 && displayName.length >= 5 &&
+                            (person.includes(displayName) || displayName.includes(person)))
+                    );
+            }
+
+            function writeSignature(element) {
+                return [
+                    element.getAttribute?.('onclick') || '',
+                    element.id || '',
+                    typeof element.className === 'string' ? element.className : '',
+                    element.getAttribute?.('title') || '',
+                    element.textContent || ''
+                ].join(' ').toLowerCase();
+            }
+
+            function shouldDisableButton(element) {
+                const signature = writeSignature(element);
+                const allow = /(export|download|print|back|logout|menu|close|cancel|filter|search|view|visual|history|previous|next)/.test(signature);
+                const write = /(save|edit|delete|remove|add|create|update|reschedule|actual|submit|approve|reject|lock|unlock|exclude|include|send mail|send reminder)/.test(signature);
+                return write && !allow;
+            }
+
+            function applyDisabledState() {
+                if (!window.PMIS_V24_VIEW_ONLY) return;
+                document.querySelectorAll('input, textarea').forEach(element => {
+                    const type = String(element.type || '').toLowerCase();
+                    const signature = writeSignature(element);
+                    if (type === 'search' || /filter|search/.test(signature)) return;
+                    element.disabled = true;
+                    element.dataset.pmisWriteDisabledV24 = 'true';
+                });
+                document.querySelectorAll('select').forEach(element => {
+                    const signature = writeSignature(element);
+                    if (/filter|search|export/.test(signature)) return;
+                    element.disabled = true;
+                    element.dataset.pmisWriteDisabledV24 = 'true';
+                });
+                document.querySelectorAll('button, a').forEach(element => {
+                    if (!shouldDisableButton(element)) return;
+                    if ('disabled' in element) element.disabled = true;
+                    element.dataset.pmisWriteDisabledV24 = 'true';
+                });
+            }
+
+            function wrapWriteFunctions() {
+                if (!window.PMIS_V24_VIEW_ONLY) return;
+                const names = [
+                    'syncProject','saveInlineField','updatePlanFromDays','saveRescheduleData','saveActualData',
+                    'setPlanStatus','saveRow','submitUpdate','deleteRecord','confirmDelete','addRow',
+                    'saveMasterProject','approveRevision','rejectRevision'
+                ];
+                names.forEach(name => {
+                    const original = window[name];
+                    if (typeof original !== 'function' || original.__pmisV24Wrapped) return;
+                    const wrapped = function(...args) {
+                        const message = 'View-only project: only the assigned Project Expeditor can make changes.';
+                        if (typeof window.showToast === 'function') window.showToast(message, true);
+                        else alert(message);
+                        return false;
+                    };
+                    wrapped.__pmisV24Wrapped = true;
+                    window[name] = wrapped;
+                });
+            }
+
+            window.pmisApplyProjectAccessV24 = function(project) {
+                const allowed = canEdit(project);
+                window.PMIS_V24_CAN_EDIT = allowed;
+                window.PMIS_V24_VIEW_ONLY = !allowed;
+                if (allowed) return true;
+
+                document.body.classList.add('pmis-view-only-v24');
+                if (!document.querySelector('.pmis-view-only-banner-v24')) {
+                    const banner = document.createElement('div');
+                    banner.className = 'pmis-view-only-banner-v24';
+                    banner.innerHTML = '<i class="bi bi-eye-fill me-2"></i>View only — this project is assigned to another Project Expeditor.';
+                    document.body.insertBefore(banner, document.body.firstChild);
+                }
+
+                setTimeout(() => { applyDisabledState(); wrapWriteFunctions(); }, 0);
+                const observer = new MutationObserver(() => {
+                    applyDisabledState();
+                    wrapWriteFunctions();
+                });
+                observer.observe(document.body, { childList: true, subtree: true });
+                return false;
+            };
+        })();
+    </script>
 </head>
 
 <body>
@@ -1721,22 +1935,28 @@
 
     <header class="app-header">
         <div class="d-flex align-items-center gap-3">
-            <button class="menu-toggle" onclick="toggleSidebar()">
+            <button class="menu-toggle" onclick="toggleSidebar()" title="Open menu">
                 <i class="bi bi-list"></i>
             </button>
-            <div class="brand-logo-wrap d-none d-sm-flex">
-                <img src="asset/image.png" alt="Logo">
-            </div>
-            <div>
-                <div class="brand-name">DANPREL</div>
-                <div class="brand-sub">Engineering Automation Pvt Ltd</div>
+            <div class="d-flex align-items-center gap-3 pmis-home-brand-v13" role="button" tabindex="0"
+                title="Go to Project Dashboard" onclick="pmisGoHomeV15()"
+                onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();pmisGoHomeV15();}">
+                <div class="brand-logo-wrap d-none d-sm-flex">
+                    <img src="asset/image.png" alt="Logo">
+                </div>
+                <div>
+                    <div class="brand-name">DANPREL</div>
+                    <div class="brand-sub">Engineering Automation Pvt Ltd</div>
+                </div>
             </div>
         </div>
         <div class="d-flex gap-2 align-items-center">
+            <button type="button" class="menu-toggle pmis-parent-back-v16 pmis-universal-back-v17" title="Back" aria-label="Back">
+                <i class="bi bi-arrow-left"></i>
+            </button>
             <a id="reviewMeetingBtn" href="#" class="btn-back btn-review-special">
                 <i class="bi bi-camera-reels-fill me-1"></i>Review Meeting
             </a>
-            <a href="project_review.html" class="btn-back"><i class="bi bi-grid-3x3-gap-fill"></i> Dashboard</a>
         </div>
     </header>
 
@@ -2179,8 +2399,9 @@
 
         async function fetchProjectData() {
             try {
-                const res = await fetch(`/api/projects/${projectId}`);
+                const res = await fetch(`/api/projects/${projectId}?t=${Date.now()}`, { cache: 'no-store' });
                 project = await res.json();
+                if (typeof pmisApplyProjectAccessV24 === 'function') pmisApplyProjectAccessV24(project);
                 if (!project) {
                     alert('Project not found!');
                     window.location.href = 'project_review.html';
@@ -2549,6 +2770,7 @@
         function performLogout() {
             localStorage.removeItem('danprel_auth');
             localStorage.removeItem('danprel_role');
+            localStorage.removeItem('danprel_access_token');
             window.location.replace('login.html');
         }
 
@@ -3159,43 +3381,107 @@
             return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         }
 
+        // PMIS_FILTER_EDIT_PERSISTENCE_V22: serialized edit persistence and date normalization.
+        let pmisProjectEditVersion = 0;
+        let pmisProjectSaveTimer = null;
+        let pmisProjectSaveChain = Promise.resolve();
+
+        function pmisClone(value) {
+            return JSON.parse(JSON.stringify(value));
+        }
+
+        function pmisNormalizePhaseDate(value) {
+            const raw = String(value || '').trim();
+            if (!raw || raw === 'Select Date' || raw === '—') return '';
+            const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (iso) return iso[1] + '-' + iso[2] + '-' + iso[3];
+            const display = raw.match(/^(\d{2})[\/-](\d{2})[\/-](\d{4})$/);
+            if (display) return display[3] + '-' + display[2] + '-' + display[1];
+            const date = parseDate(raw);
+            return date ? formatDateLocalISO(date) : '';
+        }
+
+        function pmisSetDateInput(input, value) {
+            if (!input) return;
+            const normalized = pmisNormalizePhaseDate(value);
+            input.value = normalized;
+            input.dataset.isoValue = normalized;
+        }
+
+        function pmisReadDateInput(input) {
+            if (!input) return '';
+            const visible = pmisNormalizePhaseDate(input.value);
+            const stored = pmisNormalizePhaseDate(input.dataset.isoValue);
+            // A manually cleared field must stay cleared instead of restoring an old dataset value.
+            if (!String(input.value || '').trim()) return '';
+            return visible || stored;
+        }
+
+        function pmisProjectPatchSnapshot() {
+            syncToDashboardPhases();
+            return pmisClone({
+                detailed_phases: project.detailed_phases,
+                phases: project.phases,
+                overall_progress: project.overall_progress,
+                start_date: project.start_date,
+                dispatch_date: project.dispatch_date,
+                mq2_date: project.mq2_date,
+                reassign_start_date: project.reassign_start_date,
+                reassign_dispatch_date: project.reassign_dispatch_date,
+                reassign_mq2_date: project.reassign_mq2_date,
+                plan_status: project.plan_status,
+                revision_requests: project.revision_requests
+            });
+        }
+
+        function pmisScheduleProjectSave(delay = 250) {
+            clearTimeout(pmisProjectSaveTimer);
+            pmisProjectSaveTimer = setTimeout(() => {
+                syncProject().catch(error => console.error('Scheduled project save failed:', error));
+            }, delay);
+        }
+
         async function syncProject(element = null) {
-            try {
-                if (!project || !projectId) {
-                    console.error('Project data or ID missing');
-                    return;
-                }
+            if (!project || !projectId) {
+                console.error('Project data or ID missing');
+                return false;
+            }
 
-                syncToDashboardPhases();
+            clearTimeout(pmisProjectSaveTimer);
+            const saveVersion = ++pmisProjectEditVersion;
+            const payload = pmisProjectPatchSnapshot();
 
-                const response = await fetch(`/api/projects/${projectId}`, {
+            const executeSave = async () => {
+                const response = await fetch('/api/projects/' + encodeURIComponent(projectId), {
                     method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        detailed_phases: project.detailed_phases,
-                        phases: project.phases,
-                        overall_progress: project.overall_progress,
-                        start_date: project.start_date,
-                        dispatch_date: project.dispatch_date,
-                        mq2_date: project.mq2_date,
-                        reassign_start_date: project.reassign_start_date,
-                        reassign_dispatch_date: project.reassign_dispatch_date,
-                        reassign_mq2_date: project.reassign_mq2_date,
-                        plan_status: project.plan_status,
-                        revision_requests: project.revision_requests // ADDED THIS
-                    })
+                    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
+                    cache: 'no-store',
+                    body: JSON.stringify(payload)
                 });
 
-                if (response.ok) {
-                    showSuccessToast();
-                    renderTable();
-                } else {
-                    const error = await response.json();
-                    alert('❌ Save failed: ' + (error.message || 'Server error'));
+                const savedProject = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    throw new Error(savedProject.error || savedProject.message || 'Server error');
                 }
-            } catch (err) {
-                console.error('Sync failed:', err);
-                alert('❌ Connection failed. Please check your internet.');
+
+                // Apply the response only when no newer local edit was made while this
+                // request was in flight. A later queued save contains the newer state.
+                if (saveVersion === pmisProjectEditVersion) {
+                    project = { ...project, ...savedProject };
+                    initProjectData();
+                    renderTable();
+                    showSuccessToast();
+                }
+                return true;
+            };
+
+            pmisProjectSaveChain = pmisProjectSaveChain.then(executeSave, executeSave);
+            try {
+                return await pmisProjectSaveChain;
+            } catch (error) {
+                console.error('Project sync failed:', error);
+                showToast('Save failed: ' + error.message, true);
+                return false;
             }
         }
 
@@ -3209,64 +3495,65 @@
 
         function saveInlineField(phaseId, field, value, element) {
             if (!project.detailed_phases[phaseId]) project.detailed_phases[phaseId] = {};
-            const d = project.detailed_phases[phaseId];
-            if (d.locked) return;
+            const data = project.detailed_phases[phaseId];
+            if (data.locked) return;
 
             if (field === 'progress') {
-                let val = parseInt(value);
-                if (isNaN(val) || val < 0) val = 0;
-                if (val > 100) val = 100;
-                value = val;
-                if (element) {
-                    element.value = val;
-                }
+                let parsed = parseInt(value, 10);
+                if (Number.isNaN(parsed) || parsed < 0) parsed = 0;
+                if (parsed > 100) parsed = 100;
+                value = parsed;
+                if (element) element.value = parsed;
             }
 
-            d[field] = value;
+            if (['plan_start', 'plan_end', 'actual_start', 'actual_end'].includes(field)) {
+                value = pmisNormalizePhaseDate(value);
+            }
+            data[field] = value;
 
-            // Auto-calculate End Date if Start Date changes and Duration is present
             if (field === 'plan_start' && value) {
-                const dur = parseInt(d.plan_duration);
-                if (!isNaN(dur) && dur > 0) {
+                const duration = parseInt(data.plan_duration, 10);
+                if (!Number.isNaN(duration) && duration > 0) {
                     const start = parseDate(value);
                     if (start) {
                         const end = new Date(start);
-                        end.setDate(end.getDate() + (dur - 1));
-                        d.plan_end = formatDateLocalISO(end);
+                        end.setDate(end.getDate() + duration - 1);
+                        data.plan_end = formatDateLocalISO(end);
                     }
                 }
             }
 
-            // If manual End Date changed, update the internal duration store
-            if (field === 'plan_end' && value && d.plan_start) {
-                const s = parseDate(d.plan_start);
-                const e = parseDate(value);
-                if (s && e) {
-                    const dur = Math.round((e - s) / (1000 * 60 * 60 * 24)) + 1;
-                    if (dur >= 1) d.plan_duration = dur;
+            if (field === 'plan_end' && value && data.plan_start) {
+                const start = parseDate(data.plan_start);
+                const end = parseDate(value);
+                if (start && end) {
+                    const duration = Math.round((end - start) / 86400000) + 1;
+                    if (duration >= 1) data.plan_duration = duration;
                 }
             }
 
-            renderTable(); // Update sibling fields on screen
+            renderTable();
+            pmisScheduleProjectSave(field.includes('date') || field.includes('start') || field.includes('end') ? 80 : 250);
         }
 
         function updatePlanFromDays(phaseId, days, element) {
-            const val = parseInt(days);
-            if (isNaN(val) || val < 1) return;
+            const value = parseInt(days, 10);
+            if (Number.isNaN(value) || value < 1) return;
 
             if (!project.detailed_phases[phaseId]) project.detailed_phases[phaseId] = {};
-            const d = project.detailed_phases[phaseId];
-            d.plan_duration = val;
+            const data = project.detailed_phases[phaseId];
+            data.plan_duration = value;
 
-            if (d.plan_start) {
-                const start = parseDate(d.plan_start);
+            if (data.plan_start) {
+                const start = parseDate(data.plan_start);
                 if (start) {
                     const end = new Date(start);
-                    end.setDate(end.getDate() + (val - 1));
-                    d.plan_end = formatDateLocalISO(end);
+                    end.setDate(end.getDate() + value - 1);
+                    data.plan_end = formatDateLocalISO(end);
                 }
             }
             renderTable();
+            pmisScheduleProjectSave(80);
         }
 
         function openRescheduleModal(phaseId) {
@@ -3288,8 +3575,8 @@
             document.getElementById('mCurrentEndDisplay').innerText = formatDate(data.plan_end || 'N/A');
 
             // Show current values in inputs to start editing from
-            document.getElementById('mRescheduleStart').value = data.plan_start || '';
-            document.getElementById('mRescheduleEnd').value = data.plan_end || '';
+            pmisSetDateInput(document.getElementById('mRescheduleStart'), data.plan_start);
+            pmisSetDateInput(document.getElementById('mRescheduleEnd'), data.plan_end);
             document.getElementById('mRescheduleRemark').value = '';
 
             // Reset validation states
@@ -3313,8 +3600,8 @@
 
             document.getElementById('mActualId').value = phaseId;
             document.getElementById('actualModalTitle').innerText = 'Update Progress: ' + ph.name;
-            document.getElementById('mActualStart').value = data.actual_start || '';
-            document.getElementById('mActualEnd').value = data.actual_end || '';
+            pmisSetDateInput(document.getElementById('mActualStart'), data.actual_start);
+            pmisSetDateInput(document.getElementById('mActualEnd'), data.actual_end);
             document.getElementById('mProgress').value = data.progress || 0;
             document.getElementById('mRemarks').value = data.remarks || '';
             initFlatpickr(); // Refresh for modal inputs
@@ -3355,8 +3642,8 @@
             const endInput = document.getElementById('mRescheduleEnd');
             const remarkInput = document.getElementById('mRescheduleRemark');
 
-            const newStart = startInput.dataset.isoValue || startInput.value;
-            const newEnd = endInput.dataset.isoValue || endInput.value;
+            const newStart = pmisReadDateInput(startInput);
+            const newEnd = pmisReadDateInput(endInput);
             const remarkText = remarkInput.value.trim();
 
             let hasError = false;
@@ -3379,8 +3666,8 @@
             const ph = defaultPhases.find(p => p.id === id);
             const d = project.detailed_phases[id];
 
-            const newStart = document.getElementById('mRescheduleStart').value;
-            const newEnd = document.getElementById('mRescheduleEnd').value;
+            const newStart = pmisReadDateInput(document.getElementById('mRescheduleStart'));
+            const newEnd = pmisReadDateInput(document.getElementById('mRescheduleEnd'));
             const remarkText = document.getElementById('mRescheduleRemark').value.trim();
 
             const cModal = bootstrap.Modal.getInstance(document.getElementById('rescheduleConfirmModal'));
@@ -3548,8 +3835,8 @@
             const startInp = document.getElementById('mActualStart');
             const endInp = document.getElementById('mActualEnd');
 
-            d.actual_start = startInp.dataset.isoValue || startInp.value;
-            d.actual_end = endInp.dataset.isoValue || endInp.value;
+            d.actual_start = pmisReadDateInput(startInp);
+            d.actual_end = pmisReadDateInput(endInp);
             let progVal = parseInt(document.getElementById('mProgress').value || 0);
             if (isNaN(progVal) || progVal < 0) progVal = 0;
             if (progVal > 100) progVal = 100;
@@ -4928,6 +5215,133 @@
     <div id="printArea"
         style="position: fixed; left: -9999px; top: 0; width: 1200px; background: white; pointer-events: none; overflow: visible;">
     </div>
+
+<script id="pmis-parent-navigation-v16">
+(function () {
+    'use strict';
+
+    const DASHBOARD_URL = 'project_review.html';
+
+    function currentPageName() {
+        const parts = window.location.pathname.split('/');
+        return parts[parts.length - 1] || DASHBOARD_URL;
+    }
+
+    function currentProjectId() {
+        const params = new URLSearchParams(window.location.search);
+        return params.get('id') || params.get('Id') || '';
+    }
+
+    function parentUrlForCurrentPage() {
+        const page = currentPageName();
+        const projectId = currentProjectId();
+
+        // Fixed parent hierarchy prevents a back-navigation loop.
+        if (page === 'phase_review_meeting.html') {
+            return projectId
+                ? 'project_phases.html?id=' + encodeURIComponent(projectId)
+                : 'project_review.html';
+        }
+
+        if (page === 'project_phases.html') {
+            return 'project_review.html';
+        }
+
+        if (page === 'review_meeting.html') {
+            return 'project_review.html';
+        }
+
+        if (page === 'resource_hub.html') {
+            return 'project_review.html';
+        }
+
+        if (page === 'visualize.html') {
+            return 'project_review.html';
+        }
+
+        return DASHBOARD_URL;
+    }
+
+    function goHome() {
+        window.location.assign(new URL(DASHBOARD_URL, window.location.href).href);
+    }
+
+    function goBack() {
+        window.location.assign(new URL(parentUrlForCurrentPage(), window.location.href).href);
+    }
+
+    // Keep every older inline alias functional.
+    window.pmisGoHomeV16 = goHome;
+    window.pmisGoBackV16 = goBack;
+    window.pmisGoHomeV15 = goHome;
+    window.pmisGoBackV15 = goBack;
+    window.pmisGoHomeV14 = goHome;
+    window.pmisGoBackV14 = goBack;
+    window.pmisGoHomeV13 = goHome;
+    window.pmisGoBackV13 = goBack;
+
+    function makeHomeTarget(element) {
+        if (!element || element.dataset.pmisHomeReadyV16 === 'true') return;
+        element.dataset.pmisHomeReadyV16 = 'true';
+        element.style.cursor = 'pointer';
+        element.setAttribute('role', 'link');
+        element.setAttribute('tabindex', '0');
+        element.setAttribute('title', 'Go to Project Dashboard');
+
+        element.addEventListener('click', function (event) {
+            if (event.target.closest('button, a, input, select, textarea')) return;
+            event.preventDefault();
+            event.stopPropagation();
+            goHome();
+        }, true);
+
+        element.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                goHome();
+            }
+        });
+    }
+
+    function prepareBackButton(button) {
+        if (!button || button.dataset.pmisBackReadyV16 === 'true') return;
+        button.dataset.pmisBackReadyV16 = 'true';
+        button.setAttribute('title', 'Back');
+        button.setAttribute('aria-label', 'Back');
+        button.removeAttribute('href');
+        button.onclick = function (event) {
+            if (event) event.preventDefault();
+            goBack();
+        };
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll(
+            '.pmis-home-brand-v13, .pmis-home-brand-v14, .pmis-home-brand-v15, .pmis-home-brand-v16, ' +
+            '.brand-box, .brand-logo-wrap, .app-header .brand-name'
+        ).forEach(function (element) {
+            const target = element.closest(
+                '.pmis-home-brand-v13, .pmis-home-brand-v14, .pmis-home-brand-v15, .pmis-home-brand-v16, .brand-box'
+            ) || element;
+            makeHomeTarget(target);
+        });
+
+        document.querySelectorAll('img[src="asset/image.png"], img[src$="/asset/image.png"]')
+            .forEach(function (logo) {
+                const target = logo.closest(
+                    '.pmis-home-brand-v13, .pmis-home-brand-v14, .pmis-home-brand-v15, .pmis-home-brand-v16, ' +
+                    '.brand-box, .app-header > div, header > div'
+                );
+                makeHomeTarget(target || logo);
+            });
+
+        document.querySelectorAll(
+            '.pmis-parent-back-v16, .pmis-smart-back-v15, .pmis-nav-back-v13, .pmis-nav-back-v14, #btnBackPhases, [data-pmis-back]'
+        ).forEach(prepareBackButton);
+    });
+})();
+</script>
+
 </body>
 
 </html>
