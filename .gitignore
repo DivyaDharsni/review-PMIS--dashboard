@@ -8,3 +8,4 @@ Backup_Danprel.bat
 dist/
 build/
 *.log
+.netlify/
