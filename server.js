@@ -75,10 +75,47 @@ app.use('/api', (req, res, next) => {
 // Connect to MongoDB
 const MONGODB_URI = process.env.MONGODB_URI;
 
+// Serverless-safe reusable MongoDB connection.
+let mongoConnectPromise = null;
+
+async function ensureMongoConnected() {
+    if (mongoose.connection.readyState === 1) {
+        return true;
+    }
+
+    if (!MONGODB_URI) {
+        throw new Error('MONGODB_URI is not configured.');
+    }
+
+    if (!mongoConnectPromise) {
+        mongoConnectPromise = mongoose.connect(MONGODB_URI)
+            .then(() => {
+                console.log('✅ Connected to MongoDB Atlas');
+                return true;
+            })
+            .catch((err) => {
+                console.error('❌ MongoDB Connection Error:', err.message);
+                throw err;
+            })
+            .finally(() => {
+                mongoConnectPromise = null;
+            });
+    }
+
+    await mongoConnectPromise;
+
+    if (mongoose.connection.readyState !== 1) {
+        throw new Error(
+            `MongoDB did not reach connected state. Current state: ${mongoose.connection.readyState}`
+        );
+    }
+
+    return true;
+}
+
+// Warm the connection on function/container startup.
 if (MONGODB_URI) {
-    mongoose.connect(MONGODB_URI)
-        .then(() => console.log('✅ Connected to MongoDB Atlas'))
-        .catch(err => console.error('❌ MongoDB Connection Error:', err.message));
+    ensureMongoConnected().catch(() => {});
 } else {
     console.warn('⚠️ MONGODB_URI not found. Database features will be disabled.');
 }
@@ -1303,7 +1340,10 @@ app.post('/api/auth/login', async (req, res) => {
             });
         }
 
-        if (mongoose.connection.readyState !== 1) {
+        try {
+            await ensureMongoConnected();
+        } catch (dbError) {
+            console.error('[AUTH] Database connection unavailable:', dbError.message);
             return res.status(503).json({
                 error: 'Database connection is unavailable.'
             });
