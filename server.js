@@ -1125,7 +1125,11 @@ app.use('/api/action-points', pmisAuthorizeActionPointWriteV24);
 // 1. Get All Projects
 app.get('/api/projects', async (req, res) => {
     try {
-        const projects = await Project.find().sort({ createdAt: -1 });
+        // PMIS_PRODUCTION_LOADING_OPTIMIZATION_V55E
+        await ensureMongoConnected();
+        const projects = await Project.find()
+            .sort({ createdAt: -1 })
+            .lean();
         res.json(projects);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -1135,7 +1139,9 @@ app.get('/api/projects', async (req, res) => {
 // 2. Get Single Project
 app.get('/api/projects/:id', async (req, res) => {
     try {
-        const p = await Project.findById(req.params.id);
+        // PMIS_PRODUCTION_LOADING_OPTIMIZATION_V55E
+        await ensureMongoConnected();
+        const p = await Project.findById(req.params.id).lean();
         if (!p) return res.status(404).json({ message: 'Project not found' });
         res.json(p);
     } catch (err) {
@@ -1255,7 +1261,13 @@ app.delete('/api/projects/:id', async (req, res) => {
 app.get('/api/action-points', async (req, res) => {
     try {
         const { projectId } = req.query;
-        const items = await ActionPoint.find(projectId ? { projectId } : {}).sort({ createdAt: -1 });
+        // PMIS_PRODUCTION_LOADING_OPTIMIZATION_V55E
+        await ensureMongoConnected();
+        const items = await ActionPoint.find(
+            projectId ? { projectId } : {}
+        )
+            .sort({ createdAt: -1 })
+            .lean();
         res.json(items);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -1306,7 +1318,12 @@ app.delete('/api/action-points/:id', async (req, res) => {
 // 1. Get All Employees
 app.get('/api/employees', async (req, res) => {
     try {
-        const employees = await Employee.find().select('-passwordHash').sort({ createdAt: -1 });
+        // PMIS_PRODUCTION_LOADING_OPTIMIZATION_V55E
+        await ensureMongoConnected();
+        const employees = await Employee.find()
+            .select('-passwordHash')
+            .sort({ createdAt: -1 })
+            .lean();
         res.json(employees);
     } catch (err) {
         res.status(500).json({ error: err.message });

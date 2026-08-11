@@ -2443,19 +2443,55 @@ function collectLessonLearnedV32() {
 
         async function fetchInitialData() {
             try {
-                // Fetch employees first for dropdowns
-                const empRes = await fetch('/api/employees');
-                employees = await empRes.json();
+                // PMIS_PRODUCTION_LOADING_OPTIMIZATION_V55E
+                // These GET requests are independent, so run them together.
+                const [empRes, res, apRes] = await Promise.all([
+                    fetch('/api/employees'),
+                    fetch(`/api/projects/${projectId}`),
+                    fetch(`/api/action-points?projectId=${projectId}`)
+                ]);
 
-                const res = await fetch(`/api/projects/${projectId}`);
-                project = await res.json();
-                if (typeof pmisApplyProjectAccessV24 === 'function') pmisApplyProjectAccessV24(project);
-                if (!project) { alert('Project not found!'); window.location.href = 'project_review.html'; return; }
+                if (!empRes.ok) {
+                    throw new Error(
+                        'Employees request failed with HTTP ' +
+                        empRes.status
+                    );
+                }
 
-                // Fetch Action Points from specialized table
-                const apRes = await fetch(`/api/action-points?projectId=${projectId}`);
-                meetings = await apRes.json();
+                if (!res.ok) {
+                    throw new Error(
+                        'Project request failed with HTTP ' +
+                        res.status
+                    );
+                }
 
+                if (!apRes.ok) {
+                    throw new Error(
+                        'Action Points request failed with HTTP ' +
+                        apRes.status
+                    );
+                }
+
+                [employees, project, meetings] = await Promise.all([
+                    empRes.json(),
+                    res.json(),
+                    apRes.json()
+                ]);
+
+                if (!Array.isArray(employees)) employees = [];
+                if (!Array.isArray(meetings)) meetings = [];
+
+                if (
+                    typeof pmisApplyProjectAccessV24 === 'function'
+                ) {
+                    pmisApplyProjectAccessV24(project);
+                }
+
+                if (!project) {
+                    alert('Project not found!');
+                    window.location.href = 'project_review.html';
+                    return;
+                }
                 document.getElementById('pName').innerText = project.name;
                 document.getElementById('pCode').innerText = project.code;
                 document.getElementById('btnBackPhases').dataset.fallbackUrl = 'project_phases.html?id=' + encodeURIComponent(projectId);

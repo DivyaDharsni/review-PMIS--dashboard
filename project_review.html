@@ -3345,61 +3345,152 @@
         }
 
         async function fetchProjects() {
+            // PMIS_PRODUCTION_LOADING_OPTIMIZATION_V55E
+            // Render project data as soon as /api/projects is ready.
+            // Action Points are supplementary here and refresh in background.
             try {
-                const response = await fetch('/api/projects?t=' + Date.now());
-                projects = await response.json();
-                if (Array.isArray(projects)) {
-                    projects.forEach(project => {
-                        project.project_manager = pmisCanonicalExpeditorName(
+                const startedAtV55E =
+                    typeof performance !== 'undefined'
+                        ? performance.now()
+                        : Date.now();
+
+                const response = await fetch(
+                    '/api/projects?t=' + Date.now()
+                );
+
+                if (!response.ok) {
+                    throw new Error(
+                        'Projects request failed with HTTP ' +
+                        response.status
+                    );
+                }
+
+                const payload = await response.json();
+
+                if (!Array.isArray(payload)) {
+                    console.warn(
+                        'Projects API returned non-array:',
+                        payload
+                    );
+
+                    projects = [];
+
+                    alert(
+                        'Warning: Could not load projects from the database. ' +
+                        'Please check your internet connection and MongoDB status.'
+                    );
+
+                    return;
+                }
+
+                projects = payload;
+
+                projects.forEach(project => {
+                    project.project_manager =
+                        pmisCanonicalExpeditorName(
                             project?.project_manager,
                             true
                         );
-                    });
-                }
 
-                // Fetch Action Points and attach to projects
-                try {
-                    const apRes = await fetch('/api/action-points?t=' + Date.now());
-                    const allAps = await apRes.json();
-                    
-                    if (Array.isArray(allAps)) {
-                        const apMap = {};
+                    if (!Array.isArray(project.meetings)) {
+                        project.meetings = [];
+                    }
+                });
+
+                // IMPORTANT: make dashboard usable immediately.
+                renderProjects();
+                renderRevisions();
+
+                const renderedAtV55E =
+                    typeof performance !== 'undefined'
+                        ? performance.now()
+                        : Date.now();
+
+                console.log(
+                    '[PMIS V55E] Dashboard projects rendered in ' +
+                    Math.round(renderedAtV55E - startedAtV55E) +
+                    ' ms'
+                );
+
+                // Background Action Point refresh.
+                window.setTimeout(async () => {
+                    try {
+                        const apStartedAtV55E =
+                            typeof performance !== 'undefined'
+                                ? performance.now()
+                                : Date.now();
+
+                        const apRes = await fetch(
+                            '/api/action-points?t=' + Date.now()
+                        );
+
+                        if (!apRes.ok) {
+                            throw new Error(
+                                'Action Points request failed with HTTP ' +
+                                apRes.status
+                            );
+                        }
+
+                        const allAps = await apRes.json();
+
+                        if (!Array.isArray(allAps)) {
+                            throw new Error(
+                                'Action Points API returned a non-array response.'
+                            );
+                        }
+
+                        const apMap = Object.create(null);
+
                         allAps.forEach(ap => {
-                            if (!apMap[ap.projectId]) apMap[ap.projectId] = [];
-                            apMap[ap.projectId].push(ap);
+                            const key = String(ap?.projectId || '');
+                            if (!key) return;
+
+                            if (!apMap[key]) {
+                                apMap[key] = [];
+                            }
+
+                            apMap[key].push(ap);
                         });
-                        
+
+                        projects.forEach(project => {
+                            const key = String(project?._id || '');
+                            project.meetings = apMap[key] || [];
+                        });
+
+                        window.__PMIS_V55E_ACTION_POINTS_READY__ = true;
+
+                        const apEndedAtV55E =
+                            typeof performance !== 'undefined'
+                                ? performance.now()
+                                : Date.now();
+
+                        console.log(
+                            '[PMIS V55E] Background Action Points loaded in ' +
+                            Math.round(apEndedAtV55E - apStartedAtV55E) +
+                            ' ms'
+                        );
+                    }
+                    catch (apErr) {
+                        console.warn(
+                            '[PMIS V55E] Background Action Point refresh failed:',
+                            apErr
+                        );
+
                         if (Array.isArray(projects)) {
-                            projects.forEach(p => {
-                                if (apMap[p._id] && apMap[p._id].length > 0) {
-                                    p.meetings = apMap[p._id];
-                                } else {
-                                    p.meetings = p.meetings || [];
+                            projects.forEach(project => {
+                                if (!Array.isArray(project.meetings)) {
+                                    project.meetings = [];
                                 }
                             });
                         }
-                    } else {
-                        if (Array.isArray(projects)) projects.forEach(p => p.meetings = p.meetings || []);
                     }
-                } catch (apErr) {
-                    console.error('Error fetching action points:', apErr);
-                    if (Array.isArray(projects)) projects.forEach(p => p.meetings = p.meetings || []);
-                }
-
-                if (!Array.isArray(projects)) {
-                    console.warn("Projects API returned non-array:", projects);
-                    projects = []; // Fallback to empty array
-                    alert("Warning: Could not load projects from the database. Please check your internet connection and MongoDB status.");
-                }
-
-                renderProjects();
-                renderRevisions(); // Populate notification badges
-            } catch (err) {
+                }, 350);
+            }
+            catch (err) {
                 console.error('Error fetching data:', err);
                 projects = [];
             }
         }
-
         function toggleSidebar() {
             document.getElementById('sidebar').classList.toggle('active');
             document.getElementById('sidebarOverlay').classList.toggle('active');
@@ -7081,20 +7172,53 @@ const pageCount = doc.internal.getNumberOfPages();
 
     const scopedProjects = Array.isArray(projects)
         ? projects.filter(p => {
+            // PMIS_ACTION_POINT_EXPORT_DECOUPLE_DASHBOARD_FILTER_V53
+            // IMPORTANT:
+            // Action Point report scope is based ONLY on login access.
+            // It must NOT inherit the current Main Dashboard filters.
+            //
+            // Admin                 -> all projects
+            // PM / Coordinator      -> associated projects only
+            // Shared Lead View      -> no Action Point export access
             if (!p || !p._id) return false;
 
-            const id = String(p._id).trim();
+            const role = String(
+                localStorage.getItem('danprel_role') || ''
+            ).trim().toLowerCase();
 
-            const code = normalizeProjectKey(
-                p.code ||
-                p.project_code ||
-                ''
-            );
+            const authRole = String(
+                localStorage.getItem('danprel_auth_role') || ''
+            ).trim().toLowerCase();
 
-            return (
-                allowedIds.has(id) ||
-                (!!code && allowedCodes.has(code))
-            );
+            const username = String(
+                localStorage.getItem('danprel_username') || ''
+            ).trim().toLowerCase();
+
+            const isLeadView =
+                authRole === 'lead_view' ||
+                username === 'projects@danprel' ||
+                username === 'project@danprel';
+
+            if (isLeadView) return false;
+
+            if (
+                role === 'admin' ||
+                (
+                    typeof isAdminDashboardLogin === 'function' &&
+                    isAdminDashboardLogin()
+                )
+            ) {
+                return true;
+            }
+
+            if (
+                typeof isProjectAssociatedWithCurrentLogin === 'function'
+            ) {
+                return isProjectAssociatedWithCurrentLogin(p);
+            }
+
+            // Fail closed if the current-login association helper is unavailable.
+            return false;
         })
         : [];
 
@@ -7115,7 +7239,22 @@ const pageCount = doc.internal.getNumberOfPages();
     // Native XMLHttpRequest is intentionally used instead of window.fetch.
     // This keeps the export lookup independent from any page-level fetch wrapper
     // used for individual-login dashboard scoping.
-    function loadProjectActionPoints(projectId) {
+    // PMIS_ACTION_POINT_EXPORT_PRODUCTION_RETRY_V54
+    // Production/serverless-safe Action Point refresh.
+    //
+    // Why this exists:
+    // Opening the report refreshes several projects at once. On a hosted
+    // serverless deployment an occasional request may hit a cold start or a
+    // temporary 5xx/429/network failure even though the project data is fine.
+    // Localhost normally does not show that behaviour.
+    //
+    // V54 therefore:
+    //   - includes the normal PMIS bearer token when available;
+    //   - gives each request a finite timeout;
+    //   - retries only transient failures;
+    //   - reduces parallel pressure below the old six-worker burst;
+    //   - still warns if a project genuinely cannot be refreshed.
+    function loadProjectActionPointsOnceV54(projectId) {
         return new Promise((resolve, reject) => {
             const xhr = new XMLHttpRequest();
             const url =
@@ -7125,7 +7264,19 @@ const pageCount = doc.internal.getNumberOfPages();
                 Date.now();
 
             xhr.open('GET', url, true);
+            xhr.timeout = 15000;
             xhr.setRequestHeader('Accept', 'application/json');
+
+            const token = String(
+                localStorage.getItem('danprel_access_token') || ''
+            ).trim();
+
+            if (token) {
+                xhr.setRequestHeader(
+                    'Authorization',
+                    'Bearer ' + token
+                );
+            }
 
             xhr.onreadystatechange = function () {
                 if (xhr.readyState !== 4) return;
@@ -7135,37 +7286,118 @@ const pageCount = doc.internal.getNumberOfPages();
                         const data = JSON.parse(xhr.responseText || '[]');
 
                         if (!Array.isArray(data)) {
-                            reject(new Error('Action Point API returned a non-array response.'));
+                            const error = new Error(
+                                'Action Point API returned a non-array response.'
+                            );
+                            error.pmisTransientV54 = true;
+                            reject(error);
                             return;
                         }
 
                         resolve(data);
-                    } catch (error) {
-                        reject(error);
+                    } catch (parseError) {
+                        parseError.pmisTransientV54 = true;
+                        reject(parseError);
                     }
 
                     return;
                 }
 
-                reject(
-                    new Error(
-                        'Action Point request failed with HTTP ' +
-                        xhr.status
-                    )
+                const error = new Error(
+                    'Action Point request failed with HTTP ' +
+                    xhr.status
                 );
+
+                error.status = xhr.status;
+                reject(error);
             };
 
             xhr.onerror = function () {
-                reject(new Error('Network error while loading Action Points.'));
+                const error = new Error(
+                    'Network error while loading Action Points.'
+                );
+                error.status = 0;
+                reject(error);
+            };
+
+            xhr.ontimeout = function () {
+                const error = new Error(
+                    'Action Point request timed out.'
+                );
+                error.status = 408;
+                reject(error);
             };
 
             xhr.send();
         });
     }
 
+    function pmisShouldRetryActionPointV54(error) {
+        if (error && error.pmisTransientV54 === true) return true;
+
+        const status = Number(error && error.status);
+
+        return (
+            !Number.isFinite(status) ||
+            status === 0 ||
+            status === 408 ||
+            status === 425 ||
+            status === 429 ||
+            status === 500 ||
+            status === 502 ||
+            status === 503 ||
+            status === 504
+        );
+    }
+
+    function pmisWaitV54(ms) {
+        return new Promise(resolve => window.setTimeout(resolve, ms));
+    }
+
+    async function loadProjectActionPoints(projectId) {
+        const maxAttempts = 3;
+        let lastError = null;
+
+        for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+            try {
+                return await loadProjectActionPointsOnceV54(projectId);
+            } catch (error) {
+                lastError = error;
+
+                const canRetry =
+                    attempt < maxAttempts &&
+                    pmisShouldRetryActionPointV54(error);
+
+                if (!canRetry) throw error;
+
+                const delay = attempt === 1 ? 350 : 900;
+
+                console.warn(
+                    '[PMIS V54] Retrying Action Point refresh',
+                    {
+                        projectId,
+                        attempt,
+                        nextAttempt: attempt + 1,
+                        delay,
+                        status: Number(error && error.status) || 0,
+                        message: String(error && error.message || '')
+                    }
+                );
+
+                await pmisWaitV54(delay);
+            }
+        }
+
+        throw lastError || new Error(
+            'Unable to refresh Action Points.'
+        );
+    }
+
     // Keep request pressure low for Admin / larger project lists.
     const queue = scopedProjects.slice();
-    const workerCount = Math.min(6, Math.max(1, queue.length));
+    // PMIS V54: three concurrent project refreshes are enough for this modal
+    // and are friendlier to hosted/serverless cold starts than the old six.
+    const workerCount = Math.min(3, Math.max(1, queue.length));
     let failedProjects = 0;
 
     async function worker() {
