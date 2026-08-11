@@ -923,6 +923,71 @@ function pmisRequestUserV24(req) {
     return match ? verifyPmisAccessTokenV24(match[1]) : null;
 }
 
+// PMIS_LEAD_VIEW_V51E
+const PMIS_LEAD_VIEW_USERNAMES_V51E = new Set(
+    String(
+        process.env.PMIS_LEAD_VIEW_USERNAMES ||
+        'projects@danprel,project@danprel'
+    )
+        .split(',')
+        .map(value => String(value || '').trim().toLowerCase())
+        .filter(Boolean)
+);
+
+function pmisIsLeadViewUsernameV51E(value) {
+    return PMIS_LEAD_VIEW_USERNAMES_V51E.has(
+        String(value || '').trim().toLowerCase()
+    );
+}
+
+function pmisIsLeadViewUserV51E(user) {
+    if (!user) return false;
+
+    if (
+        String(user.authRole || '').trim().toLowerCase() === 'lead_view'
+    ) {
+        return true;
+    }
+
+    return pmisIsLeadViewUsernameV51E(user.username);
+}
+
+/*
+ * Shared Lead View is a viewing account only.
+ *
+ * GET remains available so Leads can inspect:
+ *   - all projects
+ *   - project plans / allocations
+ *   - calendar / visualization data
+ *
+ * Every authenticated mutation is denied:
+ *   POST / PUT / PATCH / DELETE
+ *
+ * Auth endpoints are exempt so login / forgot-password remain functional.
+ */
+app.use('/api', (req, res, next) => {
+    const requestPath = String(req.path || '');
+
+    if (requestPath.startsWith('/auth/')) {
+        return next();
+    }
+
+    const method = String(req.method || '').toUpperCase();
+
+    if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+        return next();
+    }
+
+    const user = pmisRequestUserV24(req);
+
+    if (!pmisIsLeadViewUserV51E(user)) {
+        return next();
+    }
+
+    return res.status(403).json({
+        error: 'Lead View is read-only. Changes are not permitted.'
+    });
+});
 function pmisNormalizeIdentityV24(value) {
     return String(value || '')
         .toUpperCase()
@@ -1373,8 +1438,13 @@ app.post('/api/auth/login', async (req, res) => {
             });
         }
 
-        const authRole =
-            employee.authRole || employeeRoleToAuthRole(employee.role);
+        const isLeadViewLoginV51E =
+            pmisIsLeadViewUsernameV51E(usernameInput) ||
+            pmisIsLeadViewUsernameV51E(employee.username);
+
+        const authRole = isLeadViewLoginV51E
+            ? 'lead_view'
+            : (employee.authRole || employeeRoleToAuthRole(employee.role));
 
         if (!authRole) {
             return res.status(403).json({
@@ -1386,7 +1456,7 @@ app.post('/api/auth/login', async (req, res) => {
             success: true,
             role: 'pm',
             authRole,
-            designation: employee.role || '',
+            designation: isLeadViewLoginV51E ? 'Lead View - Read Only' : (employee.role || ''),
             username: employee.username || employee.employee_id,
             employeeId: employee.employee_id,
             displayName: employee.name

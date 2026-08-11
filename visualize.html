@@ -2238,6 +2238,3211 @@
 })();
 </script>
 
+
+<!-- PMIS_BOTTLENECK_V41_START -->
+<style id="pmis-bottleneck-v41-styles">
+#pmisBottleneckPanelV41 {
+    --bn-navy: #0B2B4A;
+    --bn-navy2: #001f3f;
+    --bn-teal: #14b8a6;
+    --bn-blue: #0369a1;
+    --bn-border: #e2e8f0;
+    --bn-muted: #64748b;
+    margin-top: 24px;
+}
+.bn-card {
+    background: #fff;
+    border: 1px solid var(--bn-border);
+    border-radius: 24px;
+    box-shadow: 0 10px 40px rgba(0,0,0,.04);
+    padding: 24px;
+}
+.bn-head, .bn-subhead {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    flex-wrap: wrap;
+}
+.bn-head h2, .bn-subhead h3 {
+    margin: 4px 0 6px;
+    color: var(--bn-navy);
+    font-weight: 900;
+}
+.bn-head h2 { font-size: 1.2rem; }
+.bn-subhead h3 { font-size: 1rem; }
+.bn-head p, .bn-subhead p {
+    margin: 0;
+    color: var(--bn-muted);
+    font-size: .78rem;
+    font-weight: 600;
+}
+.bn-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: #b45309;
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-size: .68rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+}
+.bn-rule {
+    color: #475569;
+    background: #f8fafc;
+    border: 1px solid var(--bn-border);
+    border-radius: 999px;
+    padding: 8px 12px;
+    font-size: .68rem;
+    font-weight: 800;
+}
+.bn-toolbar {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin: 18px 0;
+}
+.bn-mode {
+    display: inline-flex;
+    padding: 4px;
+    border-radius: 12px;
+    background: #eef4f8;
+}
+.bn-mode button {
+    border: 0;
+    background: transparent;
+    color: #52677a;
+    padding: 8px 12px;
+    border-radius: 9px;
+    font-size: .72rem;
+    font-weight: 900;
+}
+.bn-mode button.active {
+    background: #fff;
+    color: var(--bn-navy);
+    box-shadow: 0 2px 8px rgba(11,43,74,.12);
+}
+.bn-select {
+    border: 1px solid #dbe6ef;
+    border-radius: 11px;
+    padding: 9px 12px;
+    background: white;
+    color: #17324d;
+    font-size: .75rem;
+    font-weight: 800;
+}
+.bn-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0,1fr));
+    gap: 12px;
+    margin: 0 0 22px;
+}
+.bn-kpi {
+    border: 1px solid var(--bn-border);
+    border-radius: 16px;
+    padding: 15px;
+    background: linear-gradient(180deg,#fff,#fbfdff);
+}
+.bn-kpi span {
+    display: block;
+    color: #64748b;
+    font-size: .66rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+.bn-kpi strong {
+    display: block;
+    color: var(--bn-navy);
+    font-size: 1.7rem;
+    margin: 4px 0 2px;
+    line-height: 1;
+}
+.bn-kpi small {
+    color: #7a8b9b;
+    font-size: .65rem;
+    font-weight: 650;
+}
+.bn-legend {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+.bn-legend span, .bn-status, .bn-mini {
+    border-radius: 999px;
+    padding: 5px 8px;
+    font-size: .63rem;
+    font-weight: 900;
+}
+.bn-normal { background: #eaf8f2 !important; color: #13795b !important; }
+.bn-moderate { background: #fff7df !important; color: #a16207 !important; }
+.bn-bottleneck { background: #fff0f0 !important; color: #c24141 !important; }
+.bn-critical { background: #ffe1e1 !important; color: #8e1b1b !important; }
+.bn-none { background: #f8fafc !important; color: #a1adba !important; }
+.bn-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(320px,.5fr);
+    gap: 14px;
+    margin-top: 12px;
+}
+.bn-heat-wrap, .bn-rank-wrap {
+    overflow: auto;
+    border: 1px solid var(--bn-border);
+    border-radius: 14px;
+}
+.bn-heat {
+    border-collapse: separate;
+    border-spacing: 0;
+    min-width: 920px;
+    width: 100%;
+}
+.bn-heat th, .bn-heat td {
+    border-right: 1px solid var(--bn-border);
+    border-bottom: 1px solid var(--bn-border);
+    padding: 9px 8px;
+    font-size: .7rem;
+}
+.bn-heat th {
+    background: #f0f5f9;
+    color: #49657d;
+    font-size: .62rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    text-align: center;
+}
+.bn-heat th small {
+    display: block;
+    color: #7b8da0;
+    margin-top: 2px;
+    font-size: .58rem;
+    text-transform: none;
+}
+.bn-heat th:first-child, .bn-heat td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 3;
+    min-width: 175px;
+    text-align: left;
+}
+.bn-heat td:first-child {
+    background: #fff;
+    color: var(--bn-navy);
+    font-weight: 850;
+}
+.bn-load {
+    min-width: 78px;
+    text-align: center;
+    font-weight: 900;
+    cursor: pointer;
+    transition: transform .12s, box-shadow .12s;
+}
+.bn-load:hover {
+    transform: translateY(-1px);
+    box-shadow: inset 0 0 0 2px rgba(11,43,74,.12);
+}
+.bn-load small {
+    display: block;
+    font-size: .55rem;
+    margin-top: 2px;
+    font-weight: 850;
+}
+.bn-detail {
+    border: 1px solid var(--bn-border);
+    border-radius: 14px;
+    background: #fbfdff;
+    padding: 15px;
+    max-height: 520px;
+    overflow: auto;
+}
+.bn-detail h3 {
+    margin: 0;
+    color: var(--bn-navy);
+    font-weight: 900;
+    font-size: 1rem;
+}
+.bn-detail-week {
+    color: var(--bn-muted);
+    font-size: .68rem;
+    font-weight: 700;
+    margin-top: 3px;
+}
+.bn-status {
+    display: inline-block;
+    margin: 8px 0 10px;
+}
+.bn-detail-stats {
+    display: grid;
+    grid-template-columns: repeat(3,1fr);
+    gap: 7px;
+    margin-bottom: 10px;
+}
+.bn-detail-stats div {
+    border: 1px solid var(--bn-border);
+    border-radius: 10px;
+    padding: 8px;
+    background: #fff;
+}
+.bn-detail-stats span {
+    display: block;
+    color: #7a8b9b;
+    font-size: .57rem;
+    font-weight: 850;
+    text-transform: uppercase;
+}
+.bn-detail-stats strong {
+    display: block;
+    color: var(--bn-navy);
+    font-size: 1rem;
+    margin-top: 2px;
+}
+.bn-project-list { display: grid; gap: 8px; }
+.bn-project-card {
+    border: 1px solid var(--bn-border);
+    border-radius: 11px;
+    padding: 10px;
+    background: #fff;
+    font-size: .7rem;
+}
+.bn-project-card > div { color: #17324d; font-weight: 700; }
+.bn-project-card > small { color: #7a8b9b; font-size: .6rem; }
+.bn-project-card ul { margin: 7px 0 0 16px; padding: 0; }
+.bn-project-card li { margin: 5px 0; color: #40566d; }
+.bn-project-card li span { color: #64748b; font-size: .62rem; }
+.bn-action {
+    margin-top: 10px;
+    border: 1px solid #f0d698;
+    background: #fff8e8;
+    color: #765615;
+    border-radius: 10px;
+    padding: 10px;
+    font-size: .68rem;
+    line-height: 1.45;
+}
+.bn-top-gap { margin-top: 22px; }
+.bn-comparison { display: grid; gap: 9px; margin-top: 12px; }
+.bn-comp-row {
+    display: grid;
+    grid-template-columns: 185px minmax(220px,1fr) 86px;
+    gap: 10px;
+    align-items: center;
+}
+.bn-comp-name {
+    color: #17324d;
+    font-size: .7rem;
+    font-weight: 900;
+}
+.bn-comp-track {
+    height: 26px;
+    position: relative;
+    overflow: hidden;
+    background: #edf3f8;
+    border-radius: 8px;
+}
+.bn-comp-plan, .bn-comp-actual {
+    position: absolute;
+    left: 0;
+    height: 9px;
+    border-radius: 6px;
+}
+.bn-comp-plan { top: 3px; background: #9ccbf0; }
+.bn-comp-actual { bottom: 3px; background: #0b6cb7; }
+.bn-comp-num {
+    text-align: right;
+    color: #526d84;
+    font-size: .68rem;
+    font-weight: 900;
+}
+.bn-up { color: #b91c1c; }
+.bn-down { color: #15803d; }
+.bn-rank {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 1000px;
+}
+.bn-rank th, .bn-rank td {
+    border-bottom: 1px solid var(--bn-border);
+    padding: 9px 8px;
+    font-size: .68rem;
+    text-align: left;
+}
+.bn-rank th {
+    background: #eef4f8;
+    color: #526d84;
+    font-size: .61rem;
+    text-transform: uppercase;
+    font-weight: 900;
+}
+.bn-rank td:nth-child(2), .bn-rank td:nth-child(3), .bn-rank td:nth-child(4) { text-align: center; }
+.bn-data-note {
+    display: flex;
+    gap: 9px;
+    align-items: flex-start;
+    margin-top: 14px;
+    background: #f8fbff;
+    border: 1px solid #dbe6f2;
+    border-radius: 12px;
+    padding: 11px 12px;
+    color: #526d84;
+    font-size: .65rem;
+    line-height: 1.45;
+}
+.bn-data-note i { color: #0369a1; margin-top: 1px; }
+.bn-empty { color: #7a8b9b; font-size: .7rem; padding: 12px; }
+
+.bn-project-alert {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    width: fit-content;
+    margin-top: 8px;
+    padding: 4px 7px;
+    border-radius: 999px;
+    background: #fff0f0;
+    color: #c24141;
+    border: 1px solid #fecaca;
+    font-size: .6rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+}
+.bn-project-alert.critical {
+    background: #ffe1e1;
+    color: #8e1b1b;
+    border-color: #fca5a5;
+}
+.bn-week-alert {
+    position: absolute;
+    top: 2px;
+    z-index: 35;
+    width: 18px;
+    height: 16px;
+    border: 0;
+    border-radius: 5px;
+    padding: 0;
+    background: #fee2e2;
+    color: #b91c1c;
+    font-size: .62rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(185,28,28,.15);
+}
+.bn-week-alert:hover {
+    background: #fecaca;
+    transform: translateY(-1px);
+}
+
+@media (max-width: 1050px) {
+    .bn-kpis { grid-template-columns: repeat(2,minmax(0,1fr)); }
+    .bn-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 700px) {
+    .bn-kpis { grid-template-columns: 1fr; }
+    .bn-comp-row { grid-template-columns: 130px minmax(160px,1fr) 72px; }
+}
+</style>
+<script id="pmis-bottleneck-v41-script">
+(function () {
+    'use strict';
+
+    if (window.__pmisBottleneckV41Installed) return;
+    window.__pmisBottleneckV41Installed = true;
+
+    const BN_DAY = 86400000;
+    const BN_WEEK_WIDTH = 87.5;
+
+    // IMPORTANT:
+    // PMIS currently stores "responsibility" as Danprel / Customer / Both.
+    // It does NOT store a department/team field. For this first version,
+    // internal team/workstream is inferred from the existing phase ID.
+    const BN_PHASE_TEAM_MAP = [
+        ['kickoff_1', 'Project Management', 'PO receipt & acknowledgement'],
+        ['kickoff_2', 'Project Management', 'Knowledge transfer from tech sales to project team'],
+
+        ['design_1', 'Design', 'Concept Design'],
+        ['design_2', 'Design', 'Detailed Design'],
+        ['design_critical_approval', 'Design', 'Critical Elements Approval'],
+        ['design_3', 'Design', 'Pre-DAP'],
+        ['design_4', 'Design', 'Final DAP schedule with MOM updation'],
+        ['design_5', 'Design', 'Standard parts (mech & elect) release to purchase'],
+        ['design_6', 'Design', 'Fabrication parts release to purchase'],
+
+        ['purchase_1', 'Purchase', 'Standard parts receipt'],
+        ['purchase_2', 'Purchase', 'Fabrication parts receipt'],
+
+        ['mech_assembly_1', 'Mechanical Assembly', 'Mechanical assembly'],
+        ['mech_assembly_2', 'Electrical Integration', 'Electrical integration'],
+
+        ['prog_plc_offline', 'PLC Programming', 'PLC offline programming'],
+        ['prog_plc', 'PLC Programming', 'PLC online programming / IO checking / manual mode'],
+        ['prog_robot', 'Robot Programming', 'Robot programming'],
+        ['prog_labview', 'LabVIEW Programming', 'LabVIEW programming'],
+
+        ['inhouse_1', 'Inhouse Testing', 'Automated testing / dry run'],
+        ['inhouse_2', 'Inhouse Testing', 'Machine trials with customer components'],
+
+        ['mq1_fat_1', 'MQ1 / FAT', 'Customer factory visit for MQ1'],
+        ['mq1_fat_2', 'MQ1 / FAT', 'MQ1 points updation'],
+        ['mq1_fat_3', 'MQ1 / FAT', 'Customer acceptance for dispatch'],
+
+        ['dispatch_1', 'Dispatch / Logistics', 'Machine packaging and dispatch'],
+        ['dispatch_2', 'Dispatch / Logistics', 'Transportation & machine delivery'],
+
+        ['inc_1', 'Installation & Commissioning', 'Machine unloading, positioning & power on'],
+        ['inc_2', 'Installation & Commissioning', 'MQ2 / SAT'],
+        ['inc_3', 'Installation & Commissioning', 'Training to customer'],
+        ['inc_4', 'Installation & Commissioning', 'Sign off and handover']
+    ].map(([id, team, phase]) => ({ id, team, phase }));
+
+    let bnMode = 'both';
+    let bnTeam = 'all';
+    let bnThreshold = 1;
+    let bnLastContext = null;
+
+    function bnEsc(value) {
+        return String(value == null ? '' : value).replace(/[&<>"']/g, c => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        })[c]);
+    }
+
+    function bnDate(value) {
+        if (!value) return null;
+        if (value instanceof Date) {
+            if (isNaN(value.getTime())) return null;
+            const d = new Date(value);
+            d.setHours(0, 0, 0, 0);
+            return d;
+        }
+        const s = String(value).trim();
+        if (!s || s === '---' || s === ' - ' || s === 'Select Date' || s === '- Not Set -') return null;
+
+        let d = null;
+        const slash = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+        if (slash) {
+            d = new Date(Number(slash[3]), Number(slash[2]) - 1, Number(slash[1]));
+        } else {
+            d = new Date(s);
+        }
+        if (!d || isNaN(d.getTime())) return null;
+        d.setHours(0, 0, 0, 0);
+        return d;
+    }
+
+    function bnIso(d) {
+        if (!(d instanceof Date) || isNaN(d.getTime())) return '';
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    }
+
+    function bnFmt(d) {
+        if (!(d instanceof Date) || isNaN(d.getTime())) return '---';
+        return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
+    function bnEffectivePlanRange(data) {
+        if (!data || data.is_excluded === true) return null;
+
+        const revisions = Array.isArray(data.revisions) ? data.revisions : [];
+        for (let i = revisions.length - 1; i >= 0; i--) {
+            const s = bnDate(revisions[i]?.start);
+            const e = bnDate(revisions[i]?.end);
+            if (s && e && s <= e) return { start: s, end: e, source: 'revision' };
+        }
+
+        let s = bnDate(data.reassign_start);
+        let e = bnDate(data.reassign_end);
+        if (s && e && s <= e) return { start: s, end: e, source: 'reassigned' };
+
+        s = bnDate(data.plan_start);
+        e = bnDate(data.plan_end);
+        if (s && e && s <= e) return { start: s, end: e, source: 'baseline' };
+
+        return null;
+    }
+
+    function bnActualRange(data, planRange) {
+        if (!data || data.is_excluded === true) return null;
+        const s = bnDate(data.actual_start);
+        if (!s) return null;
+
+        let e = bnDate(data.actual_end);
+        if (e && e >= s) return { start: s, end: e, estimated: false };
+
+        // Same principle already used by PMIS Estimated End:
+        // actual start + current planned duration.
+        if (planRange) {
+            const inclusiveDays = Math.max(1, Math.round((planRange.end - planRange.start) / BN_DAY) + 1);
+            e = new Date(s);
+            e.setDate(e.getDate() + inclusiveDays - 1);
+            return { start: s, end: e, estimated: true };
+        }
+
+        return { start: s, end: new Date(s), estimated: true };
+    }
+
+    function bnBuildRecords(viewProjects) {
+        const records = [];
+        let unassignedResponsibility = 0;
+
+        (viewProjects || []).forEach(project => {
+            const detailed = project?.detailed_phases || {};
+            BN_PHASE_TEAM_MAP.forEach(meta => {
+                const data = detailed[meta.id];
+                if (!data || data.is_excluded === true) return;
+
+                const responsibility = String(data.responsibility || '').trim();
+                if (responsibility.toLowerCase() === 'customer') return;
+
+                const plan = bnEffectivePlanRange(data);
+                const actual = bnActualRange(data, plan);
+                if (!plan && !actual) return;
+
+                const unassigned = !responsibility;
+                if (unassigned) unassignedResponsibility++;
+
+                records.push({
+                    projectId: String(project._id || project.code || project.name || ''),
+                    projectCode: String(project.code || '---'),
+                    projectName: String(project.name || 'Untitled Project'),
+                    projectManager: String(project.project_manager || '---'),
+                    phaseId: meta.id,
+                    phaseName: meta.phase,
+                    team: meta.team,
+                    responsibility: responsibility || 'Unassigned',
+                    unassigned,
+                    plan,
+                    actual
+                });
+            });
+        });
+
+        return { records, unassignedResponsibility };
+    }
+
+    function bnWeekRange(weekStart) {
+        const start = new Date(weekStart);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(start);
+        end.setDate(end.getDate() + 6);
+        end.setHours(23, 59, 59, 999);
+        return { start, end };
+    }
+
+    function bnOverlap(range, bucket) {
+        return !!(range && range.start <= bucket.end && range.end >= bucket.start);
+    }
+
+    function bnUniqueProjects(records, type, bucket) {
+        const matches = records.filter(r => bnOverlap(r[type], bucket));
+        return {
+            count: new Set(matches.map(r => r.projectId)).size,
+            records: matches
+        };
+    }
+
+    function bnSeverity(n) {
+        if (n >= 4) return { cls: 'bn-critical', label: 'Critical' };
+        if (n === 3) return { cls: 'bn-bottleneck', label: 'Bottleneck' };
+        if (n === 2) return { cls: 'bn-moderate', label: 'Moderate' };
+        if (n === 1) return { cls: 'bn-normal', label: 'Normal' };
+        return { cls: 'bn-none', label: 'No load' };
+    }
+
+    function bnGetCell(records, team, weekStart) {
+        const bucket = bnWeekRange(weekStart);
+        const teamRecords = records.filter(r => r.team === team);
+        const planned = bnUniqueProjects(teamRecords, 'plan', bucket);
+        const actual = bnUniqueProjects(teamRecords, 'actual', bucket);
+        const effective = bnMode === 'planned' ? planned.count :
+            bnMode === 'actual' ? actual.count :
+            Math.max(planned.count, actual.count);
+
+        return { bucket, planned, actual, effective };
+    }
+
+    function bnTeamList(records) {
+        const seen = new Set(records.map(r => r.team));
+        return BN_PHASE_TEAM_MAP.map(x => x.team).filter((x, i, a) => a.indexOf(x) === i && seen.has(x));
+    }
+
+    function bnEnsurePanel() {
+        let panel = document.getElementById('pmisBottleneckPanelV41');
+        if (panel) return panel;
+
+        const ganttCard = document.querySelector('.gantt-card');
+        if (!ganttCard) return null;
+
+        panel = document.createElement('section');
+        panel.id = 'pmisBottleneckPanelV41';
+        panel.className = 'bn-card';
+        panel.innerHTML = `
+            <div class="bn-head">
+                <div>
+                    <div class="bn-kicker"><i class="bi bi-exclamation-triangle-fill"></i> Resource Collision Intelligence</div>
+                    <h2>Team / Workstream Bottleneck Analysis</h2>
+                    <p>Detects weeks where several filtered projects require the same internal workstream at the same time.</p>
+                </div>
+                <div class="bn-rule">1 Normal &nbsp; | &nbsp; 2 Moderate &nbsp; | &nbsp; 3 Bottleneck &nbsp; | &nbsp; 4+ Critical</div>
+            </div>
+
+            <div class="bn-toolbar">
+                <div class="bn-mode" id="bnModeV41">
+                    <button type="button" data-mode="planned">Planned</button>
+                    <button type="button" data-mode="actual">Actual</button>
+                    <button type="button" data-mode="both" class="active">Both</button>
+                </div>
+                <select id="bnTeamFilterV41" class="bn-select"><option value="all">All Teams / Workstreams</option></select>
+                <select id="bnSeverityFilterV41" class="bn-select">
+                    <option value="1">All active loads</option>
+                    <option value="2">Moderate +</option>
+                    <option value="3">Bottleneck +</option>
+                    <option value="4">Critical only</option>
+                </select>
+            </div>
+
+            <div class="bn-kpis">
+                <div class="bn-kpi"><span>Bottleneck Teams</span><strong id="bnKpiTeamsV41">0</strong><small>Teams reaching 3+ parallel projects</small></div>
+                <div class="bn-kpi"><span>Critical Team-Weeks</span><strong id="bnKpiCriticalV41">0</strong><small>Team-week cells at 4+ projects</small></div>
+                <div class="bn-kpi"><span>Peak Parallel Load</span><strong id="bnKpiPeakV41">0</strong><small id="bnKpiPeakSubV41">No overlap</small></div>
+                <div class="bn-kpi"><span>Actual vs Planned Peak</span><strong id="bnKpiDeltaV41">0</strong><small>Execution concurrency beyond plan</small></div>
+            </div>
+
+            <div class="bn-subhead">
+                <div>
+                    <h3>Team Bottleneck Heatmap</h3>
+                    <p>Uses the current PM/Expeditor project scope. Use Heatmap From/To above to limit the weekly view. Click a cell to inspect the projects and phases causing the clash.</p>
+                </div>
+                <div class="bn-legend">
+                    <span class="bn-normal">1 Normal</span>
+                    <span class="bn-moderate">2 Moderate</span>
+                    <span class="bn-bottleneck">3 Bottleneck</span>
+                    <span class="bn-critical">4+ Critical</span>
+                </div>
+            </div>
+
+            <div class="bn-grid">
+                <div class="bn-heat-wrap"><table class="bn-heat" id="bnHeatV41"></table></div>
+                <aside class="bn-detail" id="bnDetailV41">
+                    <h3>Select a heatmap cell</h3>
+                    <p>Project and phase details will appear here.</p>
+                </aside>
+            </div>
+
+            <div class="bn-subhead bn-top-gap">
+                <div>
+                    <h3>Planned vs Actual Peak Load</h3>
+                    <p>Highlights workstreams where execution shifts create more simultaneous project demand than the approved plan.</p>
+                </div>
+            </div>
+            <div class="bn-comparison" id="bnComparisonV41"></div>
+
+            <div class="bn-subhead bn-top-gap">
+                <div>
+                    <h3>Priority Bottleneck Register</h3>
+                    <p>Ranks the most important overlaps for management review.</p>
+                </div>
+            </div>
+            <div class="bn-rank-wrap">
+                <table class="bn-rank">
+                    <thead><tr><th>Team / Workstream</th><th>Peak Planned</th><th>Peak Actual</th><th>Change</th><th>Worst Week</th><th>Projects in Conflict</th><th>Suggested Action</th></tr></thead>
+                    <tbody id="bnRankBodyV41"></tbody>
+                </table>
+            </div>
+
+            <div class="bn-data-note" id="bnDataNoteV41"></div>
+        `;
+
+        ganttCard.insertAdjacentElement('afterend', panel);
+
+        panel.querySelectorAll('#bnModeV41 button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                bnMode = btn.dataset.mode;
+                panel.querySelectorAll('#bnModeV41 button').forEach(x => x.classList.toggle('active', x === btn));
+                bnRenderFromLastContext();
+            });
+        });
+
+        panel.querySelector('#bnTeamFilterV41').addEventListener('change', e => {
+            bnTeam = e.target.value;
+            bnRenderFromLastContext();
+        });
+
+        panel.querySelector('#bnSeverityFilterV41').addEventListener('change', e => {
+            bnThreshold = Number(e.target.value || 1);
+            bnRenderFromLastContext();
+        });
+
+        return panel;
+    }
+
+    function bnPopulateTeamFilter(teams) {
+        const sel = document.getElementById('bnTeamFilterV41');
+        if (!sel) return;
+        const current = bnTeam;
+        sel.innerHTML = `<option value="all">All Teams / Workstreams</option>` +
+            teams.map(t => `<option value="${bnEsc(t)}">${bnEsc(t)}</option>`).join('');
+        if (teams.includes(current)) sel.value = current;
+        else {
+            bnTeam = 'all';
+            sel.value = 'all';
+        }
+    }
+
+    function bnRenderKpis(records, teams, weeks) {
+        let bottleneckTeams = 0;
+        let critical = 0;
+        let peak = 0;
+        let peakTeam = '';
+        let peakWeek = '';
+        let planPeak = 0;
+        let actualPeak = 0;
+
+        teams.forEach(team => {
+            let teamHasBottleneck = false;
+            weeks.forEach(w => {
+                const c = bnGetCell(records, team, w);
+                if (c.effective >= 3) teamHasBottleneck = true;
+                if (c.effective >= 4) critical++;
+                if (c.effective > peak) {
+                    peak = c.effective;
+                    peakTeam = team;
+                    peakWeek = bnFmt(w);
+                }
+                planPeak = Math.max(planPeak, c.planned.count);
+                actualPeak = Math.max(actualPeak, c.actual.count);
+            });
+            if (teamHasBottleneck) bottleneckTeams++;
+        });
+
+        document.getElementById('bnKpiTeamsV41').textContent = bottleneckTeams;
+        document.getElementById('bnKpiCriticalV41').textContent = critical;
+        document.getElementById('bnKpiPeakV41').textContent = peak;
+        document.getElementById('bnKpiPeakSubV41').textContent = peak ? `${peakTeam}  |  ${peakWeek}` : 'No overlap';
+
+        const delta = actualPeak - planPeak;
+        document.getElementById('bnKpiDeltaV41').textContent = `${delta > 0 ? '+' : ''}${delta}`;
+    }
+
+    function bnCellText(cell) {
+        if (bnMode === 'both') return `P${cell.planned.count} / A${cell.actual.count}`;
+        return String(cell.effective);
+    }
+
+    function bnRenderHeat(records, teams, weeks) {
+        const table = document.getElementById('bnHeatV41');
+        if (!table) return;
+
+        const displayTeams = bnTeam === 'all' ? teams : teams.filter(t => t === bnTeam);
+
+        let html = `<thead><tr><th>Team / Workstream</th>` +
+            weeks.map((w, i) => `<th data-bn-week-start="${bnIso(w)}">W${i + 1}<small>${bnFmt(w).replace(/ \d{4}$/, '')}</small></th>`).join('') +
+            `</tr></thead><tbody>`;
+
+        displayTeams.forEach(team => {
+            html += `<tr><td>${bnEsc(team)}</td>`;
+            weeks.forEach((w, wi) => {
+                const cell = bnGetCell(records, team, w);
+                const severity = bnSeverity(cell.effective);
+                const show = cell.effective >= bnThreshold;
+                html += `<td class="bn-load ${show ? severity.cls : 'bn-none'}" data-team="${bnEsc(team)}" data-week-index="${wi}" title="Click for details">` +
+                    `${show && cell.effective ? bnCellText(cell) : ' - '}` +
+                    `${show && cell.effective ? `<small>${severity.label}</small>` : ''}` +
+                    `</td>`;
+            });
+            html += `</tr>`;
+        });
+
+        html += `</tbody>`;
+        table.innerHTML = html;
+
+        table.querySelectorAll('.bn-load[data-team]').forEach(td => {
+            td.addEventListener('click', () => {
+                const team = td.dataset.team;
+                const wi = Number(td.dataset.weekIndex);
+                bnRenderDetail(records, team, weeks[wi]);
+            });
+        });
+    }
+
+    function bnGroupProjectCards(records) {
+        const grouped = new Map();
+        records.forEach(r => {
+            if (!grouped.has(r.projectId)) {
+                grouped.set(r.projectId, {
+                    code: r.projectCode,
+                    name: r.projectName,
+                    pm: r.projectManager,
+                    phases: []
+                });
+            }
+            grouped.get(r.projectId).phases.push(r);
+        });
+        return [...grouped.values()];
+    }
+
+    function bnRenderDetail(records, team, weekStart) {
+        const panel = document.getElementById('bnDetailV41');
+        if (!panel || !weekStart) return;
+
+        const cell = bnGetCell(records, team, weekStart);
+        const severity = bnSeverity(cell.effective);
+        const bucket = cell.bucket;
+
+        let relevant = [];
+        if (bnMode === 'planned') relevant = cell.planned.records;
+        else if (bnMode === 'actual') relevant = cell.actual.records;
+        else {
+            const ids = new Set([...cell.planned.records, ...cell.actual.records].map(r => `${r.projectId}|${r.phaseId}`));
+            relevant = records.filter(r => ids.has(`${r.projectId}|${r.phaseId}`));
+        }
+
+        const projectsGrouped = bnGroupProjectCards(relevant);
+
+        panel.innerHTML = `
+            <h3>${bnEsc(team)}</h3>
+            <div class="bn-detail-week">Week ${bnFmt(bucket.start)}  -  ${bnFmt(bucket.end)}</div>
+            <span class="bn-status ${severity.cls}">${severity.label}  |  ${cell.effective} parallel project${cell.effective === 1 ? '' : 's'}</span>
+
+            <div class="bn-detail-stats">
+                <div><span>Planned</span><strong>${cell.planned.count}</strong></div>
+                <div><span>Actual / Estimated</span><strong>${cell.actual.count}</strong></div>
+                <div><span>Variance</span><strong>${cell.actual.count - cell.planned.count > 0 ? '+' : ''}${cell.actual.count - cell.planned.count}</strong></div>
+            </div>
+
+            <div class="bn-project-list">
+                ${projectsGrouped.length ? projectsGrouped.map(p => `
+                    <div class="bn-project-card">
+                        <div><strong>${bnEsc(p.code)}</strong>  -  ${bnEsc(p.name)}</div>
+                        <small>PM: ${bnEsc(p.pm)}</small>
+                        <ul>${p.phases.map(r => {
+                            const pr = r.plan ? `${bnFmt(r.plan.start)}  ->  ${bnFmt(r.plan.end)}` : 'Not planned';
+                            const ar = r.actual ? `${bnFmt(r.actual.start)}  ->  ${bnFmt(r.actual.end)}${r.actual.estimated ? ' (estimated)' : ''}` : 'Not started';
+                            return `<li><b>${bnEsc(r.phaseName)}</b><br><span>Plan: ${pr}</span><br><span>Actual: ${ar}</span></li>`;
+                        }).join('')}</ul>
+                    </div>
+                `).join('') : `<div class="bn-empty">No matching active project phase in this cell.</div>`}
+            </div>
+
+            ${cell.effective >= 4 ? `<div class="bn-action"><b>Management signal:</b> Critical concurrency. Consider re-sequencing one or more phases, temporary resource support, or explicitly approving the overlap.</div>` :
+              cell.effective === 3 ? `<div class="bn-action"><b>Management signal:</b> Review priorities, dependencies and available manpower before this week.</div>` :
+              cell.effective === 2 ? `<div class="bn-action"><b>Management signal:</b> Moderate parallel load. Monitor for slippage that could create a bottleneck.</div>` : ''}
+        `;
+    }
+
+    function bnPeakFor(records, team, weeks, type) {
+        let peak = 0;
+        let worstWeek = weeks[0] || null;
+        let worstProjects = [];
+        weeks.forEach(w => {
+            const c = bnGetCell(records, team, w);
+            const obj = type === 'plan' ? c.planned : c.actual;
+            if (obj.count > peak) {
+                peak = obj.count;
+                worstWeek = w;
+                worstProjects = [...new Set(obj.records.map(r => r.projectCode))];
+            }
+        });
+        return { peak, worstWeek, worstProjects };
+    }
+
+    function bnRenderComparison(records, teams, weeks) {
+        const root = document.getElementById('bnComparisonV41');
+        if (!root) return;
+
+        const displayTeams = bnTeam === 'all' ? teams : teams.filter(t => t === bnTeam);
+        const rows = displayTeams.map(team => {
+            const p = bnPeakFor(records, team, weeks, 'plan');
+            const a = bnPeakFor(records, team, weeks, 'actual');
+            return { team, p: p.peak, a: a.peak, d: a.peak - p.peak };
+        });
+        const scale = Math.max(4, ...rows.flatMap(r => [r.p, r.a]));
+
+        root.innerHTML = rows.map(r => `
+            <div class="bn-comp-row">
+                <div class="bn-comp-name">${bnEsc(r.team)}</div>
+                <div class="bn-comp-track">
+                    <div class="bn-comp-plan" style="width:${(r.p / scale) * 100}%"></div>
+                    <div class="bn-comp-actual" style="width:${(r.a / scale) * 100}%"></div>
+                </div>
+                <div class="bn-comp-num">${r.p}  ->  ${r.a} <span class="${r.d > 0 ? 'bn-up' : r.d < 0 ? 'bn-down' : ''}">${r.d ? `(${r.d > 0 ? '+' : ''}${r.d})` : ''}</span></div>
+            </div>
+        `).join('') || `<div class="bn-empty">No team data in the current filters.</div>`;
+    }
+
+    function bnRenderRank(records, teams, weeks) {
+        const body = document.getElementById('bnRankBodyV41');
+        if (!body) return;
+
+        const displayTeams = bnTeam === 'all' ? teams : teams.filter(t => t === bnTeam);
+        const rows = displayTeams.map(team => {
+            const p = bnPeakFor(records, team, weeks, 'plan');
+            const a = bnPeakFor(records, team, weeks, 'actual');
+
+            let worst = { effective: 0, week: weeks[0] || null, projects: [] };
+            weeks.forEach(w => {
+                const c = bnGetCell(records, team, w);
+                const recs = bnMode === 'planned' ? c.planned.records :
+                    bnMode === 'actual' ? c.actual.records :
+                    [...c.planned.records, ...c.actual.records];
+
+                if (c.effective > worst.effective) {
+                    worst = {
+                        effective: c.effective,
+                        week: w,
+                        projects: [...new Set(recs.map(r => r.projectCode))]
+                    };
+                }
+            });
+
+            const action = a.peak >= 4 ? 'Re-sequence / add temporary capacity' :
+                a.peak === 3 ? 'Review priority & dependency clashes' :
+                a.peak === 2 ? 'Monitor weekly' : 'Normal';
+
+            return {
+                team,
+                plan: p.peak,
+                actual: a.peak,
+                delta: a.peak - p.peak,
+                worst
+            };
+        }).sort((a, b) => Math.max(b.plan, b.actual) - Math.max(a.plan, a.actual) || b.delta - a.delta);
+
+        body.innerHTML = rows.map(r => {
+            const severity = bnSeverity(Math.max(r.plan, r.actual));
+            return `
+                <tr>
+                    <td><strong>${bnEsc(r.team)}</strong></td>
+                    <td>${r.plan}</td>
+                    <td><span class="bn-mini ${severity.cls}">${r.actual}</span></td>
+                    <td>${r.delta > 0 ? '+' : ''}${r.delta}</td>
+                    <td>${r.worst.week ? bnFmt(r.worst.week) : '---'}</td>
+                    <td>${r.worst.projects.length ? r.worst.projects.map(bnEsc).join(', ') : '---'}</td>
+                    <td>${r.actual >= 4 ? 'Re-sequence / add temporary capacity' :
+                          r.actual === 3 ? 'Review priority & dependency clashes' :
+                          r.actual === 2 ? 'Monitor weekly' : 'Normal'}</td>
+                </tr>`;
+        }).join('');
+    }
+
+    function bnAnnotateExistingGantt(records, teams, weeks) {
+        const gantt = document.getElementById('ganttContainer');
+        if (!gantt) return;
+
+        gantt.querySelectorAll('.bn-project-alert, .bn-week-alert').forEach(x => x.remove());
+
+        const rows = Array.from(gantt.querySelectorAll('.project-row'));
+        const viewProjects = (typeof projects !== 'undefined' && Array.isArray(projects)) ? projects : [];
+
+        rows.forEach((row, index) => {
+            const project = viewProjects[index];
+            if (!project) return;
+
+            const projectId = String(project._id || project.code || project.name || '');
+            const pRecords = records.filter(r => r.projectId === projectId);
+            if (!pRecords.length) return;
+
+            // Only annotate work that is actually represented by a visible Gantt bar.
+            const hasPlannedVisual = !!row.querySelector('.bar-planned, .bar-mq2');
+            const hasStartedActualVisual = !!row.querySelector(
+                '.bar-actual:not(.actual-notstarted), .bar-mq2-actual'
+            );
+
+            if (bnMode === 'planned' && !hasPlannedVisual) return;
+            if (bnMode === 'actual' && !hasStartedActualVisual) return;
+            if (bnMode === 'both' && !hasPlannedVisual && !hasStartedActualVisual) return;
+
+            let maxPlan = 0;
+            let maxActual = 0;
+            const conflictWeeks = [];
+
+            weeks.forEach((w, wi) => {
+                const teamHits = [];
+
+                teams.forEach(team => {
+                    const cell = bnGetCell(records, team, w);
+                    const bucket = cell.bucket;
+
+                    const planParticipates =
+                        hasPlannedVisual &&
+                        cell.planned.count >= 3 &&
+                        pRecords.some(r =>
+                            r.team === team && bnOverlap(r.plan, bucket)
+                        );
+
+                    const actualParticipates =
+                        hasStartedActualVisual &&
+                        cell.actual.count >= 3 &&
+                        pRecords.some(r =>
+                            r.team === team && bnOverlap(r.actual, bucket)
+                        );
+
+                    let qualifies = false;
+
+                    if (bnMode === 'planned') qualifies = planParticipates;
+                    else if (bnMode === 'actual') qualifies = actualParticipates;
+                    else qualifies = planParticipates || actualParticipates;
+
+                    if (!qualifies) return;
+
+                    if (planParticipates) {
+                        maxPlan = Math.max(maxPlan, cell.planned.count);
+                    }
+
+                    if (actualParticipates) {
+                        maxActual = Math.max(maxActual, cell.actual.count);
+                    }
+
+                    teamHits.push({
+                        team,
+                        planned: planParticipates ? cell.planned.count : 0,
+                        actual: actualParticipates ? cell.actual.count : 0
+                    });
+                });
+
+                if (teamHits.length) {
+                    conflictWeeks.push({ wi, teamHits });
+                }
+            });
+
+            const effectiveMax =
+                bnMode === 'planned' ? maxPlan :
+                bnMode === 'actual' ? maxActual :
+                Math.max(maxPlan, maxActual);
+
+            if (effectiveMax >= 3) {
+                const label = row.querySelector('.project-label');
+
+                if (label) {
+                    let badgeText = '';
+
+                    if (bnMode === 'planned') {
+                        badgeText = `PLAN ${maxPlan} PARALLEL`;
+                    } else if (bnMode === 'actual') {
+                        badgeText = `ACTUAL ${maxActual} PARALLEL`;
+                    } else if (maxPlan >= 3 && maxActual >= 3) {
+                        badgeText = `P${maxPlan} / A${maxActual} PARALLEL`;
+                    } else if (maxPlan >= 3) {
+                        badgeText = `PLAN ${maxPlan} PARALLEL`;
+                    } else {
+                        badgeText = `ACTUAL ${maxActual} PARALLEL`;
+                    }
+
+                    const badge = document.createElement('div');
+                    badge.className = `bn-project-alert ${effectiveMax >= 4 ? 'critical' : ''}`;
+                    badge.innerHTML =
+                        `<i class="bi bi-exclamation-triangle-fill"></i> ${badgeText}`;
+                    badge.title =
+                        'This project participates in a visible team/workstream bottleneck during the current timeline.';
+                    label.appendChild(badge);
+                }
+            }
+
+            const timeline = row.querySelector('.timeline-area');
+
+            if (timeline) {
+                conflictWeeks.forEach(c => {
+                    const marker = document.createElement('button');
+                    marker.type = 'button';
+                    marker.className = 'bn-week-alert';
+                    marker.style.left = `${c.wi * BN_WEEK_WIDTH + 5}px`;
+                    marker.innerHTML = `<i class="bi bi-exclamation-triangle-fill"></i>`;
+
+                    marker.title = c.teamHits.map(x =>
+                        `${x.team} | Planned: ${x.planned} | Actual: ${x.actual}`
+                    ).join(' | ');
+
+                    marker.addEventListener('click', e => {
+                        e.stopPropagation();
+
+                        const firstTeam = c.teamHits[0].team;
+                        bnTeam = firstTeam;
+
+                        const sel = document.getElementById('bnTeamFilterV41');
+                        if (sel) sel.value = firstTeam;
+
+                        bnRenderFromLastContext();
+                        bnRenderDetail(records, firstTeam, weeks[c.wi]);
+
+                        document.getElementById('pmisBottleneckPanelV41')
+                            ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    });
+
+                    timeline.appendChild(marker);
+                });
+            }
+        });
+    }
+
+    function bnRenderDataNote(unassignedResponsibility, recordCount) {
+        const note = document.getElementById('bnDataNoteV41');
+        if (!note) return;
+        note.innerHTML = `
+            <i class="bi bi-info-circle-fill"></i>
+            <div>
+                <b>How this first version works:</b> PMIS currently stores Responsibility as <b>Danprel / Customer / Both</b>, not a department name.
+                Customer-only phases are excluded; Danprel and Both are counted as internal workload.
+                Team/workstream is inferred from the existing phase ID. Blank Responsibility values are included so older project data is not silently missed.
+                <b>${unassignedResponsibility}</b> active phase record${unassignedResponsibility === 1 ? '' : 's'} in the current filtered project set have blank Responsibility.
+                Analysis is based on <b>${recordCount}</b> dated phase record${recordCount === 1 ? '' : 's'}.
+            </div>
+        `;
+    }
+
+    function bnRender(context) {
+        const panel = bnEnsurePanel();
+        if (!panel || !context) return;
+
+        const viewProjects = (typeof projects !== 'undefined' && Array.isArray(projects)) ? projects : [];
+        const { records, unassignedResponsibility } = bnBuildRecords(viewProjects);
+        const teams = bnTeamList(records);
+        const weeks = context.weeks || [];
+
+        bnPopulateTeamFilter(teams);
+        const displayTeams = bnTeam === 'all' ? teams : teams.filter(t => t === bnTeam);
+
+        bnRenderKpis(records, displayTeams, weeks);
+        bnRenderHeat(records, teams, weeks);
+        bnRenderComparison(records, teams, weeks);
+        bnRenderRank(records, teams, weeks);
+        bnRenderDataNote(unassignedResponsibility, records.length);
+        bnAnnotateExistingGantt(records, teams, weeks);
+
+        if (displayTeams.length && weeks.length) {
+            const detail = document.getElementById('bnDetailV41');
+            if (detail && !detail.dataset.userSelected) {
+                let found = false;
+                for (const team of displayTeams) {
+                    for (const w of weeks) {
+                        if (bnGetCell(records, team, w).effective >= 3) {
+                            bnRenderDetail(records, team, w);
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (found) break;
+                }
+                if (!found) bnRenderDetail(records, displayTeams[0], weeks[0]);
+            }
+        }
+    }
+
+    function bnRenderFromLastContext() {
+        if (bnLastContext) bnRender(bnLastContext);
+    }
+
+    // Hook the existing Gantt without rewriting it.
+    if (typeof renderGantt === 'function') {
+        const bnOriginalRenderGantt = renderGantt;
+
+        renderGantt = function () {
+            const container = document.getElementById('ganttContainer');
+
+            // Capture the weeks after the original Gantt renders by reading its header cells.
+            // We recompute the same visible Monday week sequence from the rendered header.
+            const result = bnOriginalRenderGantt.apply(this, arguments);
+
+            try {
+                const weekCells = Array.from(container?.querySelectorAll('.week-cell') || []);
+                const firstDateText = weekCells[0]?.querySelector('.week-date')?.textContent?.trim() || '';
+
+                // Reconstruct visible weeks from the same From filter / current Gantt rules.
+                const fromDateVal = document.getElementById('fromDateFilter')?.value;
+                const toDateVal = document.getElementById('toDateFilter')?.value;
+
+                let min = null;
+                if (fromDateVal) {
+                    min = bnDate(fromDateVal);
+                } else {
+                    // Best source: date shown in first rendered week header plus current/nearby year.
+                    // If the Gantt was created from project extremes, derive earliest again exactly as its renderer does.
+                    let earliest = new Date();
+                    const viewProjects = (typeof projects !== 'undefined' && Array.isArray(projects)) ? projects : [];
+                    viewProjects.forEach(p => {
+                        if (p.start_date) {
+                            const d = bnDate(p.start_date);
+                            if (d && d < earliest) earliest = d;
+                        }
+                        const a = bnDate(p.detailed_phases?.kickoff?.actual_start);
+                        if (a && a < earliest) earliest = a;
+                    });
+                    min = earliest;
+                }
+
+                if (!min) min = new Date();
+                const dow = min.getDay();
+                min.setDate(min.getDate() + (dow === 0 ? -6 : 1 - dow));
+                min.setHours(0, 0, 0, 0);
+
+                const visibleWeeks = [];
+                for (let i = 0; i < weekCells.length; i++) {
+                    const d = new Date(min);
+                    d.setDate(d.getDate() + (i * 7));
+                    visibleWeeks.push(d);
+                }
+
+                bnLastContext = { weeks: visibleWeeks, fromDateVal, toDateVal };
+                setTimeout(() => bnRender(bnLastContext), 0);
+            } catch (err) {
+                console.warn('[PMIS Bottleneck V41] Unable to render analysis:', err);
+            }
+
+            return result;
+        };
+    } else {
+        console.warn('[PMIS Bottleneck V41] renderGantt() was not found; no hook installed.');
+    }
+})();
+</script>
+<!-- PMIS_BOTTLENECK_V41_END -->
+
+<!-- PMIS_FULL_REVIEW_EXPORT_V41C_START -->
+<style id="pmis-full-review-export-v41c-style">
+.pmis-full-review-export-v41c {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+}
+.pmis-full-review-export-v41c .pmis-full-review-btn {
+    border: 0;
+    border-radius: 999px;
+    padding: 9px 15px;
+    background: linear-gradient(135deg, #7f1d1d, #dc2626);
+    color: #fff;
+    font-size: .7rem;
+    font-weight: 900;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+    box-shadow: 0 4px 14px rgba(220,38,38,.18);
+}
+.pmis-full-review-export-v41c .pmis-full-review-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(220,38,38,.28);
+}
+#pmisFullReviewBusyV41C {
+    position: fixed;
+    inset: 0;
+    z-index: 20000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,31,63,.72);
+    backdrop-filter: blur(3px);
+}
+#pmisFullReviewBusyV41C.active {
+    display: flex;
+}
+#pmisFullReviewBusyV41C .box {
+    width: min(420px, calc(100vw - 40px));
+    background: #fff;
+    border-radius: 22px;
+    padding: 24px;
+    text-align: center;
+    box-shadow: 0 24px 70px rgba(0,0,0,.28);
+}
+#pmisFullReviewBusyV41C .spin {
+    width: 42px;
+    height: 42px;
+    border: 4px solid #dbeafe;
+    border-top-color: #0369a1;
+    border-radius: 50%;
+    margin: 0 auto 14px;
+    animation: pmisV41CSpin 1s linear infinite;
+}
+#pmisFullReviewBusyV41C .title {
+    color: #0B2B4A;
+    font-weight: 900;
+    font-size: 1rem;
+}
+#pmisFullReviewBusyV41C .sub {
+    color: #64748b;
+    font-weight: 650;
+    font-size: .73rem;
+    margin-top: 5px;
+}
+@keyframes pmisV41CSpin { to { transform: rotate(360deg); } }
+</style>
+<script id="pmis-full-review-export-v41c-script">
+(function () {
+    'use strict';
+
+    if (window.__pmisFullReviewExportV41CInstalled) return;
+    window.__pmisFullReviewExportV41CInstalled = true;
+
+    function v41cEsc(value) {
+        return String(value == null ? '' : value).replace(/[&<>"']/g, function (c) {
+            return {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            }[c];
+        });
+    }
+
+    function v41cSelectedText(id, fallback) {
+        const el = document.getElementById(id);
+        if (!el) return fallback || 'All';
+        if (el.tagName === 'SELECT') {
+            return el.options[el.selectedIndex]?.text || fallback || 'All';
+        }
+        return el.value || fallback || 'All';
+    }
+
+    function v41cFmtDateInput(value) {
+        if (!value) return 'All dates';
+        const d = new Date(value + 'T00:00:00');
+        if (isNaN(d.getTime())) return value;
+        return d.toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+        });
+    }
+
+    function v41cFilterSummaryHtml() {
+        const pm = v41cSelectedText('expeditorSelector', 'All Project Expeditors');
+        const from = document.getElementById('fromDateFilter')?.value || '';
+        const to = document.getElementById('toDateFilter')?.value || '';
+        const bnModeButton = document.querySelector('#bnModeV41 button.active');
+        const bnTeam = v41cSelectedText('bnTeamFilterV41', 'All Teams / Workstreams');
+        const bnSeverity = v41cSelectedText('bnSeverityFilterV41', 'All active loads');
+
+        return `
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:14px;">
+                <div style="background:#f8fafc;border:1px solid #dbe6ef;border-radius:999px;padding:8px 13px;font-size:12px;font-weight:800;color:#334155;">
+                    PM / Expeditor: <span style="color:#003366;">${v41cEsc(pm)}</span>
+                </div>
+                <div style="background:#f8fafc;border:1px solid #dbe6ef;border-radius:999px;padding:8px 13px;font-size:12px;font-weight:800;color:#334155;">
+                    From: <span style="color:#003366;">${v41cEsc(v41cFmtDateInput(from))}</span>
+                </div>
+                <div style="background:#f8fafc;border:1px solid #dbe6ef;border-radius:999px;padding:8px 13px;font-size:12px;font-weight:800;color:#334155;">
+                    To: <span style="color:#003366;">${v41cEsc(v41cFmtDateInput(to))}</span>
+                </div>
+                <div style="background:#f8fafc;border:1px solid #dbe6ef;border-radius:999px;padding:8px 13px;font-size:12px;font-weight:800;color:#334155;">
+                    Bottleneck View: <span style="color:#003366;">${v41cEsc(bnModeButton?.textContent?.trim() || 'Both')}</span>
+                </div>
+                <div style="background:#f8fafc;border:1px solid #dbe6ef;border-radius:999px;padding:8px 13px;font-size:12px;font-weight:800;color:#334155;">
+                    Workstream: <span style="color:#003366;">${v41cEsc(bnTeam)}</span>
+                </div>
+                <div style="background:#f8fafc;border:1px solid #dbe6ef;border-radius:999px;padding:8px 13px;font-size:12px;font-weight:800;color:#334155;">
+                    Load Filter: <span style="color:#003366;">${v41cEsc(bnSeverity)}</span>
+                </div>
+            </div>
+        `;
+    }
+
+    function v41cReportHeader(title, subtitle, pageText) {
+        const generated = new Date().toLocaleString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+
+        return `
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:24px;padding-bottom:20px;border-bottom:4px solid #001f3f;margin-bottom:20px;">
+                <div style="display:flex;align-items:center;gap:16px;">
+                    <img src="asset/image.png" style="width:66px;height:66px;object-fit:contain;border:1px solid #e2e8f0;border-radius:14px;padding:5px;background:white;">
+                    <div>
+                        <div style="font-size:34px;font-weight:900;color:#001f3f;line-height:1;">DANPREL</div>
+                        <div style="font-size:12px;font-weight:800;color:#14b8a6;text-transform:uppercase;letter-spacing:.08em;margin-top:5px;">Engineering Automation Pvt Ltd</div>
+                    </div>
+                </div>
+                <div style="text-align:right;max-width:720px;">
+                    <div style="font-size:24px;font-weight:900;color:#001f3f;text-transform:uppercase;">${v41cEsc(title)}</div>
+                    <div style="font-size:13px;font-weight:700;color:#475569;margin-top:5px;">${v41cEsc(subtitle)}</div>
+                    <div style="font-size:11px;font-weight:700;color:#94a3b8;margin-top:5px;">Generated: ${v41cEsc(generated)} | ${v41cEsc(pageText || '')}</div>
+                    <div style="display:inline-block;margin-top:8px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:999px;padding:5px 9px;font-size:10px;font-weight:900;text-transform:uppercase;">Local Evaluation - Approval Copy</div>
+                </div>
+            </div>
+        `;
+    }
+
+    function v41cMakeOffscreen() {
+        let root = document.getElementById('pmisFullReviewPrintAreaV41C');
+        if (root) root.remove();
+
+        root = document.createElement('div');
+        root.id = 'pmisFullReviewPrintAreaV41C';
+        root.style.position = 'absolute';
+        root.style.left = '-100000px';
+        root.style.top = '0';
+        root.style.background = '#f8fafc';
+        root.style.fontFamily = "'Inter', Arial, sans-serif";
+        root.style.zIndex = '-1';
+        document.body.appendChild(root);
+        return root;
+    }
+
+    function v41cNormalizeClone(root) {
+        root.querySelectorAll('*').forEach(function (el) {
+            const cs = window.getComputedStyle(el);
+            if (cs.position === 'sticky') {
+                el.style.position = 'relative';
+                el.style.left = 'auto';
+                el.style.top = 'auto';
+            }
+        });
+
+        root.querySelectorAll(
+            '.gantt-wrapper,.bn-heat-wrap,.bn-rank-wrap,.bn-detail'
+        ).forEach(function (el) {
+            el.style.overflow = 'visible';
+            el.style.maxHeight = 'none';
+        });
+
+        root.querySelectorAll('.bn-week-alert').forEach(function (el) {
+            el.style.pointerEvents = 'none';
+        });
+    }
+
+    async function v41cEnsureHtml2Canvas() {
+        if (typeof window.html2canvas === 'function') return;
+
+        await new Promise(function (resolve, reject) {
+            const s = document.createElement('script');
+            s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+            s.onload = resolve;
+            s.onerror = reject;
+            document.head.appendChild(s);
+        });
+
+        if (typeof window.html2canvas !== 'function') {
+            throw new Error('html2canvas could not be loaded.');
+        }
+    }
+
+    async function v41cCapture(element, scale) {
+        return await window.html2canvas(element, {
+            scale: scale || 1.25,
+            useCORS: true,
+            allowTaint: false,
+            backgroundColor: '#ffffff',
+            logging: false,
+            scrollX: 0,
+            scrollY: 0,
+            windowWidth: Math.max(element.scrollWidth, element.offsetWidth),
+            windowHeight: Math.max(element.scrollHeight, element.offsetHeight)
+        });
+    }
+
+    function v41cAddCanvasPage(state, canvas) {
+        const pxToPt = 0.75;
+        const widthPt = Math.max(400, canvas.width * pxToPt);
+        const heightPt = Math.max(300, canvas.height * pxToPt);
+        const img = canvas.toDataURL('image/jpeg', 0.96);
+
+        if (!state.pdf) {
+            state.pdf = new window.jspdf.jsPDF({
+                unit: 'pt',
+                format: [widthPt, heightPt],
+                orientation: widthPt >= heightPt ? 'landscape' : 'portrait',
+                compress: true
+            });
+        } else {
+            state.pdf.addPage(
+                [widthPt, heightPt],
+                widthPt >= heightPt ? 'landscape' : 'portrait'
+            );
+        }
+
+        state.pdf.addImage(img, 'JPEG', 0, 0, widthPt, heightPt, undefined, 'FAST');
+    }
+
+    function v41cBuildGanttPages(printArea) {
+        const gantt = document.getElementById('ganttContainer');
+        if (!gantt) throw new Error('Gantt container was not found.');
+
+        const header = gantt.querySelector('.gantt-hd');
+        const rows = Array.from(gantt.querySelectorAll('.project-row'));
+
+        if (!header || !rows.length) {
+            throw new Error('No Gantt rows are available to export.');
+        }
+
+        const ganttWidth = Math.max(1450, gantt.scrollWidth + 40);
+        const rowsPerPage = 6;
+        const pages = [];
+        const totalPages = Math.ceil(rows.length / rowsPerPage);
+
+        for (let pageIndex = 0; pageIndex < totalPages; pageIndex++) {
+            const page = document.createElement('div');
+            page.style.width = ganttWidth + 'px';
+            page.style.padding = '34px';
+            page.style.boxSizing = 'border-box';
+            page.style.background = '#ffffff';
+            page.style.marginBottom = '25px';
+
+            page.innerHTML =
+                v41cReportHeader(
+                    'Project Planned vs Actual Timelines',
+                    'Master Timeline Visualization - current filtered view',
+                    'Gantt Page ' + (pageIndex + 1) + ' of ' + totalPages
+                ) +
+                v41cFilterSummaryHtml();
+
+            const shell = document.createElement('div');
+            shell.className = 'gantt-container';
+            shell.style.display = 'flex';
+            shell.style.flexDirection = 'column';
+            shell.style.width = gantt.scrollWidth + 'px';
+            shell.style.marginTop = '18px';
+            shell.style.border = '1px solid #e2e8f0';
+            shell.style.borderRadius = '16px';
+            shell.style.overflow = 'hidden';
+            shell.style.background = '#fff';
+
+            shell.appendChild(header.cloneNode(true));
+
+            const start = pageIndex * rowsPerPage;
+            rows.slice(start, start + rowsPerPage).forEach(function (r) {
+                shell.appendChild(r.cloneNode(true));
+            });
+
+            page.appendChild(shell);
+
+            const footer = document.createElement('div');
+            footer.style.display = 'flex';
+            footer.style.justifyContent = 'space-between';
+            footer.style.alignItems = 'center';
+            footer.style.marginTop = '16px';
+            footer.style.fontSize = '11px';
+            footer.style.fontWeight = '800';
+            footer.style.color = '#64748b';
+            footer.innerHTML =
+                '<span>PMIS Master Timeline + Bottleneck Review</span>' +
+                '<span>Gantt ' + (pageIndex + 1) + ' / ' + totalPages + '</span>';
+            page.appendChild(footer);
+
+            printArea.appendChild(page);
+            v41cNormalizeClone(page);
+            pages.push(page);
+        }
+
+        return pages;
+    }
+
+    function v41cBuildBottleneckPage(printArea) {
+        const source = document.getElementById('pmisBottleneckPanelV41');
+        if (!source) throw new Error('Bottleneck Analysis panel was not found.');
+
+        const heat = source.querySelector('.bn-heat');
+        const detail = source.querySelector('.bn-detail');
+
+        const contentWidth = Math.max(
+            1500,
+            (heat ? heat.scrollWidth : 1000) + (detail ? 410 : 0) + 120
+        );
+
+        const page = document.createElement('div');
+        page.style.width = contentWidth + 'px';
+        page.style.padding = '34px';
+        page.style.boxSizing = 'border-box';
+        page.style.background = '#ffffff';
+
+        page.innerHTML =
+            v41cReportHeader(
+                'Team / Workstream Bottleneck Analysis',
+                'Resource collision review based on the same filtered PMIS projects',
+                'Bottleneck Analysis'
+            ) +
+            v41cFilterSummaryHtml();
+
+        const clone = source.cloneNode(true);
+        clone.id = 'pmisBottleneckPanelV41ExportClone';
+        clone.style.marginTop = '18px';
+        clone.style.width = (contentWidth - 68) + 'px';
+
+        clone.querySelectorAll(
+            '.pmis-full-review-export-v41c, button.bn-week-alert'
+        ).forEach(function (el) {
+            el.remove();
+        });
+
+        clone.querySelectorAll('select,button').forEach(function (el) {
+            el.style.pointerEvents = 'none';
+        });
+
+        const heatWrap = clone.querySelector('.bn-heat-wrap');
+        if (heatWrap) {
+            heatWrap.style.overflow = 'visible';
+        }
+
+        const rankWrap = clone.querySelector('.bn-rank-wrap');
+        if (rankWrap) {
+            rankWrap.style.overflow = 'visible';
+        }
+
+        const detailClone = clone.querySelector('.bn-detail');
+        if (detailClone) {
+            detailClone.style.maxHeight = 'none';
+            detailClone.style.overflow = 'visible';
+        }
+
+        page.appendChild(clone);
+
+        const footer = document.createElement('div');
+        footer.style.marginTop = '18px';
+        footer.style.paddingTop = '12px';
+        footer.style.borderTop = '1px solid #e2e8f0';
+        footer.style.fontSize = '11px';
+        footer.style.fontWeight = '800';
+        footer.style.color = '#64748b';
+        footer.innerHTML =
+            'Interpretation: this is schedule-concurrency analysis, not manpower utilization. ' +
+            '1 project = Normal, 2 = Moderate, 3 = Bottleneck, 4+ = Critical.';
+        page.appendChild(footer);
+
+        printArea.appendChild(page);
+        v41cNormalizeClone(page);
+
+        return page;
+    }
+
+    function v41cShowBusy(show, text) {
+        let busy = document.getElementById('pmisFullReviewBusyV41C');
+        if (!busy) {
+            busy = document.createElement('div');
+            busy.id = 'pmisFullReviewBusyV41C';
+            busy.innerHTML = `
+                <div class="box">
+                    <div class="spin"></div>
+                    <div class="title">Preparing Management Review PDF</div>
+                    <div class="sub" id="pmisFullReviewBusyTextV41C">Capturing timeline and bottleneck analysis...</div>
+                </div>`;
+            document.body.appendChild(busy);
+        }
+
+        const sub = busy.querySelector('#pmisFullReviewBusyTextV41C');
+        if (sub && text) sub.textContent = text;
+        busy.classList.toggle('active', !!show);
+    }
+
+    async function exportFullPMISReviewPDFV41C() {
+        const state = { pdf: null };
+        const oldCursor = document.body.style.cursor;
+        let printArea = null;
+
+        try {
+            v41cShowBusy(true, 'Preparing the current filtered view...');
+            document.body.style.cursor = 'wait';
+
+            if (!window.jspdf || !window.jspdf.jsPDF) {
+                throw new Error('jsPDF is not available on this page.');
+            }
+
+            await v41cEnsureHtml2Canvas();
+
+            printArea = v41cMakeOffscreen();
+
+            const ganttPages = v41cBuildGanttPages(printArea);
+            const bottleneckPage = v41cBuildBottleneckPage(printArea);
+
+            for (let i = 0; i < ganttPages.length; i++) {
+                v41cShowBusy(
+                    true,
+                    'Capturing Gantt page ' + (i + 1) + ' of ' + ganttPages.length + '...'
+                );
+                const canvas = await v41cCapture(ganttPages[i], 1.15);
+                v41cAddCanvasPage(state, canvas);
+            }
+
+            v41cShowBusy(true, 'Capturing bottleneck analysis...');
+            const bottleneckCanvas = await v41cCapture(bottleneckPage, 1.15);
+            v41cAddCanvasPage(state, bottleneckCanvas);
+
+            if (!state.pdf) {
+                throw new Error('PDF could not be created.');
+            }
+
+            const stamp = new Date()
+                .toISOString()
+                .replace(/[:T]/g, '-')
+                .replace(/\..+/, '');
+
+            state.pdf.save('DANPREL_PMIS_Full_Timeline_Bottleneck_Review_' + stamp + '.pdf');
+        } catch (err) {
+            console.error('[PMIS V41C Full Export]', err);
+            alert('Full review PDF export failed: ' + (err?.message || err));
+        } finally {
+            if (printArea) printArea.remove();
+            document.body.style.cursor = oldCursor;
+            v41cShowBusy(false);
+        }
+    }
+
+    window.exportFullPMISReviewPDFV41C = exportFullPMISReviewPDFV41C;
+
+    function v41cInstallExportOption() {
+        if (document.getElementById('pmisFullReviewExportMenuV41C')) return;
+
+        const menu = document.querySelector('.premium-export-dropdown');
+        if (menu) {
+            const li = document.createElement('li');
+            li.id = 'pmisFullReviewExportMenuV41C';
+            li.innerHTML = `
+                <a class="dropdown-item premium-export-item" href="javascript:void(0)" onclick="exportFullPMISReviewPDFV41C()">
+                    <div class="export-icon-box export-icon-pdf">
+                        <i class="bi bi-file-earmark-pdf-fill"></i>
+                    </div>
+                    <div class="d-flex flex-column text-start">
+                        <span class="export-title">Export Full Review PDF</span>
+                        <span style="font-size:.65rem;color:#64748b;font-weight:600;">Gantt + Bottleneck Analysis</span>
+                    </div>
+                </a>
+            `;
+            menu.insertBefore(li, menu.firstChild);
+
+            const divider = document.createElement('li');
+            divider.innerHTML = '<hr class="dropdown-divider" style="border-color:#f1f5f9;margin:4px 0;">';
+            menu.insertBefore(divider, li.nextSibling);
+        }
+
+        const toolbar = document.querySelector('#pmisBottleneckPanelV41 .bn-toolbar');
+        if (toolbar && !toolbar.querySelector('.pmis-full-review-export-v41c')) {
+            const wrap = document.createElement('div');
+            wrap.className = 'pmis-full-review-export-v41c';
+            wrap.style.marginLeft = 'auto';
+            wrap.innerHTML = `
+                <button type="button" class="pmis-full-review-btn" onclick="exportFullPMISReviewPDFV41C()">
+                    <i class="bi bi-file-earmark-pdf-fill me-1"></i>
+                    Export Full Review PDF
+                </button>
+            `;
+            toolbar.appendChild(wrap);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        v41cInstallExportOption();
+
+        const observer = new MutationObserver(function () {
+            v41cInstallExportOption();
+        });
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+
+        setTimeout(v41cInstallExportOption, 500);
+        setTimeout(v41cInstallExportOption, 1500);
+    });
+
+    if (document.readyState !== 'loading') {
+        setTimeout(v41cInstallExportOption, 0);
+        setTimeout(v41cInstallExportOption, 800);
+    }
+})();
+</script>
+<!-- PMIS_FULL_REVIEW_EXPORT_V41C_END -->
+
+<!-- PMIS_HEATMAP_V46_START -->
+<style id="pmis-heatmap-v46-styles">
+/* PMIS HEATMAP V46 */
+
+#bnHeatDateToolsV46 {
+    display:flex;
+    align-items:flex-end;
+    gap:8px;
+    flex-wrap:wrap;
+    margin:0 0 0 4px;
+    padding:0;
+    background:transparent;
+    border:0;
+    border-radius:0;
+}
+
+#bnHeatDateToolsV46 .bn-v46-field {
+    display:flex;
+    flex-direction:column;
+    gap:5px;
+}
+
+#bnHeatDateToolsV46 label {
+    font-size:.68rem;
+    font-weight:900;
+    color:#475569;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+}
+
+#bnHeatDateToolsV46 input[type="date"] {
+    height:38px;
+    min-width:130px;
+    width:130px;
+    padding:0 10px;
+    border:1px solid #cbd5e1;
+    border-radius:10px;
+    background:#fff;
+    color:#0f172a;
+    font-size:.78rem;
+    font-weight:700;
+}
+
+#bnHeatDateToolsV46 .bn-v46-btn {
+    height:38px;
+    border-radius:10px;
+    padding:0 13px;
+    border:1px solid #cbd5e1;
+    background:#fff;
+    color:#334155;
+    font-weight:850;
+    font-size:.75rem;
+    cursor:pointer;
+}
+
+#bnHeatDateToolsV46 .bn-v46-btn:hover {
+    background:#f1f5f9;
+}
+
+#bnHeatDateToolsV46 .bn-v46-export {
+    border-color:#0f766e;
+    background:#0f766e;
+    color:#fff;
+}
+
+#bnHeatDateToolsV46 .bn-v46-export:hover {
+    background:#115e59;
+}
+
+#bnHeatDateStatusV46 {
+    margin-left:2px;
+    align-self:center;
+    color:#64748b;
+    font-size:.68rem;
+    font-weight:800;
+    white-space:nowrap;
+}
+
+.bn-v46-date-hidden {
+    display:none !important;
+}
+
+.bn-v46-project-management-row {
+    display:none !important;
+}
+
+/* Full Review export: never include the supporting team/project detail pane
+   beside the heatmap. */
+#pmisBottleneckPanelV41ExportClone .bn-detail {
+    display:none !important;
+}
+
+#pmisBottleneckPanelV41ExportClone .bn-grid {
+    grid-template-columns:minmax(0,1fr) !important;
+}
+
+/* Keep the dedicated heatmap filter controls out of the Full Review clone.
+   The currently filtered heatmap columns themselves remain respected. */
+#pmisBottleneckPanelV41ExportClone #bnHeatDateToolsV46 {
+    display:none !important;
+}
+
+@media (max-width:800px) {
+    #bnHeatDateStatusV46 {
+        width:100%;
+        margin-left:0;
+    }
+}
+</style>
+<script id="pmis-heatmap-v46-script">
+(function () {
+    'use strict';
+
+    if (window.__pmisHeatmapV46Installed) return;
+    window.__pmisHeatmapV46Installed = true;
+
+    const V46_TEAM_TO_EXCLUDE = 'project management';
+    let v46ApplyTimer = null;
+    let v46TableObserver = null;
+    let v46BodyObserver = null;
+
+    function v46Esc(value) {
+        return String(value == null ? '' : value).replace(/[&<>"']/g, c => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        })[c]);
+    }
+
+    function v46Date(value) {
+        if (!value) return null;
+        const d = new Date(String(value) + 'T00:00:00');
+        if (isNaN(d.getTime())) return null;
+        d.setHours(0, 0, 0, 0);
+        return d;
+    }
+
+    function v46Iso(d) {
+        if (!(d instanceof Date) || isNaN(d.getTime())) return '';
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    }
+
+    function v46Fmt(value) {
+        const d = value instanceof Date ? value : v46Date(value);
+        if (!d) return 'All visible dates';
+        return d.toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+        });
+    }
+
+    function v46ScheduleApply() {
+        clearTimeout(v46ApplyTimer);
+        v46ApplyTimer = setTimeout(v46Apply, 0);
+    }
+
+    function v46EnsureControls() {
+        const panel = document.getElementById('pmisBottleneckPanelV41');
+        if (!panel) return null;
+
+        let tools = document.getElementById('bnHeatDateToolsV46');
+        if (tools) return tools;
+
+        const grid = panel.querySelector('.bn-grid');
+        if (!grid) return null;
+
+        tools = document.createElement('div');
+        tools.id = 'bnHeatDateToolsV46';
+
+        const ganttFrom = document.getElementById('fromDateFilter')?.value || '';
+        const ganttTo = document.getElementById('toDateFilter')?.value || '';
+
+        tools.innerHTML = `
+            <div class="bn-v46-field">
+                <label for="bnHeatFromV46">Heatmap From</label>
+                <input type="date" id="bnHeatFromV46" value="${v46Esc(ganttFrom)}">
+            </div>
+
+            <div class="bn-v46-field">
+                <label for="bnHeatToV46">Heatmap To</label>
+                <input type="date" id="bnHeatToV46" value="${v46Esc(ganttTo)}">
+            </div>
+
+            <button type="button" class="bn-v46-btn" id="bnHeatClearV46">
+                Clear Dates
+            </button>
+
+            <button type="button" class="bn-v46-btn bn-v46-export" id="bnHeatExportPdfV46">
+                <i class="bi bi-file-earmark-pdf-fill"></i>
+                Export Heatmap PDF
+            </button>
+
+            <div id="bnHeatDateStatusV46">All visible weeks</div>
+        `;
+
+        // PMIS V46C: place heatmap-only controls in the main bottleneck toolbar.
+        const toolbar = panel.querySelector('.bn-toolbar');
+
+        if (toolbar) {
+            toolbar.appendChild(tools);
+        } else {
+            // Safe fallback: keep the controls immediately above the heatmap.
+            grid.insertAdjacentElement('beforebegin', tools);
+        }
+
+        const from = tools.querySelector('#bnHeatFromV46');
+        const to = tools.querySelector('#bnHeatToV46');
+
+        [from, to].forEach(input => {
+            input.addEventListener('change', () => {
+                if (from.value && to.value) {
+                    from.max = to.value;
+                    to.min = from.value;
+                } else {
+                    from.removeAttribute('max');
+                    to.removeAttribute('min');
+                }
+                v46Apply();
+            });
+        });
+
+        tools.querySelector('#bnHeatClearV46')?.addEventListener('click', () => {
+            from.value = '';
+            to.value = '';
+            from.removeAttribute('max');
+            to.removeAttribute('min');
+            v46Apply();
+        });
+
+        tools.querySelector('#bnHeatExportPdfV46')?.addEventListener(
+            'click',
+            v46ExportHeatmapPdfVectorV46H
+        );
+
+        return tools;
+    }
+
+    function v46WeekVisible(weekStart, fromDate, toDate) {
+        if (!weekStart) return true;
+
+        const start = new Date(weekStart);
+        start.setHours(0, 0, 0, 0);
+
+        const end = new Date(start);
+        end.setDate(end.getDate() + 6);
+        end.setHours(23, 59, 59, 999);
+
+        if (fromDate && end < fromDate) return false;
+        if (toDate && start > toDate) return false;
+
+        return true;
+    }
+
+    function v46Apply() {
+        const tools = v46EnsureControls();
+        const table = document.getElementById('bnHeatV41');
+
+        if (!tools || !table) return;
+
+        const fromValue = tools.querySelector('#bnHeatFromV46')?.value || '';
+        const toValue = tools.querySelector('#bnHeatToV46')?.value || '';
+        const status = tools.querySelector('#bnHeatDateStatusV46');
+
+        const fromDate = v46Date(fromValue);
+        const toDate = v46Date(toValue);
+
+        // First reset only V46-owned visibility classes.
+        table
+            .querySelectorAll('.bn-v46-date-hidden')
+            .forEach(el => el.classList.remove('bn-v46-date-hidden'));
+
+        if (fromDate && toDate && fromDate > toDate) {
+            if (status) {
+                status.textContent = 'Invalid date range';
+                status.style.color = '#b91c1c';
+            }
+            return;
+        }
+
+        if (status) status.style.color = '';
+
+        // Requirement #2:
+        // Hide Project Management ONLY from the heatmap rows.
+        Array.from(table.querySelectorAll('tbody tr')).forEach(row => {
+            const team = String(
+                row.cells?.[0]?.textContent || ''
+            ).trim().toLowerCase();
+
+            row.classList.toggle(
+                'bn-v46-project-management-row',
+                team === V46_TEAM_TO_EXCLUDE
+            );
+        });
+
+        // Remove Project Management from the heatmap workstream dropdown as well.
+        const teamFilter = document.getElementById('bnTeamFilterV41');
+
+        if (teamFilter) {
+            Array.from(teamFilter.options).forEach(option => {
+                const label = String(
+                    option.textContent || option.value || ''
+                ).trim().toLowerCase();
+
+                if (label === V46_TEAM_TO_EXCLUDE) {
+                    option.remove();
+                }
+            });
+
+            if (
+                String(teamFilter.value || '').trim().toLowerCase() ===
+                V46_TEAM_TO_EXCLUDE
+            ) {
+                teamFilter.value = 'all';
+                teamFilter.dispatchEvent(
+                    new Event('change', { bubbles:true })
+                );
+            }
+        }
+
+        // Clear a previously selected Project Management detail card.
+        const detail = document.getElementById('bnDetailV41');
+
+        const detailTeam = String(
+            detail?.querySelector('h3')?.textContent || ''
+        ).trim().toLowerCase();
+
+        if (detail && detailTeam === V46_TEAM_TO_EXCLUDE) {
+            detail.innerHTML = `
+                <h3>Select a heatmap cell</h3>
+                <p>Project and phase details will appear here.</p>
+            `;
+        }
+
+        const headers = Array.from(
+            table.querySelectorAll('thead th')
+        );
+
+        let visibleWeeks = 0;
+        let totalWeeks = 0;
+
+        headers.slice(1).forEach((th, index) => {
+            totalWeeks += 1;
+
+            const weekStart = v46Date(
+                th.getAttribute('data-bn-week-start') || ''
+            );
+
+            const show = v46WeekVisible(
+                weekStart,
+                fromDate,
+                toDate
+            );
+
+            if (show) visibleWeeks += 1;
+
+            th.classList.toggle(
+                'bn-v46-date-hidden',
+                !show
+            );
+
+            const columnNumber = index + 2;
+
+            table
+                .querySelectorAll(
+                    `tbody tr td:nth-child(${columnNumber})`
+                )
+                .forEach(td => {
+                    td.classList.toggle(
+                        'bn-v46-date-hidden',
+                        !show
+                    );
+                });
+        });
+
+        if (status) {
+            const rangeText =
+                fromDate || toDate
+                    ? `${fromDate ? v46Fmt(fromDate) : 'Start'} → ${toDate ? v46Fmt(toDate) : 'End'}`
+                    : 'All visible dates';
+
+            status.textContent =
+                `${visibleWeeks}/${totalWeeks} weeks • ${rangeText}`;
+        }
+    }
+
+    function v46AttachTableObserver() {
+        const table = document.getElementById('bnHeatV41');
+        if (!table) return false;
+
+        if (table.__pmisV46Observed) return true;
+
+        table.__pmisV46Observed = true;
+
+        v46TableObserver = new MutationObserver(() => {
+            v46ScheduleApply();
+        });
+
+        v46TableObserver.observe(
+            table,
+            {
+                childList:true,
+                subtree:true
+            }
+        );
+
+        return true;
+    }
+
+    function v46Install() {
+        const panel = document.getElementById('pmisBottleneckPanelV41');
+        if (!panel) return false;
+
+        v46EnsureControls();
+        v46AttachTableObserver();
+        v46Apply();
+
+        return true;
+    }
+
+    function v46VisibleHeatmapClone() {
+        v46Apply();
+
+        const source = document.getElementById('bnHeatV41');
+        if (!source) {
+            throw new Error('Heatmap table was not found.');
+        }
+
+        const clone = source.cloneNode(true);
+
+        // Completely remove Project Management from export.
+        Array.from(clone.querySelectorAll('tbody tr')).forEach(row => {
+            const team = String(
+                row.cells?.[0]?.textContent || ''
+            ).trim().toLowerCase();
+
+            if (team === V46_TEAM_TO_EXCLUDE) {
+                row.remove();
+            }
+        });
+
+        // Remove date-hidden columns from the export DOM entirely.
+        clone
+            .querySelectorAll('.bn-v46-date-hidden')
+            .forEach(el => el.remove());
+
+        if (!clone.querySelector('tbody tr')) {
+            throw new Error(
+                'No heatmap workstreams remain in the selected filters.'
+            );
+        }
+
+        return clone;
+    }
+
+    /* PMIS_HEATMAP_VECTOR_EXPORT_V46H_START */
+    async function v46ExportHeatmapPdfVectorV46H() {
+        try {
+            // Apply current Heatmap From/To visibility before reading the table.
+            v46Apply();
+
+            const table =
+                document.getElementById('bnHeatV41');
+
+            if (!table) {
+                throw new Error(
+                    'Heatmap table was not found.'
+                );
+            }
+
+            const JsPdfCtor =
+                window.jspdf?.jsPDF ||
+                window.jsPDF;
+
+            if (typeof JsPdfCtor !== 'function') {
+                throw new Error(
+                    'jsPDF is not available on this page.'
+                );
+            }
+
+            const pdf = new JsPdfCtor({
+                orientation: 'landscape',
+                unit: 'mm',
+                format: 'a3',
+                compress: true
+            });
+
+            if (typeof pdf.autoTable !== 'function') {
+                throw new Error(
+                    'jsPDF AutoTable is not available on this page.'
+                );
+            }
+
+            const panel =
+                document.getElementById(
+                    'pmisBottleneckPanelV41'
+                );
+
+            const tools =
+                document.getElementById(
+                    'bnHeatDateToolsV46'
+                );
+
+            const fromValue =
+                tools
+                    ?.querySelector('#bnHeatFromV46')
+                    ?.value || '';
+
+            const toValue =
+                tools
+                    ?.querySelector('#bnHeatToV46')
+                    ?.value || '';
+
+            const modeText =
+                panel
+                    ?.querySelector(
+                        '#bnModeV41 button.active'
+                    )
+                    ?.textContent
+                    ?.trim() ||
+                'Both';
+
+            const teamText =
+                panel
+                    ?.querySelector('#bnTeamFilterV41')
+                    ?.selectedOptions?.[0]
+                    ?.textContent
+                    ?.trim() ||
+                'All Teams / Workstreams';
+
+            const severityText =
+                panel
+                    ?.querySelector('#bnSeverityFilterV41')
+                    ?.selectedOptions?.[0]
+                    ?.textContent
+                    ?.trim() ||
+                'All active loads';
+
+            function cleanText(element) {
+                return String(
+                    element?.innerText ||
+                    element?.textContent ||
+                    ''
+                )
+                    .replace(/\s+/g, ' ')
+                    .trim();
+            }
+
+            // -------------------------------------------------------------
+            // Read ONLY columns that remain visible after the V46 date filter.
+            // Column 0 is Team / Workstream and is always retained.
+            // -------------------------------------------------------------
+            const headerCells = Array.from(
+                table.querySelectorAll('thead th')
+            );
+
+            if (!headerCells.length) {
+                throw new Error(
+                    'Heatmap headers were not found.'
+                );
+            }
+
+            const visibleColumnIndexes =
+                headerCells
+                    .map((th, index) => {
+                        const css =
+                            window.getComputedStyle(th);
+
+                        const hidden =
+                            th.classList.contains(
+                                'bn-v46-date-hidden'
+                            ) ||
+                            css.display === 'none';
+
+                        return {
+                            index,
+                            hidden
+                        };
+                    })
+                    .filter(item => !item.hidden)
+                    .map(item => item.index);
+
+            if (visibleColumnIndexes.length <= 1) {
+                throw new Error(
+                    'No Heatmap weeks are visible in the selected date range.'
+                );
+            }
+
+            const headRow =
+                visibleColumnIndexes.map(index => {
+                    const th =
+                        headerCells[index];
+
+                    return {
+                        content:
+                            cleanText(th) ||
+                            (
+                                index === 0
+                                    ? 'TEAM / WORKSTREAM'
+                                    : '-'
+                            ),
+                        styles: {
+                            fillColor: [240, 245, 249],
+                            textColor: [73, 101, 125],
+                            fontStyle: 'bold',
+                            halign:
+                                index === 0
+                                    ? 'left'
+                                    : 'center',
+                            valign: 'middle'
+                        }
+                    };
+                });
+
+            const bodyRows = [];
+
+            Array.from(
+                table.querySelectorAll('tbody tr')
+            ).forEach(row => {
+                const rowCss =
+                    window.getComputedStyle(row);
+
+                if (
+                    rowCss.display === 'none' ||
+                    row.classList.contains(
+                        'bn-v46-project-management-row'
+                    )
+                ) {
+                    return;
+                }
+
+                const cells =
+                    Array.from(row.cells || []);
+
+                if (!cells.length) return;
+
+                const team =
+                    cleanText(cells[0]);
+
+                // Belt-and-suspenders exclusion:
+                // Project Management never enters the Heatmap PDF.
+                if (
+                    team
+                        .trim()
+                        .toLowerCase() ===
+                    'project management'
+                ) {
+                    return;
+                }
+
+                const rowData =
+                    visibleColumnIndexes.map(index => {
+                        const td =
+                            cells[index];
+
+                        if (!td) {
+                            return {
+                                content: '',
+                                styles: {}
+                            };
+                        }
+
+                        const text =
+                            cleanText(td);
+
+                        if (index === 0) {
+                            return {
+                                content: text,
+                                styles: {
+                                    fillColor:
+                                        [255, 255, 255],
+                                    textColor:
+                                        [11, 43, 74],
+                                    fontStyle: 'bold',
+                                    halign: 'left',
+                                    valign: 'middle'
+                                }
+                            };
+                        }
+
+                        let fillColor =
+                            [248, 250, 252];
+
+                        let textColor =
+                            [100, 116, 139];
+
+                        if (
+                            td.classList.contains(
+                                'bn-normal'
+                            )
+                        ) {
+                            fillColor =
+                                [234, 248, 242];
+                            textColor =
+                                [19, 121, 91];
+                        }
+                        else if (
+                            td.classList.contains(
+                                'bn-moderate'
+                            )
+                        ) {
+                            fillColor =
+                                [255, 247, 223];
+                            textColor =
+                                [161, 98, 7];
+                        }
+                        else if (
+                            td.classList.contains(
+                                'bn-bottleneck'
+                            )
+                        ) {
+                            fillColor =
+                                [255, 240, 240];
+                            textColor =
+                                [194, 65, 65];
+                        }
+                        else if (
+                            td.classList.contains(
+                                'bn-critical'
+                            )
+                        ) {
+                            fillColor =
+                                [255, 225, 225];
+                            textColor =
+                                [142, 27, 27];
+                        }
+
+                        return {
+                            content:
+                                text || '-',
+                            styles: {
+                                fillColor,
+                                textColor,
+                                fontStyle: 'bold',
+                                halign: 'center',
+                                valign: 'middle'
+                            }
+                        };
+                    });
+
+                bodyRows.push(rowData);
+            });
+
+            if (!bodyRows.length) {
+                throw new Error(
+                    'No Heatmap workstreams are available for export.'
+                );
+            }
+
+            const pageWidth =
+                pdf.internal.pageSize.getWidth();
+
+            const margin = 10;
+
+            // -------------------------------------------------------------
+            // PDF HEADER
+            // -------------------------------------------------------------
+            pdf.setTextColor(
+                15,
+                118,
+                110
+            );
+
+            pdf.setFont(
+                'helvetica',
+                'bold'
+            );
+
+            pdf.setFontSize(9);
+
+            pdf.text(
+                'DANPREL PMIS',
+                margin,
+                11
+            );
+
+            pdf.setTextColor(
+                11,
+                43,
+                74
+            );
+
+            pdf.setFontSize(19);
+
+            pdf.text(
+                'Team Bottleneck Heatmap',
+                margin,
+                20
+            );
+
+            pdf.setTextColor(
+                100,
+                116,
+                139
+            );
+
+            pdf.setFont(
+                'helvetica',
+                'normal'
+            );
+
+            pdf.setFontSize(8.5);
+
+            pdf.text(
+                'Schedule-concurrency analysis | Project Management workstream excluded',
+                margin,
+                26
+            );
+
+            pdf.setFont(
+                'helvetica',
+                'bold'
+            );
+
+            pdf.setFontSize(7.5);
+
+            pdf.setTextColor(
+                71,
+                85,
+                105
+            );
+
+            const metaX =
+                pageWidth - margin;
+
+            pdf.text(
+                `Mode: ${modeText}`,
+                metaX,
+                10,
+                { align:'right' }
+            );
+
+            pdf.text(
+                `Workstream: ${teamText}`,
+                metaX,
+                15,
+                { align:'right' }
+            );
+
+            pdf.text(
+                `Severity: ${severityText}`,
+                metaX,
+                20,
+                { align:'right' }
+            );
+
+            const dateText =
+                fromValue || toValue
+                    ? `${fromValue || 'Start'} to ${toValue || 'End'}`
+                    : 'All visible dates';
+
+            pdf.text(
+                `Date: ${dateText}`,
+                metaX,
+                25,
+                { align:'right' }
+            );
+
+            // -------------------------------------------------------------
+            // LEGEND
+            // -------------------------------------------------------------
+            const legendY = 33;
+
+            const legend = [
+                {
+                    label:'1 Normal',
+                    fill:[234,248,242],
+                    text:[19,121,91]
+                },
+                {
+                    label:'2 Moderate',
+                    fill:[255,247,223],
+                    text:[161,98,7]
+                },
+                {
+                    label:'3 Bottleneck',
+                    fill:[255,240,240],
+                    text:[194,65,65]
+                },
+                {
+                    label:'4+ Critical',
+                    fill:[255,225,225],
+                    text:[142,27,27]
+                }
+            ];
+
+            let legendX = margin;
+
+            legend.forEach(item => {
+                const width =
+                    pdf.getTextWidth(
+                        item.label
+                    ) + 8;
+
+                pdf.setFillColor(
+                    ...item.fill
+                );
+
+                pdf.roundedRect(
+                    legendX,
+                    legendY - 4.2,
+                    width,
+                    6.2,
+                    2,
+                    2,
+                    'F'
+                );
+
+                pdf.setTextColor(
+                    ...item.text
+                );
+
+                pdf.setFont(
+                    'helvetica',
+                    'bold'
+                );
+
+                pdf.setFontSize(7);
+
+                pdf.text(
+                    item.label,
+                    legendX + 4,
+                    legendY
+                );
+
+                legendX +=
+                    width + 3;
+            });
+
+            // -------------------------------------------------------------
+            // VECTOR HEATMAP TABLE
+            //
+            // No canvas.
+            // No html2pdf.
+            // No supporting detail pane.
+            //
+            // AutoTable handles long timelines by splitting horizontally
+            // across A3 landscape pages and repeating column 0.
+            // -------------------------------------------------------------
+            pdf.autoTable({
+                startY: 39,
+                head: [headRow],
+                body: bodyRows,
+                margin: {
+                    left: margin,
+                    right: margin,
+                    bottom: 16
+                },
+                theme: 'grid',
+                styles: {
+                    font: 'helvetica',
+                    fontSize: 6.4,
+                    cellPadding: 2.1,
+                    lineColor:
+                        [226, 232, 240],
+                    lineWidth: 0.2,
+                    minCellHeight: 9,
+                    overflow: 'linebreak'
+                },
+                headStyles: {
+                    minCellHeight: 10
+                },
+                columnStyles: {
+                    0: {
+                        cellWidth: 38,
+                        fontStyle: 'bold',
+                        halign: 'left'
+                    }
+                },
+                horizontalPageBreak: true,
+                horizontalPageBreakRepeat: 0,
+                horizontalPageBreakBehaviour:
+                    'immediately',
+                didDrawPage: function () {
+                    const currentWidth =
+                        pdf.internal.pageSize.getWidth();
+
+                    const currentHeight =
+                        pdf.internal.pageSize.getHeight();
+
+                    pdf.setDrawColor(
+                        226,
+                        232,
+                        240
+                    );
+
+                    pdf.line(
+                        margin,
+                        currentHeight - 11,
+                        currentWidth - margin,
+                        currentHeight - 11
+                    );
+
+                    pdf.setFont(
+                        'helvetica',
+                        'normal'
+                    );
+
+                    pdf.setTextColor(
+                        100,
+                        116,
+                        139
+                    );
+
+                    pdf.setFontSize(6.5);
+
+                    pdf.text(
+                        'Interpretation: 1 project = Normal, 2 = Moderate, 3 = Bottleneck, 4+ = Critical. Schedule-concurrency analysis, not manpower utilization.',
+                        margin,
+                        currentHeight - 7
+                    );
+
+                    pdf.text(
+                        `Page ${pdf.internal.getCurrentPageInfo().pageNumber}`,
+                        currentWidth - margin,
+                        currentHeight - 7,
+                        { align:'right' }
+                    );
+                }
+            });
+
+            const stamp =
+                new Date()
+                    .toISOString()
+                    .replace(
+                        /[:T]/g,
+                        '-'
+                    )
+                    .replace(
+                        /\..+/,
+                        ''
+                    );
+
+            const rangePart =
+                fromValue || toValue
+                    ? `_${fromValue || 'start'}_to_${toValue || 'end'}`
+                    : '';
+
+            pdf.save(
+                `DANPREL_PMIS_Heatmap${rangePart}_${stamp}.pdf`
+            );
+
+        } catch (error) {
+            console.error(
+                '[PMIS Heatmap V46H Vector Export]',
+                error
+            );
+
+            alert(
+                'Heatmap PDF export failed: ' +
+                (
+                    error?.message ||
+                    error
+                )
+            );
+        }
+    }
+    /* PMIS_HEATMAP_VECTOR_EXPORT_V46H_END */
+    async function v46ExportHeatmapPdf() {
+        let shell = null;
+
+        try {
+            if (typeof html2pdf !== 'function') {
+                throw new Error(
+                    'PDF export library is not available on this page.'
+                );
+            }
+
+            const panel = document.getElementById(
+                'pmisBottleneckPanelV41'
+            );
+
+            if (!panel) {
+                throw new Error(
+                    'Bottleneck heatmap panel was not found.'
+                );
+            }
+
+            const heatmap = v46VisibleHeatmapClone();
+            const legend = panel.querySelector('.bn-legend')?.cloneNode(true);
+
+            const tools = document.getElementById('bnHeatDateToolsV46');
+            const fromValue =
+                tools?.querySelector('#bnHeatFromV46')?.value || '';
+            const toValue =
+                tools?.querySelector('#bnHeatToV46')?.value || '';
+
+            const modeButton = panel.querySelector(
+                '#bnModeV41 button.active'
+            );
+
+            const teamSelect = panel.querySelector(
+                '#bnTeamFilterV41'
+            );
+
+            const severitySelect = panel.querySelector(
+                '#bnSeverityFilterV41'
+            );
+
+            const modeText =
+                modeButton?.textContent?.trim() || 'Both';
+
+            const teamText =
+                teamSelect?.selectedOptions?.[0]?.textContent?.trim() ||
+                'All Teams / Workstreams';
+
+            const severityText =
+                severitySelect?.selectedOptions?.[0]?.textContent?.trim() ||
+                'All active loads';
+
+            shell = document.createElement('div');
+            shell.id = 'pmisHeatmapExportShellV46';
+
+            shell.style.position = 'fixed';
+            shell.style.left = '0';
+            shell.style.top = '0';
+            shell.style.zIndex = '2147483647';
+            shell.style.background = '#fff';
+            shell.style.padding = '28px';
+            shell.style.boxSizing = 'border-box';
+            shell.style.pointerEvents = 'none';
+            shell.style.visibility = 'visible';
+            shell.style.opacity = '1';
+            shell.style.overflow = 'visible';
+
+            shell.innerHTML = `
+                <div style="display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin-bottom:16px;">
+                    <div>
+                        <div style="font-size:11px;font-weight:900;color:#0f766e;text-transform:uppercase;letter-spacing:.08em;">
+                            DANPREL PMIS
+                        </div>
+                        <div style="font-size:24px;font-weight:950;color:#0b2b4a;margin-top:4px;">
+                            Team Bottleneck Heatmap
+                        </div>
+                        <div style="font-size:12px;font-weight:700;color:#64748b;margin-top:5px;">
+                            Schedule-concurrency view • Project Management workstream excluded
+                        </div>
+                    </div>
+
+                    <div style="font-size:11px;font-weight:800;color:#475569;text-align:right;line-height:1.7;">
+                        <div><b>Mode:</b> ${v46Esc(modeText)}</div>
+                        <div><b>Workstream:</b> ${v46Esc(teamText)}</div>
+                        <div><b>Severity:</b> ${v46Esc(severityText)}</div>
+                        <div><b>Date:</b> ${v46Esc(
+                            fromValue || toValue
+                                ? `${fromValue || 'Start'} to ${toValue || 'End'}`
+                                : 'All visible dates'
+                        )}</div>
+                    </div>
+                </div>
+            `;
+
+            if (legend) {
+                const legendWrap = document.createElement('div');
+                legendWrap.style.marginBottom = '14px';
+                legendWrap.appendChild(legend);
+                shell.appendChild(legendWrap);
+            }
+
+            const wrap = document.createElement('div');
+            wrap.className = 'bn-heat-wrap';
+            wrap.style.overflow = 'visible';
+            wrap.style.maxWidth = 'none';
+            wrap.style.width = 'max-content';
+            wrap.appendChild(heatmap);
+
+            shell.appendChild(wrap);
+
+            const footer = document.createElement('div');
+            footer.style.marginTop = '14px';
+            footer.style.paddingTop = '10px';
+            footer.style.borderTop = '1px solid #e2e8f0';
+            footer.style.fontSize = '10px';
+            footer.style.fontWeight = '750';
+            footer.style.color = '#64748b';
+            footer.textContent =
+                'Interpretation: 1 project = Normal, 2 = Moderate, 3 = Bottleneck, 4+ = Critical. This is schedule-concurrency analysis, not manpower utilization.';
+
+            shell.appendChild(footer);
+
+            document.body.appendChild(shell);
+
+            const tableWidth =
+                heatmap.scrollWidth ||
+                heatmap.getBoundingClientRect().width ||
+                1100;
+
+            shell.style.width =
+                Math.max(1200, tableWidth + 56) + 'px';
+
+            const stamp = new Date()
+                .toISOString()
+                .replace(/[:T]/g, '-')
+                .replace(/\..+/, '');
+
+            const rangePart =
+                (fromValue || toValue)
+                    ? `_${fromValue || 'start'}_to_${toValue || 'end'}`
+                    : '';
+
+            // Give the browser two paint cycles so the cloned heatmap has real dimensions.
+            await new Promise(resolve => {
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(resolve);
+                });
+            });
+
+            const exportWidth = Math.max(
+                1200,
+                shell.scrollWidth || 0,
+                tableWidth + 56
+            );
+
+            const exportHeight = Math.max(
+                700,
+                shell.scrollHeight || 0
+            );
+
+            // PMIS V46D:
+            // Capture the dedicated Heatmap export DOM directly with html2canvas
+            // and write that canvas into jsPDF. This avoids html2pdf's pagebreak
+            // pipeline, which was producing a blank PDF for this wide table.
+
+            // PMIS V46E:
+            // html2pdf.bundle already contains the html2canvas engine internally,
+            // but this PMIS page does not expose a standalone window.html2canvas.
+            // Use html2pdf's Worker.toCanvas() to obtain the real rendered canvas,
+            // then pass that canvas to the already-loaded jsPDF library.
+
+            if (typeof html2pdf !== 'function') {
+                throw new Error(
+                    'html2pdf is not available on this page.'
+                );
+            }
+
+            const JsPdfCtor =
+                window.jspdf?.jsPDF ||
+                window.jsPDF;
+
+            if (typeof JsPdfCtor !== 'function') {
+                throw new Error(
+                    'jsPDF is not available on this page.'
+                );
+            }
+
+            const canvasWorker = html2pdf()
+                .set({
+                    html2canvas: {
+                        scale: 1.5,
+                        useCORS: true,
+                        backgroundColor: '#ffffff',
+                        logging: false,
+                        scrollX: 0,
+                        scrollY: 0,
+                        windowWidth: exportWidth,
+                        windowHeight: exportHeight
+                    }
+                })
+                .from(shell)
+                .toCanvas();
+
+            await canvasWorker;
+
+            const canvas =
+                await canvasWorker.get('canvas');
+
+            if (
+                !canvas ||
+                !canvas.width ||
+                !canvas.height
+            ) {
+                throw new Error(
+                    'Heatmap canvas was empty.'
+                );
+            }
+
+            const pdf = new JsPdfCtor({
+                orientation: 'landscape',
+                unit: 'mm',
+                format: 'a3',
+                compress: true
+            });
+
+            const pageWidth =
+                pdf.internal.pageSize.getWidth();
+
+            const pageHeight =
+                pdf.internal.pageSize.getHeight();
+
+            const margin = 7;
+
+            const usableWidth =
+                pageWidth - (margin * 2);
+
+            const usableHeight =
+                pageHeight - (margin * 2);
+
+            const fitScale = Math.min(
+                usableWidth / canvas.width,
+                usableHeight / canvas.height
+            );
+
+            const drawWidth =
+                canvas.width * fitScale;
+
+            const drawHeight =
+                canvas.height * fitScale;
+
+            const drawX =
+                (pageWidth - drawWidth) / 2;
+
+            const drawY =
+                (pageHeight - drawHeight) / 2;
+
+            const imageData =
+                canvas.toDataURL(
+                    'image/png',
+                    1.0
+                );
+
+            pdf.addImage(
+                imageData,
+                'PNG',
+                drawX,
+                drawY,
+                drawWidth,
+                drawHeight,
+                undefined,
+                'FAST'
+            );
+
+            pdf.save(
+                `DANPREL_PMIS_Heatmap${rangePart}_${stamp}.pdf`
+            );
+
+        } catch (error) {
+            console.error(
+                '[PMIS Heatmap V46 Export]',
+                error
+            );
+
+            alert(
+                'Heatmap PDF export failed: ' +
+                (error?.message || error)
+            );
+        } finally {
+            if (shell) shell.remove();
+        }
+    }
+
+    window.exportPMISHeatmapPdfV46 =
+        v46ExportHeatmapPdfVectorV46H;
+
+    // Install immediately if the panel already exists.
+    if (!v46Install()) {
+        // Otherwise wait only for the bottleneck panel to be created.
+        v46BodyObserver = new MutationObserver(() => {
+            if (v46Install()) {
+                v46BodyObserver.disconnect();
+                v46BodyObserver = null;
+            }
+        });
+
+        v46BodyObserver.observe(
+            document.body,
+            {
+                childList:true,
+                subtree:true
+            }
+        );
+    }
+
+    document.addEventListener(
+        'DOMContentLoaded',
+        () => {
+            v46Install();
+            setTimeout(v46Install, 100);
+            setTimeout(v46Install, 500);
+        },
+        { once:true }
+    );
+
+    window.addEventListener(
+        'load',
+        () => {
+            setTimeout(v46Install, 100);
+        },
+        { once:true }
+    );
+})();
+</script>
+<!-- PMIS_HEATMAP_V46_END -->
 </body>
 
 </html>

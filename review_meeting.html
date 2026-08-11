@@ -993,6 +993,39 @@
             };
         })();
     </script>
+
+<script id="pmis-lead-view-v51e-review-guard">
+(function () {
+    "use strict";
+
+    // PMIS_LEAD_VIEW_V51E
+    const authRole = String(
+        localStorage.getItem('danprel_auth_role') || ''
+    ).trim().toLowerCase();
+
+    const username = String(
+        localStorage.getItem('danprel_username') || ''
+    ).trim().toLowerCase();
+
+    const isLeadView =
+        authRole === 'lead_view' ||
+        username === 'projects@danprel' ||
+        username === 'project@danprel';
+
+    if (!isLeadView) return;
+
+    document.documentElement.style.display = 'none';
+
+    try {
+        sessionStorage.setItem(
+            'pmis_lead_view_notice_v51e',
+            'Review Meeting access is not available in Lead View.'
+        );
+    } catch (_error) {}
+
+    window.location.replace('project_review.html');
+})();
+</script>
 </head>
 
 <body>

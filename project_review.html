@@ -6981,104 +6981,339 @@ const pageCount = doc.internal.getNumberOfPages();
         // EXPORT ALL ACTION POINTS FEATURE
         // =====================================================================
 
-        function openActionPointExport() {
-            // PMIS_ACTION_PROJECT_ZERO_LIST_V30
-            // Admin sees every project. Individual credentials see only projects
-            // assigned to their login, including projects with zero exportable
-            // action points so the missing follow-up is visible as 0/0.
-            document.getElementById('sidebar').classList.remove('active');
-            document.getElementById('sidebarOverlay').classList.remove('active');
+        async function openActionPointExport() {
+    // PMIS V44 - TARGETED FIX ONLY
+    // Rule:
+    //   1) "projects" is already scoped by the logged-in user's project access.
+    //   2) For EACH visible/associated project, load the SAME project-specific
+    //      action-point endpoint used by the Review Meeting page.
+    //   3) Do not filter action points by responsible person's identity.
+    //   4) GET only. No action point or project data is written.
 
-            const isAdmin = typeof isAdminDashboardLogin === 'function'
-                ? isAdminDashboardLogin()
-                : String(localStorage.getItem('danprel_role') || '').toLowerCase() === 'admin';
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    if (sidebar) sidebar.classList.remove('active');
+    if (overlay) overlay.classList.remove('active');
 
-            const eligibleProjects = (Array.isArray(projects) ? projects : [])
-                .filter(project => {
-                    if (isAdmin) return true;
-                    if (typeof isProjectAssociatedWithCurrentLogin === 'function') {
-                        return isProjectAssociatedWithCurrentLogin(project);
-                    }
-                    if (typeof pmisCanModifyProjectV24 === 'function') {
-                        return pmisCanModifyProjectV24(project);
-                    }
-                    return false;
-                })
-                .map(project => {
-                    const visibleMeetings = typeof pmisFilterActionPointsForCurrentLogin === 'function'
-                        ? pmisFilterActionPointsForCurrentLogin(project.meetings || [])
-                        : (project.meetings || []).slice();
-                    const completed = visibleMeetings.filter(item => {
-                        const status = String(item?.statusValue || '').trim().toLowerCase();
-                        return status === 'completed' || status === 'resolved' || status === 'closed';
-                    }).length;
-                    return {
-                        project,
-                        visibleMeetings,
-                        completed,
-                        total: visibleMeetings.length
-                    };
-                })
-                .sort((a, b) => {
-                    if ((b.total > 0) !== (a.total > 0)) return b.total > 0 ? 1 : -1;
-                    return String(a.project.code || a.project.name || '').localeCompare(
-                        String(b.project.code || b.project.name || ''),
-                        undefined,
-                        { numeric: true, sensitivity: 'base' }
-                    );
-                });
+    const list = document.getElementById('apProjectList');
+    const selectAll = document.getElementById('apSelectAll');
+    const searchInput = document.getElementById('apSearchInput');
+    const selectedCount = document.getElementById('apSelectedCount');
+    const modalEl = document.getElementById('actionExportModal');
 
-            const list = document.getElementById('apProjectList');
-            document.getElementById('apSelectAll').checked = false;
-            document.getElementById('apSearchInput').value = '';
-            document.getElementById('apSelectedCount').innerText = '0 selected';
-
-            if (eligibleProjects.length === 0) {
-                const emptyText = isAdmin
-                    ? 'No projects are available.'
-                    : 'No projects are associated with this login.';
-                list.innerHTML = `<div style="text-align:center; padding:40px; color:#94a3b8; font-weight:700;"><i class="bi bi-inbox" style="font-size:2rem; display:block; margin-bottom:10px;"></i>${emptyText}</div>`;
-            } else {
-                list.innerHTML = eligibleProjects.map(bundle => {
-                    const p = bundle.project;
-                    const completed = bundle.completed;
-                    const total = bundle.total;
-                    const hasActions = total > 0;
-                    const badgeBackground = !hasActions
-                        ? '#f1f5f9'
-                        : (completed === total ? '#dcfce7' : '#eef2ff');
-                    const badgeColor = !hasActions
-                        ? '#64748b'
-                        : (completed === total ? '#16a34a' : '#475569');
-                    const rowBackground = hasActions ? '#ffffff' : '#f8fafc';
-                    const rowCursor = hasActions ? 'pointer' : 'default';
-                    const disabledText = hasActions
-                        ? ''
-                        : '<span style="font-size:0.67rem; color:#94a3b8; font-weight:800; margin-left:7px;">NO ACTION POINTS</span>';
-
-                    return `
-                    <label class="ap-project-row" data-name="${(p.name || '').toLowerCase()} ${(p.code || '').toLowerCase()} ${(p.customer_name || '').toLowerCase()}" style="display:flex; align-items:center; gap:14px; padding:12px 10px; border-radius:12px; cursor:${rowCursor}; border:1.5px solid #e2e8f0; margin-bottom:8px; background:${rowBackground}; transition:border-color .15s;" onmouseover="if(!this.querySelector('input').disabled)this.style.borderColor='#0284c7'" onmouseout="if(!this.querySelector('input').disabled)this.style.borderColor=this.querySelector('input').checked?'#0284c7':'#e2e8f0';">
-                        <input type="checkbox" class="ap-proj-cb" data-proj-id="${p._id}" ${hasActions ? '' : 'disabled'} onchange="apUpdateCount(); this.closest('label').style.borderColor=this.checked?'#0284c7':'#e2e8f0';" style="width:18px;height:18px;accent-color:#0284c7; flex-shrink:0; ${hasActions ? '' : 'cursor:not-allowed;'}">
-                        <div style="flex:1; min-width:0;">
-                            <div style="font-weight:800; color:#001f3f; font-size:0.92rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${p.code || '-'} - ${p.name || 'Unnamed Project'} ${disabledText}</div>
-                            <div style="font-size:0.75rem; color:#64748b; margin-top:2px;">${p.customer_name || '-'} &nbsp;|&nbsp; ${total} action point${total !== 1 ? 's' : ''}, ${completed} completed</div>
-                        </div>
-                        <div style="text-align:right; flex-shrink:0;">
-                            <span style="background:${badgeBackground}; color:${badgeColor}; font-size:0.72rem; font-weight:800; padding:3px 9px; border-radius:20px;">${completed}/${total}</span>
-                        </div>
-                    </label>`;
-                }).join('');
-            }
-
-            const footerNote = document.getElementById('apProjectScopeNoteV30');
-            if (footerNote) {
-                footerNote.textContent = isAdmin
-                    ? 'All projects are shown. Projects without action points appear as 0/0.'
-                    : 'Only your associated projects are shown. Projects without exportable action points appear as 0/0.';
-            }
-
-            bootstrap.Modal.getOrCreateInstance(document.getElementById('actionExportModal')).show();
+    if (!list || !modalEl) {
+        console.error('[PMIS V44] Action Point export modal elements were not found.');
+        if (typeof showToast === 'function') {
+            showToast('Action Point export window could not be opened.', true);
         }
+        return;
+    }
+
+    if (selectAll) selectAll.checked = false;
+    if (searchInput) searchInput.value = '';
+    if (selectedCount) selectedCount.innerText = '0 selected';
+    if (typeof apSetOwnerFilterV49B === 'function') apSetOwnerFilterV49B('all');
+    list.innerHTML = `
+        <div style="text-align:center; padding:34px; color:#64748b; font-weight:700;">
+            <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+            Loading project action points...
+        </div>`;
+
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+
+    // PMIS V45B - ASSOCIATED PROJECTS ONLY
+    // Use the same project set already rendered for this logged-in user.
+    // This is read-only and fail-closed.
+
+    const dashboardRows = Array.from(
+        document.querySelectorAll('#projectTableBody tr')
+    );
+
+    const allowedIds = new Set();
+    const allowedCodes = new Set();
+
+    const normalizeProjectKey = value =>
+        String(value ?? '').trim().toLowerCase();
+
+    dashboardRows.forEach(row => {
+        if (!row) return;
+
+        const style = window.getComputedStyle
+            ? window.getComputedStyle(row)
+            : null;
+
+        const isVisible =
+            (!style || style.display !== 'none') &&
+            row.style.display !== 'none';
+
+        if (!isVisible) return;
+
+        const rowId = String(
+            row.dataset?.projId ||
+            row.getAttribute('data-proj-id') ||
+            ''
+        ).trim();
+
+        if (rowId) {
+            allowedIds.add(rowId);
+        }
+
+        const codeBadge = row.querySelector('.cell-code-badge');
+
+        const codeFromBadge = normalizeProjectKey(
+            codeBadge?.textContent || ''
+        );
+
+        if (codeFromBadge) {
+            allowedCodes.add(codeFromBadge);
+        }
+
+        if (!codeFromBadge && row.cells && row.cells[2]) {
+            const codeFromCell = normalizeProjectKey(
+                row.cells[2].textContent || ''
+            );
+
+            if (codeFromCell) {
+                allowedCodes.add(codeFromCell);
+            }
+        }
+    });
+
+    const scopedProjects = Array.isArray(projects)
+        ? projects.filter(p => {
+            if (!p || !p._id) return false;
+
+            const id = String(p._id).trim();
+
+            const code = normalizeProjectKey(
+                p.code ||
+                p.project_code ||
+                ''
+            );
+
+            return (
+                allowedIds.has(id) ||
+                (!!code && allowedCodes.has(code))
+            );
+        })
+        : [];
+
+    if (scopedProjects.length === 0) {
+        list.innerHTML = `
+            <div style="text-align:center; padding:40px; color:#94a3b8; font-weight:700;">
+                <i class="bi bi-shield-lock" style="font-size:2rem; display:block; margin-bottom:10px;"></i>
+                No associated projects are available in the current dashboard view.
+            </div>`;
+
+        console.warn(
+            '[PMIS V45B] No associated dashboard projects could be proven, so export is blocked.'
+        );
+
+        return;
+    }
+
+    // Native XMLHttpRequest is intentionally used instead of window.fetch.
+    // This keeps the export lookup independent from any page-level fetch wrapper
+    // used for individual-login dashboard scoping.
+    function loadProjectActionPoints(projectId) {
+        return new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            const url =
+                '/api/action-points?projectId=' +
+                encodeURIComponent(projectId) +
+                '&t=' +
+                Date.now();
+
+            xhr.open('GET', url, true);
+            xhr.setRequestHeader('Accept', 'application/json');
+
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState !== 4) return;
+
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    try {
+                        const data = JSON.parse(xhr.responseText || '[]');
+
+                        if (!Array.isArray(data)) {
+                            reject(new Error('Action Point API returned a non-array response.'));
+                            return;
+                        }
+
+                        resolve(data);
+                    } catch (error) {
+                        reject(error);
+                    }
+
+                    return;
+                }
+
+                reject(
+                    new Error(
+                        'Action Point request failed with HTTP ' +
+                        xhr.status
+                    )
+                );
+            };
+
+            xhr.onerror = function () {
+                reject(new Error('Network error while loading Action Points.'));
+            };
+
+            xhr.send();
+        });
+    }
+
+    // Keep request pressure low for Admin / larger project lists.
+    const queue = scopedProjects.slice();
+    const workerCount = Math.min(6, Math.max(1, queue.length));
+    let failedProjects = 0;
+
+    async function worker() {
+        while (queue.length > 0) {
+            const p = queue.shift();
+            if (!p) continue;
+
+            try {
+                const records = await loadProjectActionPoints(p._id);
+
+                // In-memory refresh only. MongoDB is not modified.
+                p.meetings = records;
+            } catch (error) {
+                failedProjects += 1;
+
+                console.warn(
+                    '[PMIS V44] Could not refresh Action Points for project',
+                    p.code || p.name || p._id,
+                    error
+                );
+
+                // Never erase previously loaded in-memory records on a failed GET.
+                if (!Array.isArray(p.meetings)) {
+                    p.meetings = [];
+                }
+            }
+        }
+    }
+
+    await Promise.all(
+        Array.from({ length: workerCount }, () => worker())
+    );
+
+    // Correct behavior of this modal:
+    // only projects that truly have action points are listed.
+    const withMeetings = scopedProjects.filter(
+        p => Array.isArray(p.meetings) && p.meetings.length > 0
+    );
+
+    function esc(value) {
+        return String(value ?? '').replace(/[&<>"']/g, function (char) {
+            return {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            }[char];
+        });
+    }
+
+    function isCompleted(record) {
+        const status = String(
+            record?.statusValue ??
+            record?.status ??
+            ''
+        ).trim().toLowerCase();
+
+        return status === 'completed' || status === 'resolved';
+    }
+
+    if (withMeetings.length === 0) {
+        list.innerHTML = `
+            <div style="text-align:center; padding:40px; color:#94a3b8; font-weight:700;">
+                <i class="bi bi-inbox" style="font-size:2rem; display:block; margin-bottom:10px;"></i>
+                No projects have action points yet.
+            </div>`;
+    } else {
+        list.innerHTML = withMeetings.map(p => {
+            const records = Array.isArray(p.meetings) ? p.meetings : [];
+            const total = records.length;
+            const completed = records.filter(isCompleted).length;
+
+            const code = p.code || p.project_code || '';
+            const name = p.name || p.project_name || '';
+            const customer =
+                p.customer_name ||
+                p.customerName ||
+                p.customer ||
+                '—';
+
+            const searchName =
+                (String(name) + ' ' + String(code)).toLowerCase();
+
+            return `
+                <label
+                    class="ap-project-row"
+                    data-name="${esc(searchName)}"
+                    style="display:flex; align-items:center; gap:14px; padding:12px 10px; border-radius:12px; cursor:pointer; border:1.5px solid #e2e8f0; margin-bottom:8px; background:white; transition:border-color .15s;"
+                    onmouseover="this.style.borderColor='#0284c7'"
+                    onmouseout="if(!this.querySelector('input').checked)this.style.borderColor='#e2e8f0'; else this.style.borderColor='#0284c7';"
+                >
+                    <input
+                        type="checkbox"
+                        class="ap-proj-cb"
+                        data-proj-id="${esc(p._id)}"
+                        onchange="apUpdateCount(); this.closest('label').style.borderColor=this.checked?'#0284c7':'#e2e8f0';"
+                        style="width:18px;height:18px;accent-color:#0284c7; flex-shrink:0;"
+                    >
+
+                    <div style="flex:1; min-width:0;">
+                        <div style="font-weight:800; color:#001f3f; font-size:0.92rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                            ${esc(code)} — ${esc(name)}
+                        </div>
+
+                        <div style="font-size:0.75rem; color:#64748b; margin-top:2px;">
+                            ${esc(customer)}
+                            &nbsp;|&nbsp;
+                            ${total} action point${total !== 1 ? 's' : ''},
+                            ${completed} completed
+                        </div>
+                    </div>
+
+                    <div style="text-align:right; flex-shrink:0;">
+                        <span
+                            style="
+                                background:${completed === total ? '#dcfce7' : '#f1f5f9'};
+                                color:${completed === total ? '#16a34a' : '#475569'};
+                                font-size:0.72rem;
+                                font-weight:800;
+                                padding:3px 9px;
+                                border-radius:20px;
+                            "
+                        >${completed}/${total}</span>
+                    </div>
+                </label>`;
+        }).join('');
+    }
+
+    if (failedProjects > 0 && typeof showToast === 'function') {
+        showToast(
+            failedProjects +
+            ' project' +
+            (failedProjects === 1 ? '' : 's') +
+            ' could not be refreshed. Existing loaded data was retained.',
+            true
+        );
+    }
+
+    console.log(
+        '[PMIS V44] Action Point export refreshed from project-specific endpoints:',
+        {
+            scopedProjects: scopedProjects.length,
+            projectsWithActionPoints: withMeetings.length,
+            failedProjects
+        }
+    );
+}
 
         function apToggleAll(checked) {
             // PMIS_ACTION_PROJECT_ZERO_LIST_V30
@@ -7145,12 +7380,156 @@ const pageCount = doc.internal.getNumberOfPages();
 
         // ---- PDF EXPORT ----
         // PMIS_EXPORT_REPORT_ENHANCEMENTS_V26
+        // PMIS_ACTION_POINT_EXPORT_OWNER_FILTER_V49B
+        function pmisV49BNormalize(value) {
+            return String(value ?? '')
+                .replace(/\s+/g, ' ')
+                .trim()
+                .toLowerCase();
+        }
+
+        function pmisV49BActionOwnerType(item) {
+            const explicit = pmisV49BNormalize(
+                item?.responsibilityType ??
+                item?.ownerType ??
+                item?.owner_type ??
+                ''
+            );
+
+            if (explicit === 'customer') return 'customer';
+
+            if (
+                explicit === 'inhouse' ||
+                explicit === 'in-house' ||
+                explicit === 'danprel'
+            ) {
+                return 'inhouse';
+            }
+
+            const person = pmisV49BNormalize(
+                item?.personName ??
+                item?.responsiblePerson ??
+                item?.responsible_person ??
+                ''
+            );
+
+            const email = String(
+                item?.email ?? ''
+            ).trim();
+
+            // Current Inhouse employee records carry the selected employee email.
+            if (email) return 'inhouse';
+
+            // Generic Inhouse ownership created by the Action Point input pane.
+            if (
+                person === 'danprel (inhouse)' ||
+                person === 'danprel' ||
+                person === 'inhouse' ||
+                person === 'in-house' ||
+                person.includes('danprel (inhouse)')
+            ) {
+                return 'inhouse';
+            }
+
+            // Customer records use "Customer" OR a typed customer-side name,
+            // and do not carry a Danprel employee email.
+            if (person) return 'customer';
+
+            // Preserve older unassigned records as internal by default.
+            return 'inhouse';
+        }
+
+        function pmisV49BCurrentOwnerFilter() {
+            const active = document.querySelector(
+                '#apOwnerFilterV49B .ap-owner-filter-v49b.active'
+            );
+
+            const value = pmisV49BNormalize(
+                active?.dataset?.owner || 'all'
+            );
+
+            return ['all', 'inhouse', 'customer'].includes(value)
+                ? value
+                : 'all';
+        }
+
+        function pmisV49BFilterRows(rows) {
+            const list = Array.isArray(rows)
+                ? rows
+                : [];
+
+            const mode = pmisV49BCurrentOwnerFilter();
+
+            if (mode === 'all') {
+                return list.slice();
+            }
+
+            return list.filter(item =>
+                pmisV49BActionOwnerType(item) === mode
+            );
+        }
+
+        function apSetOwnerFilterV49B(mode, clickedButton) {
+            const requested = pmisV49BNormalize(mode);
+
+            const normalized =
+                ['all', 'inhouse', 'customer'].includes(requested)
+                    ? requested
+                    : 'all';
+
+            const root =
+                document.getElementById('apOwnerFilterV49B');
+
+            if (!root) return;
+
+            root.querySelectorAll(
+                '.ap-owner-filter-v49b'
+            ).forEach(button => {
+                const active =
+                    pmisV49BNormalize(button.dataset.owner) === normalized;
+
+                button.classList.toggle(
+                    'active',
+                    active
+                );
+
+                button.style.background =
+                    active
+                        ? '#0f766e'
+                        : 'transparent';
+
+                button.style.color =
+                    active
+                        ? '#ffffff'
+                        : '#334155';
+
+                button.style.borderColor =
+                    active
+                        ? '#0f766e'
+                        : 'transparent';
+
+                button.setAttribute(
+                    'aria-pressed',
+                    active ? 'true' : 'false'
+                );
+            });
+
+            if (
+                clickedButton &&
+                typeof clickedButton.blur === 'function'
+            ) {
+                clickedButton.blur();
+            }
+        }
         function pmisV26VisibleActionRows(project) {
             const rows = Array.isArray(project?.meetings) ? project.meetings : [];
             const filtered = typeof pmisFilterActionPointsForCurrentLogin === 'function'
                 ? pmisFilterActionPointsForCurrentLogin(rows)
                 : rows.slice();
-            return filtered.slice().sort((a, b) => new Date(b.reviewDate || 0) - new Date(a.reviewDate || 0));
+            const ownerFiltered = typeof pmisV49BFilterRows === 'function'
+                ? pmisV49BFilterRows(filtered)
+                : filtered.slice();
+            return ownerFiltered.slice().sort((a, b) => new Date(b.reviewDate || 0) - new Date(a.reviewDate || 0));
         }
 
         function pmisV26ActionCounts(rows) {
@@ -7671,6 +8050,36 @@ const pageCount = doc.internal.getNumberOfPages();
                         </label>
                         <div style="flex:1; min-width:180px;">
                             <input type="text" id="apSearchInput" placeholder="Search project..." oninput="apFilterList()" style="width:100%; border:1.5px solid #e2e8f0; border-radius:10px; padding:8px 14px; font-size:0.88rem; font-family:inherit; outline:none;">
+                        </div>
+                        <!-- PMIS_ACTION_POINT_EXPORT_OWNER_FILTER_V49B -->
+                        <div id="apOwnerFilterV49B"
+                             title="Filter Action Points included in PDF / Excel"
+                             style="display:inline-flex; align-items:center; gap:4px; padding:4px; border:1px solid #dbe4ee; border-radius:11px; background:#eef3f8; flex-shrink:0;">
+                            <span style="font-size:0.68rem; font-weight:900; color:#64748b; text-transform:uppercase; letter-spacing:.04em; padding:0 4px 0 3px;">Owner</span>
+
+                            <button type="button"
+                                    class="ap-owner-filter-v49b active"
+                                    data-owner="all"
+                                    onclick="apSetOwnerFilterV49B('all', this)"
+                                    style="height:31px; padding:0 11px; border-radius:8px; border:1px solid #0f766e; background:#0f766e; color:#fff; font-size:0.74rem; font-weight:800; cursor:pointer;">
+                                All
+                            </button>
+
+                            <button type="button"
+                                    class="ap-owner-filter-v49b"
+                                    data-owner="inhouse"
+                                    onclick="apSetOwnerFilterV49B('inhouse', this)"
+                                    style="height:31px; padding:0 11px; border-radius:8px; border:1px solid transparent; background:transparent; color:#334155; font-size:0.74rem; font-weight:800; cursor:pointer;">
+                                Inhouse
+                            </button>
+
+                            <button type="button"
+                                    class="ap-owner-filter-v49b"
+                                    data-owner="customer"
+                                    onclick="apSetOwnerFilterV49B('customer', this)"
+                                    style="height:31px; padding:0 11px; border-radius:8px; border:1px solid transparent; background:transparent; color:#334155; font-size:0.74rem; font-weight:800; cursor:pointer;">
+                                Customer
+                            </button>
                         </div>
                         <span id="apSelectedCount" style="font-size:0.82rem; color:#64748b; font-weight:700; white-space:nowrap;">0 selected</span>
                     </div>
@@ -8582,6 +8991,1898 @@ function getFilteredProjects() {
             renderProjectCalendarV34();
         }
     };
+</script>
+
+<!-- PMIS_CURRENT_PHASE_RUNTIME_FIX_V42C_START -->
+<script id="pmis-current-phase-runtime-fix-v42c">
+(function () {
+    "use strict";
+
+    if (window.__pmisCurrentPhaseV42CInstalled) return;
+    window.__pmisCurrentPhaseV42CInstalled = true;
+
+    const PHASES = [
+        { id:"kickoff", name:"Phase 1: Project Kick Off", children:["kickoff_1","kickoff_2"] },
+        { id:"design", name:"Phase 2: Design", children:["design_1","design_2","design_critical_approval","design_3","design_4","design_5","design_6"] },
+        { id:"purchase", name:"Phase 3: Purchase", children:["purchase_1","purchase_2"] },
+        { id:"mech_assembly", name:"Phase 4: Machine Assembly", children:["mech_assembly_1","mech_assembly_2"] },
+        { id:"program", name:"Phase 5: Programming", children:["prog_plc_offline","prog_plc","prog_robot","prog_labview"] },
+        { id:"inhouse", name:"Phase 6: Inhouse Trials", children:["inhouse_1","inhouse_2"] },
+        { id:"mq1_fat", name:"Phase 7: MQ1 / FAT", children:["mq1_fat_1","mq1_fat_2","mq1_fat_3"] },
+        { id:"dispatch_parent", name:"Phase 8: Machine Dispatch", children:["dispatch_1","dispatch_2"] },
+        { id:"inc_parent", name:"Phase 9: Installation & Commissioning", children:["inc_1","inc_2","inc_3","inc_4"] }
+    ];
+
+    function getProject() {
+        try {
+            if (typeof project !== "undefined" && project) return project;
+        } catch (e) {}
+        return window.project || null;
+    }
+
+    function n(value) {
+        const x = Number(value);
+        return Number.isFinite(x) ? Math.max(0, Math.min(100, x)) : 0;
+    }
+
+    function detail(p, id) {
+        return (p && p.detailed_phases && p.detailed_phases[id]) || {};
+    }
+
+    function activeChildren(p, meta) {
+        return meta.children
+            .map(id => detail(p, id))
+            .filter(row => row && row.is_excluded !== true);
+    }
+
+    function dashboardProgress(p, index) {
+        if (!Array.isArray(p && p.phases)) return null;
+        const row = p.phases[index];
+        if (!row) return null;
+
+        const value = Number(row.progress);
+        return Number.isFinite(value) ? n(value) : null;
+    }
+
+    function phaseProgress(p, meta, index) {
+        const dash = dashboardProgress(p, index);
+
+        // project.phases is the 9-phase array used by the main dashboard.
+        // Use it first, including a legitimate 0%.
+        if (dash !== null) return dash;
+
+        const parent = detail(p, meta.id);
+        const parentValue = Number(parent.progress);
+        if (Number.isFinite(parentValue)) return n(parentValue);
+
+        const rows = activeChildren(p, meta);
+        if (!rows.length) return 0;
+
+        return rows.reduce((sum, row) => sum + n(row.progress), 0) / rows.length;
+    }
+
+    function hasActualActivity(p, meta) {
+        const rows = [detail(p, meta.id), ...activeChildren(p, meta)];
+
+        return rows.some(row =>
+            !!row.actual_start ||
+            !!row.actual_end ||
+            n(row.progress) > 0
+        );
+    }
+
+    function phaseComplete(p, meta, index) {
+        if (phaseProgress(p, meta, index) >= 100) return true;
+
+        const rows = activeChildren(p, meta);
+        if (!rows.length) return false;
+
+        return rows.every(row =>
+            n(row.progress) >= 100 ||
+            !!row.actual_end
+        );
+    }
+
+    function storedStatus(p) {
+        return String((p && p.status) || "").trim().toLowerCase();
+    }
+
+    window.pmisCurrentPhaseV42C = function (p) {
+        p = p || getProject();
+        if (!p) return "Not Started";
+
+        const status = storedStatus(p);
+
+        if (status === "closed" || status === "completed") {
+            return "Project Completed / Closed";
+        }
+
+        // If I&C is genuinely complete, lifecycle is complete even if an old
+        // display field was not updated.
+        if (phaseComplete(p, PHASES[8], 8)) {
+            return "Project Completed / Closed";
+        }
+
+        // If I&C has started / has progress, it is the current lifecycle stage.
+        if (
+            hasActualActivity(p, PHASES[8]) ||
+            phaseProgress(p, PHASES[8], 8) > 0
+        ) {
+            return PHASES[8].name;
+        }
+
+        // A dispatched project cannot logically be back at Kick Off.
+        if (status === "dispatched") {
+            return "Dispatched - Awaiting I&C";
+        }
+
+        // Find the furthest lifecycle phase that has actually been reached.
+        for (let i = PHASES.length - 1; i >= 0; i--) {
+            if (
+                hasActualActivity(p, PHASES[i]) ||
+                phaseProgress(p, PHASES[i], i) > 0
+            ) {
+                return PHASES[i].name;
+            }
+        }
+
+        return "Not Started";
+    };
+
+    function exactText(el) {
+        return String(el && el.textContent || "")
+            .replace(/\s+/g, " ")
+            .trim()
+            .toLowerCase();
+    }
+
+    function findValueTarget(labelEl) {
+        // Most report layouts use table cells.
+        const cell = labelEl.closest("th,td");
+        if (cell && cell.nextElementSibling) {
+            return cell.nextElementSibling;
+        }
+
+        const row = labelEl.closest("tr");
+        if (row) {
+            const cells = Array.from(row.children);
+            const index = cells.findIndex(c => c === cell || c.contains(labelEl));
+            if (index >= 0 && cells[index + 1]) return cells[index + 1];
+        }
+
+        // Card / grid layouts.
+        if (labelEl.nextElementSibling) return labelEl.nextElementSibling;
+
+        const parent = labelEl.parentElement;
+        if (parent && parent.children.length >= 2) {
+            const kids = Array.from(parent.children);
+            const index = kids.findIndex(c => c === labelEl || c.contains(labelEl));
+            if (index >= 0 && kids[index + 1]) return kids[index + 1];
+        }
+
+        return null;
+    }
+
+    function applyCurrentPhaseFix() {
+        const p = getProject();
+        if (!p) return;
+
+        const correct = window.pmisCurrentPhaseV42C(p);
+        if (!correct) return;
+
+        const all = Array.from(document.querySelectorAll("th,td,div,span,p,strong,b"));
+
+        const labels = all.filter(el => {
+            const txt = exactText(el);
+            return txt === "current phase" || txt === "current phase:";
+        });
+
+        labels.forEach(label => {
+            const target = findValueTarget(label);
+            if (!target) return;
+
+            const oldText = String(target.textContent || "").trim();
+
+            // Only rewrite plausible phase/status values. Avoid touching
+            // containers that contain the whole report.
+            const plausible =
+                /phase\s*\d/i.test(oldText) ||
+                /kick\s*off/i.test(oldText) ||
+                /design|purchase|assembly|programming|inhouse|fat|dispatch|installation|commissioning|not started|completed|closed/i.test(oldText);
+
+            if (!plausible && oldText.length > 80) return;
+
+            if (oldText !== correct) {
+                target.textContent = correct;
+                target.setAttribute("data-pmis-v42c-current-phase", "fixed");
+                target.setAttribute("title", "Auto-derived from the furthest PMIS lifecycle phase reached");
+            }
+        });
+    }
+
+    let queued = false;
+
+    function queueFix() {
+        if (queued) return;
+        queued = true;
+
+        requestAnimationFrame(function () {
+            queued = false;
+            try {
+                applyCurrentPhaseFix();
+            } catch (err) {
+                console.warn("[PMIS V42C] Current Phase fix skipped:", err);
+            }
+        });
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        queueFix();
+
+        const observer = new MutationObserver(queueFix);
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+
+        setTimeout(queueFix, 300);
+        setTimeout(queueFix, 1000);
+        setTimeout(queueFix, 2500);
+    });
+
+    if (document.readyState !== "loading") {
+        queueFix();
+        setTimeout(queueFix, 500);
+    }
+})();
+</script>
+<!-- PMIS_CURRENT_PHASE_RUNTIME_FIX_V42C_END -->
+
+<!-- PMIS_PROJECT_MASTER_EXPORT_PHASE_FIX_V42D_START -->
+<script id="pmis-project-master-export-phase-fix-v42d">
+(function () {
+    "use strict";
+
+    if (window.__pmisProjectMasterExportPhaseV42DInstalled) return;
+    window.__pmisProjectMasterExportPhaseV42DInstalled = true;
+
+    const PHASES = [
+        { id:"kickoff", name:"Phase 1: Project Kick Off", children:["kickoff_1","kickoff_2"] },
+        { id:"design", name:"Phase 2: Design", children:["design_1","design_2","design_critical_approval","design_3","design_4","design_5","design_6"] },
+        { id:"purchase", name:"Phase 3: Purchase", children:["purchase_1","purchase_2"] },
+        { id:"mech_assembly", name:"Phase 4: Machine Assembly", children:["mech_assembly_1","mech_assembly_2"] },
+        { id:"program", name:"Phase 5: Programming", children:["prog_plc_offline","prog_plc","prog_robot","prog_labview"] },
+        { id:"inhouse", name:"Phase 6: Inhouse Trials", children:["inhouse_1","inhouse_2"] },
+        { id:"mq1_fat", name:"Phase 7: MQ1 / FAT", children:["mq1_fat_1","mq1_fat_2","mq1_fat_3"] },
+        { id:"dispatch_parent", name:"Phase 8: Machine Dispatch", children:["dispatch_1","dispatch_2"] },
+        { id:"inc_parent", name:"Phase 9: Installation & Commissioning", children:["inc_1","inc_2","inc_3","inc_4"] }
+    ];
+
+    function getProject() {
+        try {
+            if (typeof project !== "undefined" && project) return project;
+        } catch (e) {}
+        return window.project || null;
+    }
+
+    function num(value) {
+        const n = Number(value);
+        return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : 0;
+    }
+
+    function detail(p, id) {
+        return (p && p.detailed_phases && p.detailed_phases[id]) || {};
+    }
+
+    function children(p, meta) {
+        return meta.children
+            .map(id => detail(p, id))
+            .filter(row => row && row.is_excluded !== true);
+    }
+
+    function dashboardProgress(p, index) {
+        if (!Array.isArray(p && p.phases)) return null;
+        const row = p.phases[index];
+        if (!row) return null;
+
+        const value = Number(row.progress);
+        return Number.isFinite(value) ? num(value) : null;
+    }
+
+    function phaseProgress(p, meta, index) {
+        const dash = dashboardProgress(p, index);
+        if (dash !== null) return dash;
+
+        const parent = detail(p, meta.id);
+        const parentValue = Number(parent.progress);
+        if (Number.isFinite(parentValue)) return num(parentValue);
+
+        const rows = children(p, meta);
+        if (!rows.length) return 0;
+
+        return rows.reduce((sum, row) => sum + num(row.progress), 0) / rows.length;
+    }
+
+    function hasActivity(p, meta) {
+        const rows = [detail(p, meta.id), ...children(p, meta)];
+
+        return rows.some(row =>
+            !!row.actual_start ||
+            !!row.actual_end ||
+            num(row.progress) > 0
+        );
+    }
+
+    function isComplete(p, meta, index) {
+        if (phaseProgress(p, meta, index) >= 100) return true;
+
+        const rows = children(p, meta);
+        if (!rows.length) return false;
+
+        return rows.every(row =>
+            num(row.progress) >= 100 ||
+            !!row.actual_end
+        );
+    }
+
+    function currentPhase(p) {
+        if (typeof window.pmisCurrentPhaseV42C === "function") {
+            try {
+                return window.pmisCurrentPhaseV42C(p);
+            } catch (e) {}
+        }
+
+        if (!p) return "Not Started";
+
+        const status = String(p.status || "").trim().toLowerCase();
+
+        if (status === "closed" || status === "completed") {
+            return "Project Completed / Closed";
+        }
+
+        if (isComplete(p, PHASES[8], 8)) {
+            return "Project Completed / Closed";
+        }
+
+        if (
+            hasActivity(p, PHASES[8]) ||
+            phaseProgress(p, PHASES[8], 8) > 0
+        ) {
+            return PHASES[8].name;
+        }
+
+        if (status === "dispatched") {
+            return "Dispatched - Awaiting I&C";
+        }
+
+        for (let i = PHASES.length - 1; i >= 0; i--) {
+            if (
+                hasActivity(p, PHASES[i]) ||
+                phaseProgress(p, PHASES[i], i) > 0
+            ) {
+                return PHASES[i].name;
+            }
+        }
+
+        return "Not Started";
+    }
+
+    function cleanText(value) {
+        return String(value || "")
+            .replace(/\s+/g, " ")
+            .trim()
+            .toLowerCase();
+    }
+
+    function isCurrentPhaseLabel(el) {
+        const text = cleanText(el && el.textContent);
+        return text === "current phase" || text === "current phase:";
+    }
+
+    function findValueTarget(labelEl) {
+        if (!labelEl) return null;
+
+        const cell = labelEl.closest && labelEl.closest("th,td");
+        if (cell && cell.nextElementSibling) {
+            return cell.nextElementSibling;
+        }
+
+        const row = labelEl.closest && labelEl.closest("tr");
+        if (row) {
+            const cells = Array.from(row.children);
+            const owner = cell || cells.find(c => c.contains(labelEl));
+            const index = cells.indexOf(owner);
+            if (index >= 0 && cells[index + 1]) {
+                return cells[index + 1];
+            }
+        }
+
+        if (labelEl.nextElementSibling) {
+            return labelEl.nextElementSibling;
+        }
+
+        const parent = labelEl.parentElement;
+        if (parent) {
+            const kids = Array.from(parent.children);
+            const owner = kids.find(c => c === labelEl || c.contains(labelEl));
+            const index = kids.indexOf(owner);
+            if (index >= 0 && kids[index + 1]) {
+                return kids[index + 1];
+            }
+        }
+
+        return null;
+    }
+
+    function patchContainer(root) {
+        const p = getProject();
+        if (!p || !root || !root.querySelectorAll) return false;
+
+        const correct = currentPhase(p);
+        if (!correct) return false;
+
+        let changed = false;
+
+        const candidates = Array.from(
+            root.querySelectorAll("th,td,div,span,p,strong,b,label")
+        ).filter(isCurrentPhaseLabel);
+
+        candidates.forEach(label => {
+            const target = findValueTarget(label);
+            if (!target) return;
+
+            const old = String(target.textContent || "").trim();
+
+            // Protect large containing blocks from accidental replacement.
+            if (old.length > 120) return;
+
+            target.textContent = correct;
+            target.setAttribute("data-pmis-v42d-current-phase", "fixed");
+            changed = true;
+        });
+
+        return changed;
+    }
+
+    function patchHtmlString(html) {
+        if (typeof html !== "string") return html;
+
+        const lower = html.toLowerCase();
+        if (
+            !lower.includes("project overview") ||
+            !lower.includes("current phase")
+        ) {
+            return html;
+        }
+
+        const holder = document.createElement("div");
+        holder.innerHTML = html;
+
+        patchContainer(holder);
+
+        return holder.innerHTML;
+    }
+
+    function patchExportSource(src) {
+        try {
+            if (typeof src === "string") {
+                return patchHtmlString(src);
+            }
+
+            if (src && src.nodeType === 1) {
+                patchContainer(src);
+                return src;
+            }
+        } catch (err) {
+            console.warn("[PMIS V42D] Could not patch export source:", err);
+        }
+
+        return src;
+    }
+
+    window.pmisPatchProjectMasterExportV42D = patchExportSource;
+
+    function copyFunctionProperties(target, source) {
+        try {
+            Object.getOwnPropertyNames(source).forEach(key => {
+                if (key === "length" || key === "name" || key === "prototype") return;
+
+                try {
+                    const descriptor = Object.getOwnPropertyDescriptor(source, key);
+                    if (descriptor) Object.defineProperty(target, key, descriptor);
+                } catch (e) {}
+            });
+        } catch (e) {}
+    }
+
+    function installHtml2PdfHook() {
+        const original = window.html2pdf;
+
+        if (typeof original !== "function") return false;
+        if (original.__pmisV42DWrapped) return true;
+
+        function wrappedHtml2Pdf() {
+            const args = Array.from(arguments);
+
+            // html2pdf(element, options) shortcut form.
+            if (args.length && (typeof args[0] === "string" || (args[0] && args[0].nodeType === 1))) {
+                args[0] = patchExportSource(args[0]);
+            }
+
+            const worker = original.apply(this, args);
+
+            if (worker && typeof worker.from === "function" && !worker.__pmisV42DFromWrapped) {
+                const originalFrom = worker.from;
+
+                worker.from = function (src, type) {
+                    return originalFrom.call(this, patchExportSource(src), type);
+                };
+
+                try {
+                    Object.defineProperty(worker, "__pmisV42DFromWrapped", {
+                        value: true,
+                        configurable: true
+                    });
+                } catch (e) {
+                    worker.__pmisV42DFromWrapped = true;
+                }
+            }
+
+            return worker;
+        }
+
+        copyFunctionProperties(wrappedHtml2Pdf, original);
+
+        try {
+            Object.setPrototypeOf(wrappedHtml2Pdf, Object.getPrototypeOf(original));
+        } catch (e) {}
+
+        wrappedHtml2Pdf.__pmisV42DWrapped = true;
+        wrappedHtml2Pdf.__pmisV42DOriginal = original;
+
+        window.html2pdf = wrappedHtml2Pdf;
+
+        console.log("[PMIS V42D] Project Master PDF export hook installed.");
+        return true;
+    }
+
+    function applyVisibleReportFix() {
+        try {
+            patchContainer(document);
+        } catch (e) {}
+    }
+
+    function installWhenReady() {
+        if (installHtml2PdfHook()) return;
+
+        let attempts = 0;
+        const timer = setInterval(function () {
+            attempts += 1;
+
+            if (installHtml2PdfHook() || attempts >= 40) {
+                clearInterval(timer);
+            }
+        }, 250);
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        applyVisibleReportFix();
+        installWhenReady();
+
+        const observer = new MutationObserver(function () {
+            applyVisibleReportFix();
+        });
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    });
+
+    // Extra safety: install before any user clicks an export/download control.
+    document.addEventListener("click", function () {
+        installHtml2PdfHook();
+        applyVisibleReportFix();
+    }, true);
+
+    if (document.readyState !== "loading") {
+        applyVisibleReportFix();
+        installWhenReady();
+    }
+})();
+</script>
+<!-- PMIS_PROJECT_MASTER_EXPORT_PHASE_FIX_V42D_END -->
+
+<!-- PMIS_PROJECT_LIST_STATUS_FILTER_V47_START -->
+<style id="pmis-project-list-status-filter-v47-style">
+    #pmisProjectLifecycleFilterV47 {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        min-width: 0;
+        flex: 0 0 auto;
+    }
+
+    #pmisProjectLifecycleFilterV47 .pmis-v47-pillbar {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px;
+        border: 1px solid rgba(255,255,255,.18);
+        border-radius: 16px;
+        background: rgba(255,255,255,.10);
+        backdrop-filter: blur(3px);
+        box-shadow: 0 8px 20px rgba(2, 16, 39, .16);
+    }
+
+    #pmisProjectLifecycleFilterV47 .pmis-v47-pill {
+        appearance: none;
+        border: 1px solid transparent;
+        background: transparent;
+        color: #ffffff;
+        min-width: 88px;
+        height: 36px;
+        padding: 0 14px;
+        border-radius: 12px;
+        font-size: .80rem;
+        font-weight: 800;
+        letter-spacing: .01em;
+        cursor: pointer;
+        transition: background .18s ease, color .18s ease, border-color .18s ease, transform .18s ease, box-shadow .18s ease;
+        white-space: nowrap;
+    }
+
+    #pmisProjectLifecycleFilterV47 .pmis-v47-pill:hover {
+        background: rgba(255,255,255,.12);
+        border-color: rgba(255,255,255,.16);
+        transform: translateY(-1px);
+    }
+
+    #pmisProjectLifecycleFilterV47 .pmis-v47-pill.is-active {
+        background: #ffffff;
+        color: #083b71;
+        border-color: #ffffff;
+        box-shadow: 0 5px 14px rgba(255,255,255,.22);
+    }
+
+    .pmis-v47-status-hidden {
+        display: none !important;
+    }
+
+    @media (max-width: 1200px) {
+        #pmisProjectLifecycleFilterV47 .pmis-v47-pillbar {
+            gap: 4px;
+            padding: 4px;
+        }
+
+        #pmisProjectLifecycleFilterV47 .pmis-v47-pill {
+            min-width: 80px;
+            height: 34px;
+            padding: 0 12px;
+            font-size: .76rem;
+        }
+    }
+
+    @media (max-width: 900px) {
+        #pmisProjectLifecycleFilterV47 {
+            width: 100%;
+            justify-content: flex-start;
+            margin-top: 8px;
+        }
+
+        #pmisProjectLifecycleFilterV47 .pmis-v47-pillbar {
+            width: 100%;
+            justify-content: flex-start;
+            flex-wrap: wrap;
+        }
+    }
+</style>
+
+<script id="pmis-project-list-status-filter-v47-script">
+(function () {
+    'use strict';
+
+    if (window.__pmisProjectListStatusFilterV47Installed) return;
+    window.__pmisProjectListStatusFilterV47Installed = true;
+
+    const FILTER_ID = 'pmisProjectLifecycleFilterV47';
+    const STORAGE_KEY = 'pmisProjectListStatusFilterV47';
+
+    let currentMode =
+        sessionStorage.getItem(STORAGE_KEY) ||
+        'ongoing';
+
+    if (!['ongoing', 'closed', 'all'].includes(currentMode)) {
+        currentMode = 'ongoing';
+    }
+
+    let scheduled = false;
+
+    function normalize(value) {
+        return String(value ?? '')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .toLowerCase();
+    }
+
+    function findSearchInput() {
+        return Array.from(document.querySelectorAll('input')).find(input =>
+            normalize(input.getAttribute('placeholder')).includes('search project')
+        ) || null;
+    }
+
+    function tableScore(table) {
+        const head = normalize(table.querySelector('thead')?.textContent || '');
+        let score = 0;
+        if (head.includes('project code')) score += 5;
+        if (head.includes('status')) score += 5;
+        if (head.includes('kickoff')) score += 3;
+        if (head.includes('design')) score += 2;
+        if (head.includes('overall')) score += 2;
+        if (head.includes('customer feedback')) score += 1;
+        return score;
+    }
+
+    function findMainProjectTable() {
+        const tables = Array.from(document.querySelectorAll('table'));
+        let best = null;
+        let bestScore = 0;
+        tables.forEach(table => {
+            const score = tableScore(table);
+            if (score > bestScore) {
+                best = table;
+                bestScore = score;
+            }
+        });
+        return bestScore >= 8 ? best : null;
+    }
+
+    function findStatusText(row) {
+        const cells = Array.from(row.querySelectorAll('td'));
+        const exactStatuses = [
+            'closed',
+            'completed',
+            'project completed / closed',
+            'dispatched',
+            'in progress',
+            'inprogress',
+            'started',
+            'not started',
+            'notstarted'
+        ];
+
+        for (const cell of cells) {
+            const value = normalize(cell.textContent);
+            if (exactStatuses.includes(value)) {
+                return value;
+            }
+        }
+
+        for (const cell of cells) {
+            const value = normalize(cell.textContent);
+            if (/\bclosed\b/.test(value) || /\bcompleted\b/.test(value)) {
+                return value;
+            }
+        }
+
+        return '';
+    }
+
+    function isClosedStatus(statusText) {
+        const value = normalize(statusText);
+        return (
+            value === 'closed' ||
+            value === 'completed' ||
+            value.includes('project completed') ||
+            /\bclosed\b/.test(value)
+        );
+    }
+
+    function updateActiveButtons() {
+        const wrapper = document.getElementById(FILTER_ID);
+        if (!wrapper) return;
+
+        wrapper.querySelectorAll('[data-mode]').forEach(btn => {
+            btn.classList.toggle('is-active', btn.getAttribute('data-mode') === currentMode);
+            btn.setAttribute('aria-pressed', btn.getAttribute('data-mode') === currentMode ? 'true' : 'false');
+        });
+    }
+
+    function applyFilter() {
+        const table = findMainProjectTable();
+        if (!table) return;
+
+        const rows = Array.from(table.querySelectorAll('tbody tr'));
+
+        rows.forEach(row => {
+            const status = findStatusText(row);
+
+            if (!status) {
+                row.classList.remove('pmis-v47-status-hidden');
+                return;
+            }
+
+            const closed = isClosedStatus(status);
+
+            const hide =
+                currentMode === 'closed'
+                    ? !closed
+                    : currentMode === 'ongoing'
+                        ? closed
+                        : false;
+
+            row.classList.toggle('pmis-v47-status-hidden', hide);
+        });
+
+        updateActiveButtons();
+    }
+
+    function handleModeChange(mode) {
+        if (!['ongoing', 'closed', 'all'].includes(mode)) return;
+        currentMode = mode;
+        sessionStorage.setItem(STORAGE_KEY, currentMode);
+        applyFilter();
+    }
+
+    function ensureControl() {
+        let wrapper = document.getElementById(FILTER_ID);
+        if (wrapper) {
+            updateActiveButtons();
+            return wrapper;
+        }
+
+        const search = findSearchInput();
+        if (!search) return null;
+
+        wrapper = document.createElement('div');
+        wrapper.id = FILTER_ID;
+        wrapper.title = 'Filter the main Project List by lifecycle status';
+        wrapper.innerHTML = `
+            <div class="pmis-v47-pillbar" role="group" aria-label="Project lifecycle status">
+                <button type="button" class="pmis-v47-pill" data-mode="ongoing">Ongoing</button>
+                <button type="button" class="pmis-v47-pill" data-mode="closed">Closed</button>
+                <button type="button" class="pmis-v47-pill" data-mode="all">All</button>
+            </div>
+        `;
+
+        wrapper.querySelectorAll('[data-mode]').forEach(btn => {
+            btn.addEventListener('click', function () {
+                handleModeChange(this.getAttribute('data-mode'));
+            });
+        });
+
+        const searchContainer = search.parentElement || search;
+        searchContainer.insertAdjacentElement('beforebegin', wrapper);
+
+        updateActiveButtons();
+        return wrapper;
+    }
+
+    function run() {
+        ensureControl();
+        applyFilter();
+    }
+
+    function scheduleRun() {
+        if (scheduled) return;
+        scheduled = true;
+        requestAnimationFrame(() => {
+            scheduled = false;
+            run();
+        });
+    }
+
+    const observer = new MutationObserver(scheduleRun);
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+
+    document.addEventListener('input', scheduleRun, true);
+    document.addEventListener('change', scheduleRun, true);
+    document.addEventListener('keyup', scheduleRun, true);
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', scheduleRun, { once: true });
+    } else {
+        scheduleRun();
+    }
+
+    window.pmisProjectListStatusFilterV47 = {
+        setMode(mode) {
+            handleModeChange(mode);
+        },
+        getMode() {
+            return currentMode;
+        },
+        refresh: scheduleRun
+    };
+})();
+</script>
+<!-- PMIS_PROJECT_LIST_STATUS_FILTER_V47_END -->
+
+<!-- PMIS_MAIN_PROJECT_STICKY_V50_START -->
+<style id="pmis-main-project-sticky-v50-style">
+    /* V50 affects ONLY the Main Project List card. */
+    .pmis-main-project-card-v50 {
+        overflow: visible !important;
+    }
+
+    /* Keep the top filter pane visible during page scrolling. */
+    .pmis-main-filter-v50 {
+        position: sticky !important;
+        top: 8px !important;
+        z-index: 120 !important;
+        isolation: isolate;
+    }
+
+    /* Give the floating filter area a clean backing layer. */
+    .pmis-main-filter-v50::before {
+        content: "";
+        position: absolute;
+        inset: -8px -12px;
+        background: rgba(245, 248, 252, 0.96);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border-radius: 24px;
+        z-index: -1;
+        pointer-events: none;
+    }
+
+    /* PROJECT LIST title / search / export bar stays below the filter pane. */
+    .pmis-main-project-card-v50 > .ui-card-header.pmis-main-card-head-v50 {
+        position: sticky !important;
+        top: var(--pmis-v50-card-top, 82px) !important;
+        z-index: 110 !important;
+        border-radius: var(--radius-card, 20px) var(--radius-card, 20px) 0 0;
+        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+    }
+
+    /*
+      Rows scroll inside the project table area.
+      This allows the column titles to remain fixed at the top of the list.
+    */
+    .pmis-main-project-card-v50 .table-responsive.pmis-main-table-scroll-v50 {
+        position: relative !important;
+        overflow: auto !important;
+        max-height: var(--pmis-v50-table-height, 62vh) !important;
+        overscroll-behavior: contain;
+        scrollbar-gutter: stable;
+    }
+
+    /* Freeze ALL table titles while vertically scrolling project rows. */
+    .pmis-main-project-card-v50 #registryTable thead th {
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 60 !important;
+    }
+
+    /*
+      Tracking Code + Project Code remain visible while horizontally scrolling.
+      Left offsets are calculated from the live rendered column widths.
+    */
+    .pmis-main-project-card-v50 #registryTable .pmis-v50-tracking-col {
+        position: sticky !important;
+        left: 0 !important;
+        z-index: 48 !important;
+        background: #ffffff !important;
+    }
+
+    .pmis-main-project-card-v50 #registryTable .pmis-v50-project-code-col {
+        position: sticky !important;
+        left: var(--pmis-v50-tracking-width, 120px) !important;
+        z-index: 47 !important;
+        background: #ffffff !important;
+        box-shadow: 8px 0 12px -10px rgba(15, 23, 42, 0.45);
+        border-right: 1px solid #dbe4ee !important;
+    }
+
+    /* Frozen header cells must sit above frozen body cells. */
+    .pmis-main-project-card-v50 #registryTable thead .pmis-v50-tracking-col {
+        z-index: 85 !important;
+        background: #ffffff !important;
+    }
+
+    .pmis-main-project-card-v50 #registryTable thead .pmis-v50-project-code-col {
+        z-index: 84 !important;
+        background: #ffffff !important;
+    }
+
+    /* Preserve row hover feedback on the frozen columns. */
+    .pmis-main-project-card-v50 #registryTable tbody tr:hover > .pmis-v50-tracking-col,
+    .pmis-main-project-card-v50 #registryTable tbody tr:hover > .pmis-v50-project-code-col {
+        background: #f8fafc !important;
+    }
+
+    /* Keep frozen columns visually solid if a row/cell has transparent styling. */
+    .pmis-main-project-card-v50 #registryTable tbody > tr > .pmis-v50-tracking-col,
+    .pmis-main-project-card-v50 #registryTable tbody > tr > .pmis-v50-project-code-col {
+        background-clip: padding-box !important;
+    }
+
+    @media (max-width: 900px) {
+        .pmis-main-filter-v50 {
+            top: 4px !important;
+        }
+
+        .pmis-main-project-card-v50 .table-responsive.pmis-main-table-scroll-v50 {
+            max-height: 66vh !important;
+        }
+    }
+</style>
+
+<script id="pmis-main-project-sticky-v50-script">
+(function () {
+    "use strict";
+
+    if (window.__PMIS_MAIN_PROJECT_STICKY_V50__) return;
+    window.__PMIS_MAIN_PROJECT_STICKY_V50__ = true;
+
+    function cleanText(value) {
+        return String(value || "")
+            .replace(/\s+/g, " ")
+            .trim()
+            .toLowerCase();
+    }
+
+    function findHeaderIndex(table, label) {
+        if (!table || !table.tHead || !table.tHead.rows.length) return -1;
+
+        const wanted = cleanText(label);
+        const firstRow = table.tHead.rows[0];
+
+        for (let i = 0; i < firstRow.cells.length; i += 1) {
+            const cell = firstRow.cells[i];
+            if (cleanText(cell.textContent) === wanted) {
+                return cell.cellIndex;
+            }
+        }
+
+        return -1;
+    }
+
+    function clearFrozenClasses(table) {
+        if (!table) return;
+
+        table.querySelectorAll(
+            ".pmis-v50-tracking-col, .pmis-v50-project-code-col"
+        ).forEach(function (cell) {
+            cell.classList.remove(
+                "pmis-v50-tracking-col",
+                "pmis-v50-project-code-col"
+            );
+        });
+    }
+
+    function applyFrozenColumns(table) {
+        if (!table) return;
+
+        const trackingIndex = findHeaderIndex(table, "Tracking Code");
+        const projectCodeIndex = findHeaderIndex(table, "Project Code");
+
+        if (trackingIndex < 0 || projectCodeIndex < 0) {
+            console.warn(
+                "[PMIS V50] Tracking Code / Project Code headers were not found."
+            );
+            return;
+        }
+
+        clearFrozenClasses(table);
+
+        const firstHeaderRow = table.tHead && table.tHead.rows
+            ? table.tHead.rows[0]
+            : null;
+
+        if (!firstHeaderRow) return;
+
+        const trackingHeader = Array.from(firstHeaderRow.cells).find(function (cell) {
+            return cell.cellIndex === trackingIndex;
+        });
+
+        const projectCodeHeader = Array.from(firstHeaderRow.cells).find(function (cell) {
+            return cell.cellIndex === projectCodeIndex;
+        });
+
+        if (trackingHeader) {
+            trackingHeader.classList.add("pmis-v50-tracking-col");
+        }
+
+        if (projectCodeHeader) {
+            projectCodeHeader.classList.add("pmis-v50-project-code-col");
+        }
+
+        if (table.tBodies && table.tBodies[0]) {
+            Array.from(table.tBodies[0].rows).forEach(function (row) {
+                if (row.cells[trackingIndex]) {
+                    row.cells[trackingIndex].classList.add(
+                        "pmis-v50-tracking-col"
+                    );
+                }
+
+                if (row.cells[projectCodeIndex]) {
+                    row.cells[projectCodeIndex].classList.add(
+                        "pmis-v50-project-code-col"
+                    );
+                }
+            });
+        }
+
+        const trackingWidth = trackingHeader
+            ? Math.ceil(trackingHeader.getBoundingClientRect().width)
+            : 120;
+
+        table.style.setProperty(
+            "--pmis-v50-tracking-width",
+            trackingWidth + "px"
+        );
+    }
+
+    function applyVerticalFreeze(parts) {
+        const filter = parts.filter;
+        const card = parts.card;
+        const cardHeader = parts.cardHeader;
+        const tableWrap = parts.tableWrap;
+
+        if (filter) {
+            filter.classList.add("pmis-main-filter-v50");
+        }
+
+        if (card) {
+            card.classList.add("pmis-main-project-card-v50");
+        }
+
+        if (cardHeader) {
+            cardHeader.classList.add("pmis-main-card-head-v50");
+        }
+
+        if (tableWrap) {
+            tableWrap.classList.add("pmis-main-table-scroll-v50");
+        }
+    }
+
+    function recalcLayout(parts) {
+        const filter = parts.filter;
+        const cardHeader = parts.cardHeader;
+        const tableWrap = parts.tableWrap;
+
+        let cardTop = 12;
+
+        if (filter) {
+            const rect = filter.getBoundingClientRect();
+            const height = Math.ceil(rect.height || filter.offsetHeight || 0);
+            cardTop = 8 + height + 10;
+        }
+
+        document.documentElement.style.setProperty(
+            "--pmis-v50-card-top",
+            cardTop + "px"
+        );
+
+        let available = Math.floor(window.innerHeight * 0.62);
+
+        if (cardHeader) {
+            const headerHeight = Math.ceil(
+                cardHeader.getBoundingClientRect().height ||
+                cardHeader.offsetHeight ||
+                0
+            );
+
+            available =
+                window.innerHeight -
+                cardTop -
+                headerHeight -
+                18;
+        }
+
+        available = Math.max(
+            280,
+            Math.min(available, Math.floor(window.innerHeight * 0.72))
+        );
+
+        document.documentElement.style.setProperty(
+            "--pmis-v50-table-height",
+            available + "px"
+        );
+
+        if (tableWrap) {
+            tableWrap.style.maxHeight = available + "px";
+        }
+    }
+
+    function resolveParts() {
+        const table = document.getElementById("registryTable");
+        if (!table) return null;
+
+        const card = table.closest(".ui-card");
+        const cardHeader = card
+            ? card.querySelector(":scope > .ui-card-header")
+            : null;
+
+        const filter =
+            document.querySelector(".filter-bar-wrap") ||
+            document.querySelector(".top-filter-bar");
+
+        const tableWrap =
+            table.closest(".table-responsive") ||
+            table.parentElement;
+
+        return {
+            table: table,
+            card: card,
+            cardHeader: cardHeader,
+            filter: filter,
+            tableWrap: tableWrap
+        };
+    }
+
+    let parts = null;
+    let bodyObserver = null;
+    let resizeObserver = null;
+
+    function install() {
+        parts = resolveParts();
+
+        if (!parts || !parts.table) {
+            return false;
+        }
+
+        applyVerticalFreeze(parts);
+        applyFrozenColumns(parts.table);
+        recalcLayout(parts);
+
+        const tbody = document.getElementById("projectTableBody");
+
+        if (tbody && !bodyObserver) {
+            bodyObserver = new MutationObserver(function () {
+                window.requestAnimationFrame(function () {
+                    applyFrozenColumns(parts.table);
+                    recalcLayout(parts);
+                });
+            });
+
+            bodyObserver.observe(tbody, {
+                childList: true,
+                subtree: false
+            });
+        }
+
+        if (window.ResizeObserver && !resizeObserver) {
+            resizeObserver = new ResizeObserver(function () {
+                window.requestAnimationFrame(function () {
+                    applyFrozenColumns(parts.table);
+                    recalcLayout(parts);
+                });
+            });
+
+            if (parts.filter) resizeObserver.observe(parts.filter);
+            if (parts.cardHeader) resizeObserver.observe(parts.cardHeader);
+            resizeObserver.observe(parts.table);
+        }
+
+        return true;
+    }
+
+    function retryInstall() {
+        let attempts = 0;
+
+        const timer = window.setInterval(function () {
+            attempts += 1;
+
+            if (install() || attempts >= 40) {
+                window.clearInterval(timer);
+            }
+        }, 150);
+    }
+
+    window.addEventListener("resize", function () {
+        if (!parts) parts = resolveParts();
+        if (!parts) return;
+
+        window.requestAnimationFrame(function () {
+            applyFrozenColumns(parts.table);
+            recalcLayout(parts);
+        });
+    });
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", retryInstall, {
+            once: true
+        });
+    } else {
+        retryInstall();
+    }
+})();
+</script>
+<!-- PMIS_MAIN_PROJECT_STICKY_V50_END -->
+
+<!-- PMIS_LEAD_VIEW_V51E -->
+<style id="pmis-lead-view-v51e-dashboard-style">
+    body.pmis-lead-view-v51e .pmis-lead-view-hidden-v51e {
+        display: none !important;
+    }
+
+    .pmis-lead-view-badge-v51e {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-left: 8px;
+        padding: 6px 11px;
+        border-radius: 999px;
+        background: rgba(20,184,166,0.16);
+        border: 1px solid rgba(45,212,191,0.32);
+        color: #ccfbf1;
+        font-size: 0.70rem;
+        font-weight: 900;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+</style>
+
+<script id="pmis-lead-view-v51e-dashboard">
+(function () {
+    "use strict";
+
+    if (window.__PMIS_LEAD_VIEW_V51E_DASHBOARD__) return;
+    window.__PMIS_LEAD_VIEW_V51E_DASHBOARD__ = true;
+
+    const LEAD_VIEW_NAMES = new Set([
+        'projects@danprel',
+        'project@danprel'
+    ]);
+
+    function normalize(value) {
+        return String(value || '').trim().toLowerCase();
+    }
+
+    function isLeadView() {
+        const authRole = normalize(
+            localStorage.getItem('danprel_auth_role')
+        );
+
+        const username = normalize(
+            localStorage.getItem('danprel_username')
+        );
+
+        return (
+            authRole === 'lead_view' ||
+            LEAD_VIEW_NAMES.has(username)
+        );
+    }
+
+    window.pmisIsLeadViewV51E = isLeadView;
+
+    if (!isLeadView()) return;
+
+    document.body.classList.add('pmis-lead-view-v51e');
+
+    function denyReport() {
+        const message =
+            'Lead View is read-only. Action Point and Project Master reports are not available for this login.';
+
+        if (typeof window.showToast === 'function') {
+            window.showToast(message, true);
+        } else {
+            alert(message);
+        }
+
+        return false;
+    }
+
+    function hideRestrictedReportControls() {
+        document.querySelectorAll(
+            'button[onclick*="openActionPointExport"], ' +
+            'button[onclick*="openMasterReportExport"]'
+        ).forEach(element => {
+            element.classList.add('pmis-lead-view-hidden-v51e');
+        });
+
+        const sidebar = document.getElementById('sidebar');
+
+        if (sidebar) {
+            sidebar.querySelectorAll('.sidebar-section-title').forEach(title => {
+                if (
+                    normalize(title.textContent) === 'reports'
+                ) {
+                    title.classList.add('pmis-lead-view-hidden-v51e');
+                }
+            });
+        }
+    }
+
+    function installReportGuards() {
+        [
+            'openActionPointExport',
+            'apDoExport',
+            'apExportPDF',
+            'apExportExcel',
+            'openMasterReportExport',
+            'generateProjectMasterReport'
+        ].forEach(name => {
+            try {
+                if (typeof window[name] === 'function') {
+                    window[name] = denyReport;
+                }
+            } catch (_error) {}
+        });
+    }
+
+    function populateAllProjectsForLeadView() {
+        const selector =
+            document.getElementById('roleProjectSelector');
+
+        if (
+            !selector ||
+            typeof projects === 'undefined' ||
+            !Array.isArray(projects)
+        ) {
+            return false;
+        }
+
+        const getLabel = project => {
+            if (
+                typeof getProjectFilterLabel === 'function'
+            ) {
+                return getProjectFilterLabel(project);
+            }
+
+            const code =
+                project?.code ||
+                project?.tracking_code ||
+                'Project';
+
+            const name =
+                project?.name ||
+                'Unnamed Project';
+
+            return code + ' - ' + name;
+        };
+
+        selector.innerHTML =
+            '<option value="All">All Projects</option>';
+
+        projects
+            .slice()
+            .sort((a, b) =>
+                getLabel(a).localeCompare(getLabel(b))
+            )
+            .forEach(project => {
+                const option =
+                    document.createElement('option');
+
+                option.value =
+                    String(project?._id || '');
+
+                option.textContent =
+                    getLabel(project);
+
+                selector.appendChild(option);
+            });
+
+        selector.value = 'All';
+
+        const note =
+            document.getElementById('roleProjectFilterNote');
+
+        if (note) {
+            note.textContent = String(projects.length);
+        }
+
+        const wrap =
+            document.getElementById('roleProjectFilterWrap');
+
+        if (wrap) {
+            wrap.style.display = 'flex';
+        }
+
+        return true;
+    }
+
+    /*
+     * Keep actual ownership logic untouched.
+     * Lead View gets all projects only for VIEWING, never modification.
+     */
+    try {
+        if (
+            typeof window.pmisCanModifyProjectV24 === 'function'
+        ) {
+            const originalCanModify =
+                window.pmisCanModifyProjectV24;
+
+            window.pmisCanModifyProjectV24 =
+                function (project) {
+                    if (isLeadView()) return false;
+                    return originalCanModify(project);
+                };
+        }
+    } catch (_error) {}
+
+    try {
+        if (
+            typeof window.configureRoleProjectFilter === 'function'
+        ) {
+            const originalConfigure =
+                window.configureRoleProjectFilter;
+
+            window.configureRoleProjectFilter =
+                function () {
+                    if (!isLeadView()) {
+                        return originalConfigure();
+                    }
+
+                    populateAllProjectsForLeadView();
+
+                    const manager =
+                        document.getElementById(
+                            'managerSelector'
+                        );
+
+                    if (manager) {
+                        manager.value = 'All';
+                    }
+
+                    if (
+                        typeof filterTable === 'function'
+                    ) {
+                        filterTable();
+                    }
+                };
+        }
+    } catch (_error) {}
+
+    try {
+        if (
+            typeof window.applyDefaultManagerFilterForCurrentLogin ===
+            'function'
+        ) {
+            const originalDefaultManager =
+                window.applyDefaultManagerFilterForCurrentLogin;
+
+            window.applyDefaultManagerFilterForCurrentLogin =
+                function () {
+                    if (!isLeadView()) {
+                        return originalDefaultManager();
+                    }
+
+                    const manager =
+                        document.getElementById(
+                            'managerSelector'
+                        );
+
+                    if (manager) {
+                        manager.value = 'All';
+                    }
+
+                    const projectFilter =
+                        document.getElementById(
+                            'roleProjectSelector'
+                        );
+
+                    if (projectFilter) {
+                        projectFilter.value = 'All';
+                    }
+
+                    try {
+                        pmisDefaultManagerFilterApplied = true;
+                    } catch (_error) {}
+
+                    if (
+                        typeof filterTable === 'function'
+                    ) {
+                        filterTable();
+                    }
+                };
+        }
+    } catch (_error) {}
+
+    function applyLeadViewDashboard() {
+        hideRestrictedReportControls();
+        installReportGuards();
+
+        const ready =
+            populateAllProjectsForLeadView();
+
+        const manager =
+            document.getElementById('managerSelector');
+
+        if (manager) {
+            manager.value = 'All';
+        }
+
+        if (
+            ready &&
+            typeof filterTable === 'function'
+        ) {
+            filterTable();
+        }
+
+        const header =
+            document.querySelector('.app-header');
+
+        if (
+            header &&
+            !header.querySelector(
+                '.pmis-lead-view-badge-v51e'
+            )
+        ) {
+            const badge =
+                document.createElement('span');
+
+            badge.className =
+                'pmis-lead-view-badge-v51e';
+
+            badge.innerHTML =
+                '<i class="bi bi-eye-fill"></i>Lead View - Read Only';
+
+            const titleArea =
+                header.querySelector(
+                    '.header-center-title'
+                ) ||
+                header.firstElementChild;
+
+            if (titleArea) {
+                titleArea.appendChild(badge);
+            }
+        }
+
+        return ready;
+    }
+
+    function start() {
+        let attempts = 0;
+
+        const timer = window.setInterval(() => {
+            attempts += 1;
+
+            const ready =
+                applyLeadViewDashboard();
+
+            if (ready || attempts >= 60) {
+                window.clearInterval(timer);
+            }
+        }, 150);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener(
+            'DOMContentLoaded',
+            start,
+            { once: true }
+        );
+    } else {
+        start();
+    }
+})();
+</script>
+
+<!-- PMIS_LEAD_VIEW_COMMERCIAL_MASK_V52 -->
+<style id="pmis-lead-view-commercial-mask-v52-style">
+    body.pmis-lead-view-v52 .pmis-commercial-hidden-v52 {
+        user-select: none !important;
+    }
+
+    body.pmis-lead-view-v52 #statDispatchedValue,
+    body.pmis-lead-view-v52 #statTotalValue,
+    body.pmis-lead-view-v52 #registryTable td.cell-value {
+        letter-spacing: .08em;
+    }
+</style>
+
+<script id="pmis-lead-view-commercial-mask-v52-script">
+(function () {
+    "use strict";
+
+    if (window.__PMIS_LEAD_VIEW_COMMERCIAL_MASK_V52__) return;
+    window.__PMIS_LEAD_VIEW_COMMERCIAL_MASK_V52__ = true;
+
+    function normalizeV52(value) {
+        return String(value || '').trim().toLowerCase();
+    }
+
+    function isLeadViewV52() {
+        const authRole = normalizeV52(
+            localStorage.getItem('danprel_auth_role')
+        );
+
+        const username = normalizeV52(
+            localStorage.getItem('danprel_username')
+        );
+
+        return (
+            authRole === 'lead_view' ||
+            username === 'projects@danprel' ||
+            username === 'project@danprel'
+        );
+    }
+
+    window.pmisLeadViewCommercialHiddenV52 = isLeadViewV52;
+
+    if (!isLeadViewV52()) return;
+
+    document.body.classList.add('pmis-lead-view-v52');
+
+    const hiddenText = '\u2014';
+
+    /*
+     * PO VALUE
+     * --------
+     * The Main Project List and the normal Project Registry export already
+     * use these shared formatting helpers. Override them only for Lead View.
+     * Admin / PM / Coordinator behaviour is untouched.
+     */
+    try {
+        const originalCanViewPo =
+            typeof window.canCurrentUserViewProjectPoValue === 'function'
+                ? window.canCurrentUserViewProjectPoValue
+                : null;
+
+        window.canCurrentUserViewProjectPoValue = function (project) {
+            if (isLeadViewV52()) return false;
+            return originalCanViewPo
+                ? originalCanViewPo(project)
+                : true;
+        };
+    } catch (_error) {}
+
+    try {
+        const originalFormatPo =
+            typeof window.formatProjectPoValueForCurrentUser === 'function'
+                ? window.formatProjectPoValueForCurrentUser
+                : null;
+
+        window.formatProjectPoValueForCurrentUser = function (project) {
+            if (isLeadViewV52()) return hiddenText;
+            return originalFormatPo
+                ? originalFormatPo(project)
+                : hiddenText;
+        };
+    } catch (_error) {}
+
+    try {
+        const originalExportPo =
+            typeof window.formatExportPoValueForCurrentUser === 'function'
+                ? window.formatExportPoValueForCurrentUser
+                : null;
+
+        window.formatExportPoValueForCurrentUser = function (project) {
+            if (isLeadViewV52()) return '-';
+            return originalExportPo
+                ? originalExportPo(project)
+                : '-';
+        };
+    } catch (_error) {}
+
+    function maskAmountCardV52(id) {
+        const element = document.getElementById(id);
+        if (!element) return;
+
+        if (String(element.textContent || '').trim() !== hiddenText) {
+            element.textContent = hiddenText;
+        }
+
+        element.classList.add('pmis-commercial-hidden-v52');
+        element.setAttribute('title', 'Commercial value hidden in Lead View');
+        element.setAttribute('aria-label', 'Commercial value hidden');
+    }
+
+    function maskPoCellsV52() {
+        document.querySelectorAll(
+            '#registryTable tbody td.cell-value'
+        ).forEach(cell => {
+            if (String(cell.textContent || '').trim() !== hiddenText) {
+                cell.textContent = hiddenText;
+            }
+
+            cell.classList.add('pmis-commercial-hidden-v52');
+            cell.setAttribute('title', 'PO value hidden in Lead View');
+        });
+    }
+
+    function maskProjectModalPoV52() {
+        const input = document.getElementById('pPoValue');
+        if (!input) return;
+
+        input.value = '';
+        input.disabled = true;
+        input.placeholder = 'Hidden in Lead View';
+        input.setAttribute('autocomplete', 'off');
+    }
+
+    function enforceCommercialMaskV52() {
+        if (!isLeadViewV52()) return;
+
+        maskAmountCardV52('statDispatchedValue');
+        maskAmountCardV52('statTotalValue');
+        maskPoCellsV52();
+        maskProjectModalPoV52();
+    }
+
+    function installObserversV52() {
+        const amountIds = [
+            'statDispatchedValue',
+            'statTotalValue'
+        ];
+
+        amountIds.forEach(id => {
+            const element = document.getElementById(id);
+            if (!element) return;
+
+            const observer = new MutationObserver(() => {
+                if (!isLeadViewV52()) return;
+
+                if (
+                    String(element.textContent || '').trim() !== hiddenText
+                ) {
+                    element.textContent = hiddenText;
+                }
+            });
+
+            observer.observe(element, {
+                childList: true,
+                characterData: true,
+                subtree: true
+            });
+        });
+
+        const tbody = document.getElementById('projectTableBody');
+        if (tbody) {
+            const tableObserver = new MutationObserver(() => {
+                if (!isLeadViewV52()) return;
+                maskPoCellsV52();
+            });
+
+            tableObserver.observe(tbody, {
+                childList: true,
+                subtree: true
+            });
+        }
+
+        const projectModal = document.getElementById('projModal');
+        if (projectModal) {
+            projectModal.addEventListener(
+                'show.bs.modal',
+                maskProjectModalPoV52
+            );
+        }
+    }
+
+    function startV52() {
+        enforceCommercialMaskV52();
+        installObserversV52();
+
+        /*
+         * Existing dashboard filtering recalculates the monetary cards.
+         * Re-mask after any filter/search interaction without changing the
+         * existing filter logic itself.
+         */
+        document.addEventListener('change', () => {
+            window.setTimeout(enforceCommercialMaskV52, 0);
+        }, true);
+
+        document.addEventListener('input', event => {
+            if (
+                event.target &&
+                event.target.matches &&
+                event.target.matches('.search-input')
+            ) {
+                window.setTimeout(enforceCommercialMaskV52, 0);
+            }
+        }, true);
+
+        window.setTimeout(enforceCommercialMaskV52, 250);
+        window.setTimeout(enforceCommercialMaskV52, 1000);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener(
+            'DOMContentLoaded',
+            startV52,
+            { once: true }
+        );
+    } else {
+        startV52();
+    }
+})();
 </script>
 </body>
 

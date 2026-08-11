@@ -5342,6 +5342,164 @@
 })();
 </script>
 
+
+<!-- PMIS_LEAD_VIEW_V51E -->
+<style id="pmis-lead-view-v51e-phases-style">
+    body.pmis-lead-view-v51e #reviewMeetingBtn {
+        display: none !important;
+    }
+
+    body.pmis-lead-view-v51e .pmis-view-only-banner-v24 {
+        color: #0f5132 !important;
+        background: #ecfdf5 !important;
+        border-color: #a7f3d0 !important;
+    }
+</style>
+
+<script id="pmis-lead-view-v51e-phases">
+(function () {
+    "use strict";
+
+    if (window.__PMIS_LEAD_VIEW_V51E_PHASES__) return;
+    window.__PMIS_LEAD_VIEW_V51E_PHASES__ = true;
+
+    function isLeadViewV51E() {
+        const authRole = String(
+            localStorage.getItem('danprel_auth_role') || ''
+        ).trim().toLowerCase();
+
+        const username = String(
+            localStorage.getItem('danprel_username') || ''
+        ).trim().toLowerCase();
+
+        return (
+            authRole === 'lead_view' ||
+            username === 'projects@danprel' ||
+            username === 'project@danprel'
+        );
+    }
+
+    function hideReviewMeetingV51E() {
+        if (!isLeadViewV51E()) return;
+
+        document.body.classList.add('pmis-lead-view-v51e');
+
+        const button =
+            document.getElementById('reviewMeetingBtn');
+
+        if (button) {
+            button.style.display = 'none';
+            button.removeAttribute('href');
+            button.setAttribute('aria-hidden', 'true');
+            button.setAttribute('tabindex', '-1');
+        }
+    }
+
+    function updateReadOnlyBannerV51E() {
+        if (!isLeadViewV51E()) return;
+
+        const banner =
+            document.querySelector('.pmis-view-only-banner-v24');
+
+        if (banner) {
+            banner.innerHTML =
+                '<i class="bi bi-eye-fill me-2"></i>' +
+                'Lead View - read only. Project plans and allocations can be viewed, but changes are disabled.';
+        }
+    }
+
+    function leadViewFakeProjectV51E(project) {
+        const source =
+            project && typeof project === 'object'
+                ? project
+                : {};
+
+        return {
+            ...source,
+            project_expeditor_employee_id:
+                '__PMIS_LEAD_VIEW_READ_ONLY__',
+            project_manager_employee_id:
+                '__PMIS_LEAD_VIEW_READ_ONLY__',
+            project_manager:
+                '__PMIS_LEAD_VIEW_READ_ONLY__'
+        };
+    }
+
+    const originalApplyV51E =
+        typeof window.pmisApplyProjectAccessV24 === 'function'
+            ? window.pmisApplyProjectAccessV24
+            : null;
+
+    if (originalApplyV51E) {
+        window.pmisApplyProjectAccessV24 =
+            function (project) {
+                if (!isLeadViewV51E()) {
+                    return originalApplyV51E(project);
+                }
+
+                hideReviewMeetingV51E();
+
+                /*
+                 * Reuse the already-tested PMIS V24 read-only mechanism.
+                 * Passing a guaranteed non-associated copy causes V24 to:
+                 *   - set PMIS_V24_VIEW_ONLY = true
+                 *   - disable write controls
+                 *   - wrap write functions
+                 *   - keep re-applying the disabled state to dynamic controls
+                 */
+                originalApplyV51E(
+                    leadViewFakeProjectV51E(project)
+                );
+
+                window.PMIS_V24_CAN_EDIT = false;
+                window.PMIS_V24_VIEW_ONLY = true;
+
+                updateReadOnlyBannerV51E();
+
+                return false;
+            };
+    }
+
+    function enforceV51E() {
+        if (!isLeadViewV51E()) return;
+
+        hideReviewMeetingV51E();
+
+        if (
+            typeof window.pmisApplyProjectAccessV24 === 'function'
+        ) {
+            window.pmisApplyProjectAccessV24({});
+        }
+
+        updateReadOnlyBannerV51E();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener(
+            'DOMContentLoaded',
+            enforceV51E,
+            { once: true }
+        );
+    } else {
+        enforceV51E();
+    }
+
+    /*
+     * initProjectData() can assign the Review Meeting href after the project
+     * fetch completes. Re-apply briefly so the button never becomes usable.
+     */
+    let attempts = 0;
+
+    const timer = window.setInterval(() => {
+        attempts += 1;
+        enforceV51E();
+
+        if (attempts >= 30) {
+            window.clearInterval(timer);
+        }
+    }, 200);
+})();
+</script>
 </body>
 
 </html>

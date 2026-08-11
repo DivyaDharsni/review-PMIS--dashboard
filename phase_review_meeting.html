@@ -1453,6 +1453,39 @@
             .lesson-field-v32, .lesson-field-v32.wide, .lesson-field-v32.full { grid-column: 1 / -1; }
         }
     </style>
+
+<script id="pmis-lead-view-v51e-review-guard">
+(function () {
+    "use strict";
+
+    // PMIS_LEAD_VIEW_V51E
+    const authRole = String(
+        localStorage.getItem('danprel_auth_role') || ''
+    ).trim().toLowerCase();
+
+    const username = String(
+        localStorage.getItem('danprel_username') || ''
+    ).trim().toLowerCase();
+
+    const isLeadView =
+        authRole === 'lead_view' ||
+        username === 'projects@danprel' ||
+        username === 'project@danprel';
+
+    if (!isLeadView) return;
+
+    document.documentElement.style.display = 'none';
+
+    try {
+        sessionStorage.setItem(
+            'pmis_lead_view_notice_v51e',
+            'Review Meeting access is not available in Lead View.'
+        );
+    } catch (_error) {}
+
+    window.location.replace('project_review.html');
+})();
+</script>
 </head>
 
 <body>
@@ -1606,6 +1639,7 @@
                         <th>#</th>
                         <th>Action Point</th>
                         <th>Dept</th>
+                        <th>Owner Type</th>
                         <th>Responsible Person</th>
                         <th>Email</th>
                         <th>Target Date</th>
@@ -2518,8 +2552,24 @@ function collectLessonLearnedV32() {
                 <td style="font-weight:800;color:#8499b4;">${rowCounter}</td>
                 <td><textarea class="cell-input" rows="2" id="${rid}_action" placeholder="Describe action, deliverable..." style="resize:vertical;"></textarea></td>
                 <td><select class="cell-input" id="${rid}_dept" onchange="onDeptChange('${rid}')"><option value="">— Select —</option>${deptOptions}</select></td>
-                <td><select class="cell-input" id="${rid}_person" onchange="onPersonChange('${rid}')"><option value="">— Person —</option></select></td>
-                <td><span class="email-cell" id="${rid}_email">Auto filled</span></td>
+                <td>
+                    <select class="cell-input" id="${rid}_owner_type" onchange="onOwnerTypeChange('${rid}')" style="min-width:112px;font-weight:800;">
+                        <option value="Inhouse" selected>Inhouse</option>
+                        <option value="Customer">Customer</option>
+                    </select>
+                </td>
+                <td>
+                    <select class="cell-input" id="${rid}_person" onchange="onPersonChange('${rid}')">
+                        <option value="">Optional / Danprel</option>
+                    </select>
+                    <input type="text"
+                           class="cell-input"
+                           id="${rid}_customer_name"
+                           placeholder="Customer contact name (optional)"
+                           maxlength="120"
+                           style="display:none; min-width:230px;">
+                </td>
+                <td><span class="email-cell" id="${rid}_email">Optional</span></td>
                 <td><div id="${rid}_date_container"><input type="date" class="cell-input" id="${rid}_target" style="min-width:130px;"><div id="${rid}_next_date_wrap" style="display:none; margin-top:6px;"><div style="font-size:0.6rem;font-weight:800;color:#0d9488;">NEXT</div><input type="date" class="cell-input" id="${rid}_target_next"></div></div></td>
                 <td><button class="btn-save-row" onclick="saveRow('${rid}')"><i class="bi bi-check-lg"></i> Save</button></td>
                 <td><button class="btn-del-row" onclick="deleteRow('${rid}')"><i class="bi bi-trash3"></i></button></td>
@@ -2528,35 +2578,122 @@ function collectLessonLearnedV32() {
             onDeptChange(rid); // Initialize with all employees
         }
 
+        // PMIS_ACTION_POINT_OWNER_TYPE_V48C
+        // PMIS_ACTION_POINT_CUSTOMER_NAME_V48E
+        function onOwnerTypeChange(rid) {
+            const ownerTypeEl = document.getElementById(rid + '_owner_type');
+            const personSel = document.getElementById(rid + '_person');
+            const customerName = document.getElementById(rid + '_customer_name');
+            const emailSpan = document.getElementById(rid + '_email');
+
+            if (!ownerTypeEl || !personSel || !customerName || !emailSpan) return;
+
+            if (ownerTypeEl.value === 'Customer') {
+                // Customer side: replace employee picker with a free-text contact name.
+                personSel.style.display = 'none';
+                personSel.disabled = true;
+
+                customerName.style.display = 'block';
+                customerName.disabled = false;
+                customerName.focus();
+
+                emailSpan.innerText = 'Not applicable';
+                emailSpan.style.background = '#f8fafc';
+                emailSpan.style.color = '#64748b';
+                return;
+            }
+
+            // Inhouse side: show employee picker and hide customer contact field.
+            customerName.style.display = 'none';
+            customerName.disabled = true;
+
+            personSel.style.display = '';
+            personSel.disabled = false;
+
+            onDeptChange(rid);
+        }
+
         function onDeptChange(rid) {
             const dept = document.getElementById(rid + '_dept').value;
+            const ownerTypeEl = document.getElementById(rid + '_owner_type');
             const personSel = document.getElementById(rid + '_person');
+            const customerName = document.getElementById(rid + '_customer_name');
             const emailSpan = document.getElementById(rid + '_email');
-            personSel.innerHTML = '<option value="">— Person —</option>';
 
-            // If no dept, show all employees; otherwise filter
+            if (!personSel || !emailSpan) return;
+
+            if (ownerTypeEl && ownerTypeEl.value === 'Customer') {
+                personSel.style.display = 'none';
+                personSel.disabled = true;
+
+                if (customerName) {
+                    customerName.style.display = 'block';
+                    customerName.disabled = false;
+                }
+
+                emailSpan.innerText = 'Not applicable';
+                emailSpan.style.background = '#f8fafc';
+                emailSpan.style.color = '#64748b';
+                return;
+            }
+
+            if (customerName) {
+                customerName.style.display = 'none';
+                customerName.disabled = true;
+            }
+
+            personSel.style.display = '';
+            personSel.innerHTML = '<option value="">Optional / Danprel</option>';
+
             const members = dept
-                ? employees.filter(e => (e.dept || '').toLowerCase() === dept.toLowerCase() || (e.dept || '').toLowerCase().includes(dept.toLowerCase()))
+                ? employees.filter(e =>
+                    (e.dept || '').toLowerCase() === dept.toLowerCase() ||
+                    (e.dept || '').toLowerCase().includes(dept.toLowerCase())
+                )
                 : employees;
 
-            members.sort((a, b) => (a.name || "").localeCompare(b.name || "")).forEach(m => {
-                const opt = document.createElement('option');
-                opt.value = m.email || '';
-                opt.dataset.name = m.name;
-                opt.innerText = `${m.name} (${m.role || 'Member'})`;
-                personSel.appendChild(opt);
-            });
+            members
+                .slice()
+                .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+                .forEach(m => {
+                    const opt = document.createElement('option');
+                    opt.value = m.email || '';
+                    opt.dataset.name = m.name || '';
+                    opt.innerText = `${m.name} (${m.role || 'Member'})`;
+                    personSel.appendChild(opt);
+                });
 
             personSel.disabled = false;
-            emailSpan.innerText = 'Auto filled';
-            emailSpan.style.background = "#eef9f7";
+
+            emailSpan.innerText = 'Optional';
+            emailSpan.style.background = '#eef9f7';
+            emailSpan.style.color = '#0d6b64';
         }
+
         function onPersonChange(rid) {
+            const ownerTypeEl = document.getElementById(rid + '_owner_type');
             const personSel = document.getElementById(rid + '_person');
             const emailSpan = document.getElementById(rid + '_email');
-            if (!personSel.value) { emailSpan.innerText = 'Auto filled'; emailSpan.style.background = "#eef9f7"; return; }
+
+            if (!personSel || !emailSpan) return;
+
+            if (ownerTypeEl && ownerTypeEl.value === 'Customer') {
+                emailSpan.innerText = 'Not applicable';
+                emailSpan.style.background = '#f8fafc';
+                emailSpan.style.color = '#64748b';
+                return;
+            }
+
+            if (!personSel.value) {
+                emailSpan.innerText = 'Optional';
+                emailSpan.style.background = '#eef9f7';
+                emailSpan.style.color = '#0d6b64';
+                return;
+            }
+
             emailSpan.innerText = personSel.value;
-            emailSpan.style.background = "#d9f0ec";
+            emailSpan.style.background = '#d9f0ec';
+            emailSpan.style.color = '#0d6b64';
         }
         /* syncMeetings is removed as we now use direct ActionPoint API calls */
 
@@ -2565,9 +2702,25 @@ function collectLessonLearnedV32() {
             if (!reviewDate) { showToast('Please set Review Date', true); return; }
             const action = document.getElementById(rid + '_action').value.trim();
             const dept = document.getElementById(rid + '_dept').value;
+            const ownerTypeEl = document.getElementById(rid + '_owner_type');
+            const ownerType = ownerTypeEl && ownerTypeEl.value === 'Customer' ? 'Customer' : 'Inhouse';
             const personSel = document.getElementById(rid + '_person');
-            const email = personSel.value || '';
-            const personName = personSel.value ? (personSel.options[personSel.selectedIndex]?.dataset?.name || personSel.value) : '';
+
+            let email = '';
+            let personName = '';
+
+            if (ownerType === 'Customer') {
+                const customerNameEl = document.getElementById(rid + '_customer_name');
+                const typedCustomerName = (customerNameEl?.value || '').trim();
+
+                personName = typedCustomerName || 'Customer';
+            } else if (personSel && personSel.value) {
+                email = personSel.value || '';
+                personName = personSel.options[personSel.selectedIndex]?.dataset?.name || personSel.value;
+            } else {
+                personName = 'Danprel (Inhouse)';
+            }
+
             const target = document.getElementById(rid + '_target').value || '';
             const status = "Yet to Start";
             // Relaxed validation: only Action Point is absolutely required
@@ -2584,7 +2737,7 @@ function collectLessonLearnedV32() {
                 targetDate: target,
                 revisions: [],
                 statusValue: status,
-                mailSent: false
+                mailSent: !email
             };
 
             try {
