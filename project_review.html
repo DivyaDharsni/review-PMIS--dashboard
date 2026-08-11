@@ -11116,6 +11116,423 @@ function getFilteredProjects() {
     }
 })();
 </script>
+<script id="pmis-action-point-export-force-fresh-v56">
+/* PMIS_ACTION_POINT_EXPORT_FORCE_FRESH_V56 */
+(function () {
+    'use strict';
+
+    // -----------------------------------------------------------------
+    // ROOT CAUSE FIX
+    // -----------------------------------------------------------------
+    // The dashboard can now render before the background Action Point
+    // collection finishes loading. The export code, however, exports from
+    // each selected project's in-memory `project.meetings` array.
+    //
+    // If Export is clicked while that array is still empty/stale, PDF/Excel
+    // can incorrectly report that no Action Points exist even though records
+    // are present in MongoDB.
+    //
+    // V56 makes export independent of dashboard/background timing:
+    // every selected project is refreshed from /api/action-points immediately
+    // BEFORE the existing PDF/Excel exporter is allowed to run.
+    // -----------------------------------------------------------------
+
+    const originalApDoExportV56 =
+        typeof window.apDoExport === 'function'
+            ? window.apDoExport
+            : null;
+
+    if (!originalApDoExportV56) {
+        console.error(
+            '[PMIS V56] Existing apDoExport() was not available.'
+        );
+        return;
+    }
+
+    function waitV56(ms) {
+        return new Promise(resolve => window.setTimeout(resolve, ms));
+    }
+
+    function authHeadersV56() {
+        const headers = {
+            'Accept': 'application/json',
+            'Cache-Control': 'no-cache'
+        };
+
+        const token = String(
+            localStorage.getItem('danprel_access_token') || ''
+        ).trim();
+
+        if (token) {
+            headers.Authorization = 'Bearer ' + token;
+        }
+
+        return headers;
+    }
+
+    async function fetchProjectActionPointsOnceV56(projectId) {
+        const controller =
+            typeof AbortController === 'function'
+                ? new AbortController()
+                : null;
+
+        const timer = controller
+            ? window.setTimeout(
+                () => controller.abort(),
+                15000
+            )
+            : null;
+
+        try {
+            const response = await fetch(
+                '/api/action-points?projectId=' +
+                encodeURIComponent(projectId) +
+                '&t=' +
+                Date.now(),
+                {
+                    method: 'GET',
+                    headers: authHeadersV56(),
+                    cache: 'no-store',
+                    signal: controller ? controller.signal : undefined
+                }
+            );
+
+            if (!response.ok) {
+                const error = new Error(
+                    'Action Point request failed with HTTP ' +
+                    response.status
+                );
+
+                error.status = response.status;
+                throw error;
+            }
+
+            const data = await response.json();
+
+            if (!Array.isArray(data)) {
+                const error = new Error(
+                    'Action Point API returned a non-array response.'
+                );
+
+                error.status = 0;
+                throw error;
+            }
+
+            return data;
+        }
+        finally {
+            if (timer) {
+                window.clearTimeout(timer);
+            }
+        }
+    }
+
+    function shouldRetryV56(error) {
+        if (
+            error &&
+            (
+                error.name === 'AbortError' ||
+                error.name === 'TypeError'
+            )
+        ) {
+            return true;
+        }
+
+        const status = Number(error && error.status);
+
+        return (
+            !Number.isFinite(status) ||
+            status === 0 ||
+            status === 408 ||
+            status === 425 ||
+            status === 429 ||
+            status === 500 ||
+            status === 502 ||
+            status === 503 ||
+            status === 504
+        );
+    }
+
+    async function fetchProjectActionPointsV56(projectId) {
+        let lastError = null;
+
+        for (let attempt = 1; attempt <= 3; attempt += 1) {
+            try {
+                return await fetchProjectActionPointsOnceV56(
+                    projectId
+                );
+            }
+            catch (error) {
+                lastError = error;
+
+                if (
+                    attempt >= 3 ||
+                    !shouldRetryV56(error)
+                ) {
+                    break;
+                }
+
+                await waitV56(
+                    attempt === 1 ? 300 : 800
+                );
+            }
+        }
+
+        throw (
+            lastError ||
+            new Error('Unable to refresh Action Points.')
+        );
+    }
+
+    async function refreshSelectedProjectsV56(selectedProjects) {
+        const queue = Array.isArray(selectedProjects)
+            ? selectedProjects.slice()
+            : [];
+
+        const failed = [];
+        const workerCount = Math.min(
+            3,
+            Math.max(1, queue.length)
+        );
+
+        async function worker() {
+            while (queue.length) {
+                const project = queue.shift();
+
+                if (!project || !project._id) {
+                    continue;
+                }
+
+                try {
+                    const records =
+                        await fetchProjectActionPointsV56(
+                            project._id
+                        );
+
+                    // Fresh server result is the source of truth.
+                    project.meetings = records;
+                }
+                catch (error) {
+                    failed.push({
+                        project,
+                        error
+                    });
+
+                    console.warn(
+                        '[PMIS V56] Export refresh failed:',
+                        project.code ||
+                            project.name ||
+                            project._id,
+                        error
+                    );
+
+                    // Keep already loaded rows only as fallback.
+                    if (!Array.isArray(project.meetings)) {
+                        project.meetings = [];
+                    }
+                }
+            }
+        }
+
+        await Promise.all(
+            Array.from(
+                { length: workerCount },
+                () => worker()
+            )
+        );
+
+        return failed;
+    }
+
+    window.apDoExport = async function (format) {
+        const selected =
+            typeof apGetSelectedProjects === 'function'
+                ? apGetSelectedProjects()
+                : [];
+
+        if (!Array.isArray(selected) || selected.length === 0) {
+            if (typeof showToast === 'function') {
+                showToast(
+                    'Please select at least one project.',
+                    true
+                );
+            }
+
+            return;
+        }
+
+        try {
+            if (typeof showStatus === 'function') {
+                showStatus(
+                    'Refreshing latest Action Points...'
+                );
+            }
+
+            const failed =
+                await refreshSelectedProjectsV56(selected);
+
+            // Check RAW fresh records here. Owner filtering remains inside
+            // the existing report functions and is intentionally unchanged.
+            const rawRecordCount = selected.reduce(
+                (sum, project) =>
+                    sum +
+                    (
+                        Array.isArray(project.meetings)
+                            ? project.meetings.length
+                            : 0
+                    ),
+                0
+            );
+
+            if (rawRecordCount === 0) {
+                if (typeof hideStatus === 'function') {
+                    hideStatus();
+                }
+
+                if (typeof showToast === 'function') {
+                    const message = failed.length
+                        ? 'Action Points could not be refreshed from the server. Please try again.'
+                        : 'No Action Points were returned for the selected project(s).';
+
+                    showToast(message, true);
+                }
+
+                return;
+            }
+
+            if (
+                failed.length > 0 &&
+                typeof showToast === 'function'
+            ) {
+                showToast(
+                    failed.length +
+                    ' selected project' +
+                    (failed.length === 1 ? '' : 's') +
+                    ' could not be refreshed. Loaded data will be used for those project(s).',
+                    true
+                );
+            }
+
+            // Run the ORIGINAL exporter after fresh server data has been
+            // written back to the same project objects.
+            await originalApDoExportV56.call(
+                this,
+                format
+            );
+        }
+        catch (error) {
+            console.error(
+                '[PMIS V56] Export preparation failed:',
+                error
+            );
+
+            if (typeof hideStatus === 'function') {
+                hideStatus();
+            }
+
+            if (typeof showToast === 'function') {
+                showToast(
+                    'Export failed while refreshing Action Points: ' +
+                    (
+                        error &&
+                        error.message
+                            ? error.message
+                            : 'Unknown error'
+                    ),
+                    true
+                );
+            }
+        }
+    };
+
+    console.log(
+        '[PMIS V56] Action Point export fresh-data guard active.'
+    );
+})();
+</script>
+<script id="pmis-action-point-export-remove-identity-filter-v57">
+/* PMIS_ACTION_POINT_EXPORT_REMOVE_IDENTITY_FILTER_V57 */
+(function () {
+    'use strict';
+
+    // ROOT CAUSE:
+    // The Action Point modal/API correctly loads all Action Points for an
+    // associated project, but the PDF/Excel pipeline later calls the older
+    // pmisFilterActionPointsForCurrentLogin() rule. That old rule removes every
+    // Action Point not assigned to the signed-in employee.
+    //
+    // Required behavior:
+    //   Project access controls WHICH PROJECTS may be exported.
+    //   Once a permitted project is selected, ALL of that project's Action
+    //   Points may be exported. The All/Inhouse/Customer owner filter remains.
+    //
+    // V57 disables ONLY the employee-identity filter while the dedicated
+    // Action Point report is being generated. Master Report behavior is left
+    // untouched outside this export operation.
+
+    const originalIdentityFilterV57 =
+        window.pmisFilterActionPointsForCurrentLogin;
+
+    const originalActionPointExportV57 =
+        window.apDoExport;
+
+    if (typeof originalIdentityFilterV57 !== 'function') {
+        console.error(
+            '[PMIS V57] pmisFilterActionPointsForCurrentLogin() was not available.'
+        );
+        return;
+    }
+
+    if (typeof originalActionPointExportV57 !== 'function') {
+        console.error(
+            '[PMIS V57] apDoExport() was not available.'
+        );
+        return;
+    }
+
+    window.__PMIS_V57_ACTION_REPORT_ACTIVE__ = false;
+
+    window.pmisFilterActionPointsForCurrentLogin =
+        function (items) {
+            const rows = Array.isArray(items)
+                ? items
+                : [];
+
+            if (
+                window.__PMIS_V57_ACTION_REPORT_ACTIVE__ === true
+            ) {
+                // IMPORTANT:
+                // Do not filter by Responsible Person / employee identity.
+                // Project-level access has already been checked before the
+                // project appears in the Action Point export selector.
+                return rows.slice();
+            }
+
+            return originalIdentityFilterV57.apply(
+                this,
+                arguments
+            );
+        };
+
+    window.apDoExport = async function (format) {
+        window.__PMIS_V57_ACTION_REPORT_ACTIVE__ = true;
+
+        try {
+            return await originalActionPointExportV57.call(
+                this,
+                format
+            );
+        }
+        finally {
+            window.__PMIS_V57_ACTION_REPORT_ACTIVE__ = false;
+        }
+    };
+
+    console.log(
+        '[PMIS V57] Action Point report employee-identity filter removed; project/owner filters preserved.'
+    );
+})();
+</script>
 </body>
 
 </html>
