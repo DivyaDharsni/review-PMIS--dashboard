@@ -5465,7 +5465,16 @@
             'actionChart','actions','lessons','people','emails','remarks','revisions'
         ];
         const MASTER_REPORT_CUSTOMER_DEFAULTS = [
-            'overview','kpi','phases','gantt','actionChart','actions'
+            'overview',
+            'kpi',
+            'phases',
+            'gantt',
+            'actionChart',
+            'actions',
+            'people',
+            'emails',
+            'remarks',
+            'revisions'
         ];
 
         let masterReportActiveType = 'internal';
@@ -5564,13 +5573,26 @@
         }
 
         function setMasterReportChecklist(checked) {
-            document.querySelectorAll('.master-report-option').forEach(input => { input.checked = checked; });
-            saveMasterReportSelection(document.querySelector('input[name="masterReportType"]:checked')?.value || masterReportActiveType);
+            const alwaysReal = new Set(['people','emails','remarks','revisions']);
+
+            document.querySelectorAll('.master-report-option').forEach(input => {
+                input.checked = checked || alwaysReal.has(input.value);
+            });
+
+            saveMasterReportSelection(
+                document.querySelector('input[name="masterReportType"]:checked')?.value ||
+                masterReportActiveType
+            );
         }
 
         function getMasterReportOptions(type) {
             if (type === masterReportActiveType) saveMasterReportSelection(type);
-            return new Set(masterReportSelectionState[type] || []);
+
+            // PMIS_MASTER_REPORT_NO_MASKING_V61B
+            // These fields always use their real stored values in the final report.
+            const selected = new Set(masterReportSelectionState[type] || []);
+            ['people','emails','remarks','revisions'].forEach(option => selected.add(option));
+            return selected;
         }
 
         function masterReportDate(value) {
@@ -6055,12 +6077,12 @@
                 const continuationHeader = () => masterReportPageHeader(doc, project, reportTitle, logoData);
 
                 if (options.has('overview')) {
+                    // PMIS_ACTION_EXPORT_VERTICAL_AND_MASTER_OVERVIEW_V60B
                     const overview = [
                         ['Tracking Code',project.tracking_code||'-','Project Code',project.code||'-'],
                         ['Project Name',project.name||'-','Customer',project.customer_name||'-'],
                         ['MQ2 / SAT Location',project.sat_location||'-','PM / Project Expeditor',project.project_manager||'-'],
-                        ['Current Phase',project.current_phase||'-','Project Status',masterReportStatus(project)],
-                        ['Description',project.description||'-','Plan Status',project.plan_status||'-']
+                        ['Project Status',masterReportStatus(project),'','']
                     ];
                     if (options.has('commercial')) overview.splice(2,0,['PO Date',masterReportDate(project.po_date),'PO Value',masterReportMoney(project.po_value)]);
                     y = masterReportSection(doc,nextSectionTitle('PROJECT OVERVIEW'),y,project,reportTitle,logoData,50);
@@ -6101,8 +6123,8 @@
                         masterReportDate(row.actual_start),
                         masterReportDate(row.actual_end),
                         Number(row.progress || 0),
-                        options.has('people') ? (row.responsibility || '-') : 'Masked',
-                        options.has('remarks') ? (row.remarks || '-') : 'Excluded'
+                        options.has('people') ? (row.responsibility || '-') : '',
+                        options.has('remarks') ? (row.remarks || '-') : ''
                     ]);
 
                     y = masterReportSection(doc,nextSectionTitle('PROJECT PROGRESS'),y,project,reportTitle,logoData,56);
@@ -11530,6 +11552,2631 @@ function getFilteredProjects() {
 
     console.log(
         '[PMIS V57] Action Point report employee-identity filter removed; project/owner filters preserved.'
+    );
+})();
+</script>
+<script id="pmis-master-report-action-owner-combined-v58">
+/* PMIS_MASTER_REPORT_ACTION_OWNER_COMBINED_V58 */
+(function () {
+    'use strict';
+
+    const oldGetOptions = window.getMasterReportOptions;
+    const oldOpen = window.openMasterReportExport;
+    const oldToggle = window.toggleMasterReportOptions;
+    const oldSetChecklist = window.setMasterReportChecklist;
+    const oldGenerate = window.generateProjectMasterReport;
+
+    if (
+        typeof oldGetOptions !== 'function' ||
+        typeof oldOpen !== 'function' ||
+        typeof oldGenerate !== 'function'
+    ) return;
+
+    window.__PMIS_MASTER_ACTION_OWNER_V58__ = 'all';
+
+    function norm(v) {
+        return String(v ?? '').replace(/\s+/g, ' ').trim().toLowerCase();
+    }
+
+    function ownerType(item) {
+        if (typeof window.pmisV49BActionOwnerType === 'function') {
+            const existing = norm(window.pmisV49BActionOwnerType(item));
+            if (existing === 'inhouse' || existing === 'customer') return existing;
+        }
+
+        const explicit = norm(
+            item?.responsibilityType ??
+            item?.ownerType ??
+            item?.responsibility_type ??
+            item?.owner_type ??
+            ''
+        );
+
+        if (explicit === 'customer' || explicit === 'client') return 'customer';
+        if (['inhouse','in-house','danprel','internal'].includes(explicit)) return 'inhouse';
+
+        if (norm(item?.email ?? '')) return 'inhouse';
+
+        const person = norm(
+            item?.personName ??
+            item?.responsiblePerson ??
+            item?.responsible_person ??
+            ''
+        );
+
+        if (
+            person === 'danprel' ||
+            person === 'inhouse' ||
+            person === 'in-house' ||
+            person === 'danprel (inhouse)' ||
+            person.includes('danprel (inhouse)')
+        ) return 'inhouse';
+
+        if (person === 'customer' || person === 'client') return 'customer';
+
+        if (person) {
+            try {
+                const list = typeof employees !== 'undefined' && Array.isArray(employees)
+                    ? employees : [];
+
+                const known = list.some(emp =>
+                    [
+                        emp?.name,
+                        emp?.employee_name,
+                        emp?.displayName,
+                        emp?.email,
+                        emp?.employee_id,
+                        emp?.employeeId
+                    ].some(v => norm(v) === person)
+                );
+
+                if (known) return 'inhouse';
+            } catch (_) {}
+
+            return 'customer';
+        }
+
+        return 'inhouse';
+    }
+
+    function currentOwner() {
+        const v = norm(window.__PMIS_MASTER_ACTION_OWNER_V58__ || 'all');
+        return ['all','inhouse','customer'].includes(v) ? v : 'all';
+    }
+
+    function paintOwner() {
+        document.querySelectorAll('#masterActionOwnerV58 button[data-owner]')
+            .forEach(btn => {
+                const active = norm(btn.dataset.owner) === currentOwner();
+                btn.style.background = active ? '#0f766e' : 'transparent';
+                btn.style.color = active ? '#fff' : '#334155';
+                btn.style.borderColor = active ? '#0f766e' : 'transparent';
+            });
+    }
+
+    window.pmisSetMasterActionOwnerV58 = function (owner) {
+        const v = norm(owner);
+        window.__PMIS_MASTER_ACTION_OWNER_V58__ =
+            ['all','inhouse','customer'].includes(v) ? v : 'all';
+        paintOwner();
+    };
+
+    function syncCombined() {
+        const chart = document.querySelector(
+            '#masterReportChecklist input[value="actionChart"]'
+        );
+        const details = document.querySelector(
+            '#masterReportChecklist input[value="actions"]'
+        );
+
+        if (chart && details) chart.checked = details.checked;
+    }
+
+    function ensureUi(resetOwner) {
+        const chart = document.querySelector(
+            '#masterReportChecklist input[value="actionChart"]'
+        );
+        const details = document.querySelector(
+            '#masterReportChecklist input[value="actions"]'
+        );
+
+        if (!chart || !details) return;
+
+        const chartLabel = chart.closest('label');
+        const detailsLabel = details.closest('label');
+
+        if (chartLabel) {
+            chartLabel.style.display = 'none';
+            chartLabel.setAttribute('aria-hidden', 'true');
+        }
+
+        if (detailsLabel) {
+            const text = detailsLabel.querySelector('.master-report-check-label');
+            if (text) text.textContent = 'Action Points (Status + Details)';
+            detailsLabel.title =
+                'Includes both the Action Point status graph and detailed Action Points.';
+        }
+
+        const combined = Boolean(details.checked || chart.checked);
+        details.checked = combined;
+        chart.checked = combined;
+
+        if (details.dataset.pmisCombinedV58 !== 'true') {
+            details.dataset.pmisCombinedV58 = 'true';
+
+            details.addEventListener('change', () => {
+                syncCombined();
+
+                try {
+                    if (typeof saveMasterReportSelection === 'function') {
+                        saveMasterReportSelection(
+                            document.querySelector(
+                                'input[name="masterReportType"]:checked'
+                            )?.value || 'internal'
+                        );
+                    }
+                } catch (_) {}
+            });
+        }
+
+        if (!document.getElementById('masterActionOwnerV58')) {
+            const checklist = document.getElementById('masterReportChecklist');
+            if (checklist) {
+                const panel = document.createElement('div');
+                panel.id = 'masterActionOwnerV58';
+                panel.style.cssText =
+                    'grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 14px;border:1px solid #dbe4ee;border-radius:14px;background:#f8fafc;';
+                panel.innerHTML = `
+                    <div>
+                        <div style="font-size:.78rem;font-weight:900;color:#0f172a;text-transform:uppercase;letter-spacing:.04em;">
+                            Action Point Owner
+                        </div>
+                        <div style="font-size:.72rem;color:#64748b;margin-top:2px;">
+                            Choose which Action Points are included in this Master Report.
+                        </div>
+                    </div>
+                    <div style="display:inline-flex;align-items:center;gap:4px;padding:4px;border:1px solid #dbe4ee;border-radius:11px;background:#eef3f8;">
+                        <button type="button" data-owner="all"
+                                onclick="pmisSetMasterActionOwnerV58('all')"
+                                style="height:31px;padding:0 12px;border-radius:8px;border:1px solid transparent;font-size:.74rem;font-weight:800;cursor:pointer;">All</button>
+                        <button type="button" data-owner="inhouse"
+                                onclick="pmisSetMasterActionOwnerV58('inhouse')"
+                                style="height:31px;padding:0 12px;border-radius:8px;border:1px solid transparent;font-size:.74rem;font-weight:800;cursor:pointer;">Inhouse</button>
+                        <button type="button" data-owner="customer"
+                                onclick="pmisSetMasterActionOwnerV58('customer')"
+                                style="height:31px;padding:0 12px;border-radius:8px;border:1px solid transparent;font-size:.74rem;font-weight:800;cursor:pointer;">Customer</button>
+                    </div>`;
+
+                checklist.insertAdjacentElement('afterend', panel);
+            }
+        }
+
+        if (resetOwner === true) {
+            window.__PMIS_MASTER_ACTION_OWNER_V58__ = 'all';
+        }
+
+        paintOwner();
+    }
+
+    window.masterReportActionRows = function (project) {
+        const rows = Array.isArray(project?.meetings)
+            ? project.meetings.slice()
+            : [];
+
+        const owner = currentOwner();
+
+        const filtered = owner === 'all'
+            ? rows
+            : rows.filter(item => ownerType(item) === owner);
+
+        return filtered.sort((a, b) => {
+            try {
+                return (
+                    (masterReportDateObject(a?.reviewDate)?.getTime() || 0) -
+                    (masterReportDateObject(b?.reviewDate)?.getTime() || 0)
+                );
+            } catch (_) {
+                return String(a?.reviewDate || '')
+                    .localeCompare(String(b?.reviewDate || ''));
+            }
+        });
+    };
+
+    window.getMasterReportOptions = function (type) {
+        const chart = document.querySelector(
+            '#masterReportChecklist input[value="actionChart"]'
+        );
+        const details = document.querySelector(
+            '#masterReportChecklist input[value="actions"]'
+        );
+
+        if (chart && details) chart.checked = details.checked;
+
+        const result = oldGetOptions.apply(this, arguments);
+        const options = result instanceof Set ? result : new Set(result || []);
+
+        if (details?.checked) {
+            options.add('actions');
+            options.add('actionChart');
+        } else {
+            options.delete('actions');
+            options.delete('actionChart');
+        }
+
+        return options;
+    };
+
+    window.openMasterReportExport = function () {
+        const result = oldOpen.apply(this, arguments);
+        setTimeout(() => ensureUi(true), 0);
+        return result;
+    };
+
+    if (typeof oldToggle === 'function') {
+        window.toggleMasterReportOptions = function () {
+            const result = oldToggle.apply(this, arguments);
+            setTimeout(() => ensureUi(false), 0);
+            return result;
+        };
+    }
+
+    if (typeof oldSetChecklist === 'function') {
+        window.setMasterReportChecklist = function () {
+            const result = oldSetChecklist.apply(this, arguments);
+            ensureUi(false);
+            syncCombined();
+            return result;
+        };
+    }
+
+    async function refreshActionPoints(project) {
+        if (!project?._id) return;
+
+        const headers = {
+            'Accept': 'application/json',
+            'Cache-Control': 'no-cache'
+        };
+
+        const token = String(
+            localStorage.getItem('danprel_access_token') || ''
+        ).trim();
+
+        if (token) headers.Authorization = 'Bearer ' + token;
+
+        const response = await fetch(
+            '/api/action-points?projectId=' +
+            encodeURIComponent(project._id) +
+            '&t=' + Date.now(),
+            {
+                method: 'GET',
+                headers,
+                cache: 'no-store'
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error(
+                'Action Point refresh failed with HTTP ' + response.status
+            );
+        }
+
+        const data = await response.json();
+
+        if (!Array.isArray(data)) {
+            throw new Error('Action Point API returned invalid data.');
+        }
+
+        project.meetings = data;
+    }
+
+    window.generateProjectMasterReport = async function () {
+        ensureUi(false);
+        syncCombined();
+
+        const id = document.getElementById('masterReportProject')?.value || '';
+        let project = null;
+
+        try {
+            if (typeof projects !== 'undefined' && Array.isArray(projects)) {
+                project = projects.find(
+                    item => String(item?._id) === String(id)
+                ) || null;
+            }
+        } catch (_) {}
+
+        if (project) {
+            try {
+                if (typeof showStatus === 'function') {
+                    showStatus('Refreshing latest Action Points...');
+                }
+
+                await refreshActionPoints(project);
+            } catch (error) {
+                console.warn(
+                    '[PMIS V58] Master Report Action Point refresh failed:',
+                    error
+                );
+
+                const loaded = Array.isArray(project.meetings)
+                    ? project.meetings.length
+                    : 0;
+
+                if (!loaded) {
+                    if (typeof hideStatus === 'function') hideStatus();
+
+                    if (typeof showToast === 'function') {
+                        showToast(
+                            'Latest Action Points could not be loaded from the backend. Please try again.',
+                            true
+                        );
+                    }
+
+                    return;
+                }
+
+                if (typeof showToast === 'function') {
+                    showToast(
+                        'Latest Action Points could not be refreshed. Existing loaded Action Points will be used.',
+                        true
+                    );
+                }
+            }
+        }
+
+        return await oldGenerate.apply(this, arguments);
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener(
+            'DOMContentLoaded',
+            () => ensureUi(false),
+            { once: true }
+        );
+    } else {
+        ensureUi(false);
+    }
+
+    console.log(
+        '[PMIS V58] Master Report combined Action Point option and Owner filter active.'
+    );
+})();
+</script>
+<script id="pmis-action-owner-live-filter-v59">
+/* PMIS_ACTION_OWNER_LIVE_FILTER_V59 */
+(function () {
+    'use strict';
+
+    let applyingV59 = false;
+    let queuedV59 = false;
+
+    function normV59(value) {
+        return String(value ?? '')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .toLowerCase();
+    }
+
+    function ownerTypeV59(item) {
+        const explicit = normV59(
+            item?.responsibilityType ??
+            item?.ownerType ??
+            item?.responsibility_type ??
+            item?.owner_type ??
+            ''
+        );
+
+        if (
+            explicit === 'customer' ||
+            explicit === 'client'
+        ) {
+            return 'customer';
+        }
+
+        if (
+            explicit === 'inhouse' ||
+            explicit === 'in-house' ||
+            explicit === 'danprel' ||
+            explicit === 'internal'
+        ) {
+            return 'inhouse';
+        }
+
+        const email = String(
+            item?.email ?? ''
+        ).trim();
+
+        // Saved Danprel employee Action Points carry employee email.
+        if (email) {
+            return 'inhouse';
+        }
+
+        const person = normV59(
+            item?.personName ??
+            item?.responsiblePerson ??
+            item?.responsible_person ??
+            ''
+        );
+
+        // Generic internal Action Points created without a selected employee.
+        if (
+            person === 'danprel (inhouse)' ||
+            person === 'danprel' ||
+            person === 'inhouse' ||
+            person === 'in-house' ||
+            person.includes('danprel (inhouse)')
+        ) {
+            return 'inhouse';
+        }
+
+        if (
+            person === 'customer' ||
+            person === 'client'
+        ) {
+            return 'customer';
+        }
+
+        // Customer contact names are saved without a Danprel email.
+        if (person) {
+            return 'customer';
+        }
+
+        // Preserve old blank/unassigned records as internal.
+        return 'inhouse';
+    }
+
+    function currentModeV59() {
+        const active = document.querySelector(
+            '#apOwnerFilterV49B .ap-owner-filter-v49b.active'
+        );
+
+        const mode = normV59(
+            active?.dataset?.owner || 'all'
+        );
+
+        return ['all', 'inhouse', 'customer'].includes(mode)
+            ? mode
+            : 'all';
+    }
+
+    function projectByIdV59(id) {
+        try {
+            if (
+                typeof projects !== 'undefined' &&
+                Array.isArray(projects)
+            ) {
+                return projects.find(
+                    p => String(p?._id) === String(id)
+                ) || null;
+            }
+        }
+        catch (_) {}
+
+        return null;
+    }
+
+    function isCompletedV59(item) {
+        const status = normV59(
+            item?.statusValue ??
+            item?.status ??
+            ''
+        );
+
+        return (
+            status.includes('complete') ||
+            status.includes('resolved') ||
+            status.includes('closed')
+        );
+    }
+
+    function filteredRowsV59(project, mode) {
+        const rows = Array.isArray(project?.meetings)
+            ? project.meetings
+            : [];
+
+        if (mode === 'all') {
+            return rows.slice();
+        }
+
+        return rows.filter(
+            item => ownerTypeV59(item) === mode
+        );
+    }
+
+    function ownerLabelV59(mode) {
+        if (mode === 'inhouse') return 'Inhouse';
+        if (mode === 'customer') return 'Customer';
+        return 'All';
+    }
+
+    function updateRowTextV59(row, project, records, mode) {
+        const total = records.length;
+        const completed = records.filter(
+            isCompletedV59
+        ).length;
+
+        const cb = row.querySelector('.ap-proj-cb');
+
+        const mainInfo = cb?.nextElementSibling || null;
+        const subtitle = mainInfo?.lastElementChild || null;
+        const badge = row.querySelector('span');
+
+        const customer =
+            project?.customer_name ||
+            project?.customerName ||
+            project?.customer ||
+            '—';
+
+        if (subtitle) {
+            const prefix =
+                mode === 'all'
+                    ? ''
+                    : ownerLabelV59(mode) + ' ';
+
+            subtitle.textContent =
+                customer +
+                ' | ' +
+                total +
+                ' ' +
+                prefix +
+                'action point' +
+                (total === 1 ? '' : 's') +
+                ', ' +
+                completed +
+                ' completed';
+        }
+
+        if (badge) {
+            badge.textContent =
+                completed + '/' + total;
+
+            const allDone =
+                total > 0 &&
+                completed === total;
+
+            badge.style.background =
+                allDone
+                    ? '#dcfce7'
+                    : '#f1f5f9';
+
+            badge.style.color =
+                allDone
+                    ? '#16a34a'
+                    : '#475569';
+        }
+
+        return { total, completed };
+    }
+
+    function applyVisibilityV59(row, ownerVisible) {
+        const search = normV59(
+            document.getElementById(
+                'apSearchInput'
+            )?.value || ''
+        );
+
+        const name = normV59(
+            row.dataset.name || ''
+        );
+
+        const searchVisible =
+            !search ||
+            name.includes(search);
+
+        row.style.display =
+            ownerVisible && searchVisible
+                ? ''
+                : 'none';
+    }
+
+    function applyOwnerFilterV59() {
+        if (applyingV59) return;
+
+        applyingV59 = true;
+
+        try {
+            const mode = currentModeV59();
+
+            let matchingProjects = 0;
+            let matchingActions = 0;
+
+            document
+                .querySelectorAll(
+                    '#apProjectList .ap-project-row'
+                )
+                .forEach(row => {
+                    const cb =
+                        row.querySelector(
+                            '.ap-proj-cb'
+                        );
+
+                    if (!cb) return;
+
+                    const project =
+                        projectByIdV59(
+                            cb.dataset.projId
+                        );
+
+                    if (!project) {
+                        row.dataset.ownerVisibleV59 =
+                            'false';
+
+                        cb.checked = false;
+                        cb.disabled = true;
+
+                        applyVisibilityV59(
+                            row,
+                            false
+                        );
+
+                        return;
+                    }
+
+                    const records =
+                        filteredRowsV59(
+                            project,
+                            mode
+                        );
+
+                    const counts =
+                        updateRowTextV59(
+                            row,
+                            project,
+                            records,
+                            mode
+                        );
+
+                    const ownerVisible =
+                        mode === 'all' ||
+                        counts.total > 0;
+
+                    row.dataset.ownerVisibleV59 =
+                        ownerVisible
+                            ? 'true'
+                            : 'false';
+
+                    if (!ownerVisible) {
+                        cb.checked = false;
+                    }
+
+                    // All mode preserves original zero-AP project selection.
+                    // Inhouse / Customer mode disables projects that have
+                    // no matching Action Points.
+                    cb.disabled =
+                        mode !== 'all' &&
+                        counts.total === 0;
+
+                    if (ownerVisible) {
+                        matchingProjects += 1;
+                        matchingActions +=
+                            counts.total;
+                    }
+
+                    applyVisibilityV59(
+                        row,
+                        ownerVisible
+                    );
+                });
+
+            const note =
+                document.getElementById(
+                    'apProjectScopeNoteV30'
+                );
+
+            if (note) {
+                if (mode === 'all') {
+                    note.textContent =
+                        'Associated projects are shown, including projects with 0/0 action points.';
+                }
+                else {
+                    note.textContent =
+                        matchingProjects +
+                        ' project' +
+                        (matchingProjects === 1 ? '' : 's') +
+                        ' with ' +
+                        matchingActions +
+                        ' ' +
+                        ownerLabelV59(mode) +
+                        ' Action Point' +
+                        (matchingActions === 1 ? '' : 's') +
+                        '. Counts shown above follow this Owner filter.';
+                }
+            }
+
+            if (
+                typeof window.apUpdateCount ===
+                'function'
+            ) {
+                window.apUpdateCount();
+            }
+            else if (
+                typeof apUpdateCount ===
+                'function'
+            ) {
+                apUpdateCount();
+            }
+        }
+        finally {
+            applyingV59 = false;
+        }
+    }
+
+    function queueApplyV59() {
+        if (queuedV59) return;
+
+        queuedV59 = true;
+
+        window.setTimeout(
+            function () {
+                queuedV59 = false;
+                applyOwnerFilterV59();
+            },
+            0
+        );
+    }
+
+    // ---------------------------------------------------------
+    // Wrap the existing tested V49B selector.
+    // V49B remains responsible for the export-side filtering.
+    // V59 adds the missing LIVE UI filtering/count feedback.
+    // ---------------------------------------------------------
+    const oldSetOwnerV59 =
+        window.apSetOwnerFilterV49B;
+
+    window.apSetOwnerFilterV49B =
+        function (mode, button) {
+            let result;
+
+            if (
+                typeof oldSetOwnerV59 ===
+                'function'
+            ) {
+                result =
+                    oldSetOwnerV59.apply(
+                        this,
+                        arguments
+                    );
+            }
+            else {
+                const normalized =
+                    ['all','inhouse','customer']
+                        .includes(
+                            normV59(mode)
+                        )
+                        ? normV59(mode)
+                        : 'all';
+
+                document
+                    .querySelectorAll(
+                        '#apOwnerFilterV49B .ap-owner-filter-v49b'
+                    )
+                    .forEach(item => {
+                        const active =
+                            normV59(
+                                item.dataset.owner
+                            ) === normalized;
+
+                        item.classList.toggle(
+                            'active',
+                            active
+                        );
+
+                        item.style.background =
+                            active
+                                ? '#0f766e'
+                                : 'transparent';
+
+                        item.style.color =
+                            active
+                                ? '#fff'
+                                : '#334155';
+
+                        item.style.borderColor =
+                            active
+                                ? '#0f766e'
+                                : 'transparent';
+                    });
+            }
+
+            queueApplyV59();
+
+            return result;
+        };
+
+    // Search must respect BOTH search text and owner visibility.
+    window.apFilterList = function () {
+        const mode = currentModeV59();
+
+        document
+            .querySelectorAll(
+                '#apProjectList .ap-project-row'
+            )
+            .forEach(row => {
+                const ownerVisible =
+                    mode === 'all'
+                        ? true
+                        : row.dataset
+                            .ownerVisibleV59 ===
+                          'true';
+
+                applyVisibilityV59(
+                    row,
+                    ownerVisible
+                );
+            });
+
+        if (
+            typeof window.apUpdateCount ===
+            'function'
+        ) {
+            window.apUpdateCount();
+        }
+        else if (
+            typeof apUpdateCount ===
+            'function'
+        ) {
+            apUpdateCount();
+        }
+    };
+
+    // Action Points are loaded asynchronously when the modal opens.
+    // Re-apply once project rows are inserted/replaced.
+    const list =
+        document.getElementById(
+            'apProjectList'
+        );
+
+    if (list) {
+        const observer =
+            new MutationObserver(
+                function (mutations) {
+                    if (applyingV59) return;
+
+                    const projectRowsChanged =
+                        mutations.some(
+                            mutation =>
+                                Array.from(
+                                    mutation.addedNodes ||
+                                    []
+                                ).some(node =>
+                                    node?.nodeType === 1 &&
+                                    (
+                                        node.matches?.(
+                                            '.ap-project-row'
+                                        ) ||
+                                        node.querySelector?.(
+                                            '.ap-project-row'
+                                        )
+                                    )
+                                )
+                        );
+
+                    if (projectRowsChanged) {
+                        queueApplyV59();
+                    }
+                }
+            );
+
+        observer.observe(
+            list,
+            {
+                childList: true,
+                subtree: false
+            }
+        );
+    }
+
+    // Make current modal state correct if V59 loads while it is open.
+    queueApplyV59();
+
+    console.log(
+        '[PMIS V59] Action Point Owner filter now live-filters modal projects and counts.'
+    );
+})();
+</script>
+<style id="pmis-action-export-vertical-v60b">
+/* PMIS_ACTION_EXPORT_VERTICAL_AND_MASTER_OVERVIEW_V60B */
+#actionExportModal #apProjectList {
+    display: flex !important;
+    flex-direction: column !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+    grid-template-columns: none !important;
+    columns: auto !important;
+    overflow-x: hidden !important;
+}
+
+#actionExportModal #apProjectList .ap-project-row {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    flex: 0 0 auto !important;
+    box-sizing: border-box !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    float: none !important;
+}
+</style>
+<script id="pmis-master-report-no-masking-v61b-ui">
+(function () {
+    'use strict';
+
+    const alwaysReal = new Set(['people','emails','remarks','revisions']);
+
+    function enforce() {
+        document.querySelectorAll('#masterReportChecklist .master-report-option').forEach(input => {
+            if (!alwaysReal.has(input.value)) return;
+            input.checked = true;
+            input.disabled = true;
+            input.title = 'Always shown with real stored values';
+        });
+    }
+
+    document.addEventListener('change', function (event) {
+        if (
+            event.target &&
+            (
+                event.target.matches('input[name="masterReportType"]') ||
+                event.target.matches('.master-report-option')
+            )
+        ) {
+            setTimeout(enforce, 0);
+        }
+    }, true);
+
+    const modal = document.getElementById('masterReportModal');
+    if (modal) {
+        modal.addEventListener('shown.bs.modal', enforce);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', enforce, { once:true });
+    } else {
+        enforce();
+    }
+})();
+</script>
+<script id="pmis-master-customer-remove-department-v63">
+/* PMIS_MASTER_CUSTOMER_REMOVE_DEPARTMENT_V63 */
+(function () {
+    'use strict';
+
+    const oldGenerateV63 =
+        typeof window.generateProjectMasterReport === 'function'
+            ? window.generateProjectMasterReport
+            : null;
+
+    if (!oldGenerateV63) return;
+
+    function normV63(value) {
+        return String(value ?? '')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .toLowerCase();
+    }
+
+    function customerOwnerSelectedV63() {
+        return normV63(
+            window.__PMIS_MASTER_ACTION_OWNER_V58__ || 'all'
+        ) === 'customer';
+    }
+
+    function cellTextV63(cell) {
+        if (
+            cell &&
+            typeof cell === 'object' &&
+            !Array.isArray(cell)
+        ) {
+            return normV63(cell.content ?? '');
+        }
+
+        return normV63(cell);
+    }
+
+    function isActionPointHeadV63(head) {
+        if (!Array.isArray(head)) return false;
+
+        return head.some(row => {
+            if (!Array.isArray(row)) return false;
+
+            const labels = row.map(cellTextV63);
+
+            const hasActionPoint =
+                labels.some(label =>
+                    label === 'action point' ||
+                    label.includes('action point')
+                );
+
+            const hasDepartment =
+                labels.some(label =>
+                    label === 'department' ||
+                    label === 'dept'
+                );
+
+            return hasActionPoint && hasDepartment;
+        });
+    }
+
+    function departmentIndexV63(head) {
+        if (!Array.isArray(head)) return -1;
+
+        for (let r = head.length - 1; r >= 0; r -= 1) {
+            const row = head[r];
+            if (!Array.isArray(row)) continue;
+
+            const index = row.findIndex(cell => {
+                const label = cellTextV63(cell);
+                return (
+                    label === 'department' ||
+                    label === 'dept'
+                );
+            });
+
+            if (index >= 0) return index;
+        }
+
+        return -1;
+    }
+
+    function removeIndexV63(row, index) {
+        if (!Array.isArray(row)) return row;
+
+        return row.filter((_, i) => i !== index);
+    }
+
+    function remapColumnStylesV63(styles, removedIndex) {
+        if (
+            !styles ||
+            typeof styles !== 'object' ||
+            Array.isArray(styles)
+        ) {
+            return styles;
+        }
+
+        const result = {};
+
+        Object.entries(styles).forEach(([key, value]) => {
+            const numeric = Number(key);
+
+            if (!Number.isInteger(numeric)) {
+                result[key] = value;
+                return;
+            }
+
+            if (numeric === removedIndex) {
+                return;
+            }
+
+            const next =
+                numeric > removedIndex
+                    ? numeric - 1
+                    : numeric;
+
+            result[next] = value;
+        });
+
+        return result;
+    }
+
+    function patchAutoTableOptionsV63(options) {
+        if (
+            !customerOwnerSelectedV63() ||
+            !options ||
+            typeof options !== 'object' ||
+            !isActionPointHeadV63(options.head)
+        ) {
+            return options;
+        }
+
+        const departmentIndex =
+            departmentIndexV63(options.head);
+
+        if (departmentIndex < 0) {
+            return options;
+        }
+
+        const patched = {
+            ...options
+        };
+
+        patched.head = options.head.map(
+            row => removeIndexV63(row, departmentIndex)
+        );
+
+        if (Array.isArray(options.body)) {
+            patched.body = options.body.map(
+                row => removeIndexV63(row, departmentIndex)
+            );
+        }
+
+        if (options.columnStyles) {
+            patched.columnStyles =
+                remapColumnStylesV63(
+                    options.columnStyles,
+                    departmentIndex
+                );
+        }
+
+        console.log(
+            '[PMIS V63] Department column removed from Customer-owner Action Point table.'
+        );
+
+        return patched;
+    }
+
+    function installJsPdfHookV63() {
+        const jspdf = window.jspdf;
+
+        if (
+            !jspdf ||
+            typeof jspdf.jsPDF !== 'function'
+        ) {
+            return null;
+        }
+
+        const OriginalJsPDF = jspdf.jsPDF;
+
+        function JsPDFV63(...args) {
+            const doc = new OriginalJsPDF(...args);
+
+            if (
+                doc &&
+                typeof doc.autoTable === 'function'
+            ) {
+                const oldAutoTable =
+                    doc.autoTable.bind(doc);
+
+                doc.autoTable = function (options) {
+                    return oldAutoTable(
+                        patchAutoTableOptionsV63(options)
+                    );
+                };
+            }
+
+            return doc;
+        }
+
+        // Keep static/API properties available.
+        try {
+            Object.setPrototypeOf(
+                JsPDFV63,
+                OriginalJsPDF
+            );
+        } catch (_) {}
+
+        try {
+            Object.keys(OriginalJsPDF).forEach(key => {
+                if (!(key in JsPDFV63)) {
+                    JsPDFV63[key] = OriginalJsPDF[key];
+                }
+            });
+        } catch (_) {}
+
+        jspdf.jsPDF = JsPDFV63;
+
+        return function restoreV63() {
+            jspdf.jsPDF = OriginalJsPDF;
+        };
+    }
+
+    window.generateProjectMasterReport =
+        async function () {
+            let restore = null;
+
+            try {
+                if (customerOwnerSelectedV63()) {
+                    restore = installJsPdfHookV63();
+                }
+
+                return await oldGenerateV63.apply(
+                    this,
+                    arguments
+                );
+            }
+            finally {
+                if (typeof restore === 'function') {
+                    restore();
+                }
+            }
+        };
+
+    console.log(
+        '[PMIS V63] Customer-owner Master Report Department removal active.'
+    );
+})();
+</script>
+<script id="pmis-master-report-optional-fields-v64b">
+/* PMIS_MASTER_REPORT_OPTIONAL_FIELDS_V64B */
+(function () {
+    'use strict';
+
+    const optionalFieldsV64B = new Set([
+        'people',
+        'emails',
+        'remarks',
+        'revisions'
+    ]);
+
+    function enableChecklistV64B() {
+        document.querySelectorAll(
+            '#masterReportChecklist .master-report-option'
+        ).forEach(input => {
+            input.disabled = false;
+            input.removeAttribute('disabled');
+            input.removeAttribute('title');
+            input.style.pointerEvents = '';
+            input.style.opacity = '';
+        });
+    }
+
+    /*
+     * Override V61B's "always force these fields ON" behavior.
+     * The report now uses exactly what the user checked.
+     */
+    window.getMasterReportOptions = function (type) {
+        if (
+            typeof masterReportActiveType !== 'undefined' &&
+            type === masterReportActiveType &&
+            typeof saveMasterReportSelection === 'function'
+        ) {
+            saveMasterReportSelection(type);
+        }
+
+        return new Set(
+            masterReportSelectionState[type] || []
+        );
+    };
+
+    /*
+     * Select all = everything checked.
+     * Clear      = everything unchecked.
+     * Nothing is mandatory.
+     */
+    window.setMasterReportChecklist = function (checked) {
+        document.querySelectorAll(
+            '#masterReportChecklist .master-report-option'
+        ).forEach(input => {
+            input.disabled = false;
+            input.removeAttribute('disabled');
+            input.removeAttribute('title');
+            input.checked = !!checked;
+        });
+
+        if (typeof saveMasterReportSelection === 'function') {
+            const type =
+                document.querySelector(
+                    'input[name="masterReportType"]:checked'
+                )?.value ||
+                (
+                    typeof masterReportActiveType !== 'undefined'
+                        ? masterReportActiveType
+                        : 'internal'
+                );
+
+            saveMasterReportSelection(type);
+        }
+    };
+
+    /*
+     * Older patches may try to disable these four fields after:
+     * - opening the modal
+     * - switching Internal / Customer
+     * - changing a checkbox
+     * Re-enable them after those actions.
+     */
+    function scheduleEnableV64B() {
+        window.setTimeout(enableChecklistV64B, 0);
+        window.setTimeout(enableChecklistV64B, 50);
+        window.setTimeout(enableChecklistV64B, 200);
+    }
+
+    document.addEventListener(
+        'change',
+        function (event) {
+            if (!event.target || !event.target.matches) return;
+
+            if (
+                event.target.matches(
+                    'input[name="masterReportType"]'
+                ) ||
+                event.target.matches(
+                    '#masterReportChecklist .master-report-option'
+                )
+            ) {
+                scheduleEnableV64B();
+            }
+        },
+        true
+    );
+
+    const modal =
+        document.getElementById('masterReportModal');
+
+    if (modal) {
+        modal.addEventListener(
+            'shown.bs.modal',
+            scheduleEnableV64B
+        );
+    }
+
+    /*
+     * If an older script modifies the disabled attribute later,
+     * immediately restore the optional state.
+     */
+    const checklist =
+        document.getElementById('masterReportChecklist');
+
+    if (checklist) {
+        let fixingV64B = false;
+
+        const observer = new MutationObserver(
+            function (mutations) {
+                if (fixingV64B) return;
+
+                const needsFix = mutations.some(mutation => {
+                    if (
+                        mutation.type !== 'attributes' ||
+                        mutation.attributeName !== 'disabled'
+                    ) {
+                        return false;
+                    }
+
+                    const target = mutation.target;
+
+                    return (
+                        target &&
+                        target.matches &&
+                        target.matches('.master-report-option') &&
+                        optionalFieldsV64B.has(target.value) &&
+                        target.disabled
+                    );
+                });
+
+                if (!needsFix) return;
+
+                fixingV64B = true;
+
+                try {
+                    enableChecklistV64B();
+                }
+                finally {
+                    fixingV64B = false;
+                }
+            }
+        );
+
+        observer.observe(
+            checklist,
+            {
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['disabled']
+            }
+        );
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener(
+            'DOMContentLoaded',
+            scheduleEnableV64B,
+            { once: true }
+        );
+    }
+    else {
+        scheduleEnableV64B();
+    }
+
+    console.log(
+        '[PMIS V64B] Master Report checkboxes are fully optional.'
+    );
+})();
+</script>
+<script id="pmis-master-report-inline-three-donuts-v66">
+/* PMIS_MASTER_REPORT_INLINE_THREE_DONUTS_V66 */
+(function(){
+'use strict';
+
+const oldGenerate=window.generateProjectMasterReport;
+if(typeof oldGenerate!=='function')return;
+
+const norm=v=>String(v??'').replace(/\s+/g,' ').trim().toLowerCase();
+
+function owner(){
+ const v=norm(window.__PMIS_MASTER_ACTION_OWNER_V58__||'all');
+ return ['all','inhouse','customer'].includes(v)?v:'all';
+}
+function selected(){
+ return !!document.querySelector('#masterReportChecklist input[value="actions"]')?.checked;
+}
+function project(){
+ const id=document.getElementById('masterReportProject')?.value||'';
+ try{return Array.isArray(projects)?projects.find(p=>String(p?._id)===String(id))||null:null}catch(_){return null}
+}
+function ownerType(a){
+ const e=norm(a?.responsibilityType??a?.ownerType??a?.responsibility_type??a?.owner_type??'');
+ if(e==='customer'||e==='client')return'customer';
+ if(['inhouse','in-house','danprel','internal'].includes(e))return'inhouse';
+ if(norm(a?.email??''))return'inhouse';
+ const p=norm(a?.personName??a?.responsiblePerson??a?.responsible_person??'');
+ if(['danprel','inhouse','in-house','danprel (inhouse)'].includes(p)||p.includes('danprel (inhouse)'))return'inhouse';
+ if(p==='customer'||p==='client')return'customer';
+ if(p){
+  try{
+   const list=Array.isArray(employees)?employees:[];
+   if(list.some(emp=>[emp?.name,emp?.employee_name,emp?.displayName,emp?.email,emp?.employee_id,emp?.employeeId].some(v=>norm(v)===p)))return'inhouse';
+  }catch(_){}
+  return'customer';
+ }
+ return'inhouse';
+}
+function status(a){
+ const s=norm(a?.statusValue??a?.status??'open');
+ if(s.includes('complete')||s.includes('resolved')||s.includes('closed'))return'completed';
+ if(s.includes('progress')||s.includes('wip'))return'wip';
+ return'open';
+}
+function counts(rows){
+ const c={total:0,open:0,wip:0,completed:0};
+ (Array.isArray(rows)?rows:[]).forEach(a=>{c.total++;c[status(a)]++;});
+ return c;
+}
+function donut(c){
+ const cv=document.createElement('canvas');cv.width=cv.height=600;
+ const x=cv.getContext('2d'),cx=300,cy=300,ro=220,ri=120;
+ const parts=[[c.open,'#f59e0b'],[c.wip,'#3b82f6'],[c.completed,'#10b981']];
+ x.clearRect(0,0,600,600);
+ if(!c.total){
+  x.beginPath();x.arc(cx,cy,ro,0,Math.PI*2);x.fillStyle='#e2e8f0';x.fill();
+ }else{
+  let st=-Math.PI/2;
+  parts.forEach(([v,col])=>{
+   if(!v)return;
+   const en=st+(v/c.total)*Math.PI*2;
+   x.beginPath();x.arc(cx,cy,ro,st,en);x.arc(cx,cy,ri,en,st,true);x.closePath();
+   x.fillStyle=col;x.fill();x.strokeStyle='#fff';x.lineWidth=8;x.stroke();st=en;
+  });
+ }
+ x.beginPath();x.arc(cx,cy,ri,0,Math.PI*2);x.fillStyle='#fff';x.fill();
+ x.fillStyle='#0f172a';x.font='700 54px Arial';x.textAlign='center';x.textBaseline='middle';x.fillText(String(c.total),cx,cy-10);
+ x.fillStyle='#64748b';x.font='700 22px Arial';x.fillText('TOTAL',cx,cy+38);
+ return cv.toDataURL('image/png',1);
+}
+function txt(cell){
+ if(cell&&typeof cell==='object'&&!Array.isArray(cell))return norm(cell.content??'');
+ return norm(cell);
+}
+function isActionTable(o){
+ if(!o||!Array.isArray(o.head))return false;
+ return o.head.some(r=>{
+  if(!Array.isArray(r))return false;
+  const a=r.map(txt);
+  return a.some(v=>v.includes('action point'))&&a.some(v=>v.includes('status'))&&(a.some(v=>v.includes('responsible'))||a.some(v=>v.includes('date')));
+ });
+}
+function legend(doc,x,y){
+ const a=[['Open',[245,158,11]],['WIP',[59,130,246]],['Completed',[16,185,129]]];
+ doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(71,85,105);doc.text('STATUS LEGEND',x,y);
+ let yy=y+6;
+ a.forEach(([n,c])=>{doc.setFillColor(...c);doc.roundedRect(x,yy-3.4,4.5,4.5,1,1,'F');doc.setFont('helvetica','normal');doc.setTextColor(51,65,85);doc.text(n,x+7,yy);yy+=7;});
+}
+function draw(doc,p,y){
+ const all=Array.isArray(p?.meetings)?p.meetings.slice():[];
+ const groups=[
+  ['OVERALL',all],
+  ['INHOUSE',all.filter(a=>ownerType(a)==='inhouse')],
+  ['CUSTOMER',all.filter(a=>ownerType(a)==='customer')]
+ ];
+ const w=doc.internal.pageSize.getWidth(), centers=[w*.19,w*.50,w*.81];
+ groups.forEach(([name,rows],i)=>{
+  const c=counts(rows),cx=centers[i];
+  doc.setFillColor(248,250,252);doc.setDrawColor(226,232,240);doc.roundedRect(cx-38,y,76,75,3,3,'FD');
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(8.5);
+
+  // PMIS_OVERALL_DONUT_TITLE_TEAL_V70
+  // OVERALL gets Danprel teal for stronger visual hierarchy.
+  if(name==='OVERALL'){
+   doc.setTextColor(15,118,110);
+  }else{
+   doc.setTextColor(0,51,102);
+  }
+
+  doc.text(name,cx,y+7,{align:'center'});
+  doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.setTextColor(100,116,139);doc.text('Total Action Points: '+c.total,cx,y+12,{align:'center'});
+  // PMIS_DONUT_VISUAL_HIERARCHY_V69
+  // Overall remains dominant; Inhouse and Customer are intentionally smaller.
+  const donutSizeV69=i===0?47:37;
+  const donutXV69=cx-(donutSizeV69/2);
+  const donutYV69=y+15+((47-donutSizeV69)/2);
+  doc.addImage(donut(c),'PNG',donutXV69,donutYV69,donutSizeV69,donutSizeV69);
+  doc.setFontSize(6.3);doc.setTextColor(71,85,105);doc.text('Open '+c.open+' | WIP '+c.wip+' | Completed '+c.completed,cx,y+68,{align:'center'});
+ });
+ legend(doc,w-52,y+81);
+ return y+105;
+}
+function install(p){
+ const jp=window.jspdf;if(!jp||typeof jp.jsPDF!=='function')return null;
+ const Orig=jp.jsPDF;
+ function J(...args){
+  const doc=new Orig(...args);let title=null,titleY=null,done=false;
+  if(typeof doc.text==='function'){
+   const old=doc.text.bind(doc);
+   doc.text=function(t,x,y,o){
+    if(!done&&typeof t==='string'&&/(?:^\s*\d+\.\s*)?(?:DETAILED\s+ACTION\s+POINTS|ACTION\s+POINTS\s+DETAIL)/i.test(t)){
+     const m=t.match(/^\s*(\d+)\.\s*/);
+     title=(m?m[1]+'. ':'')+'ACTION POINT STATUS & DETAILED ACTION POINTS';titleY=Number(y)||null;return doc;
+    }
+    return old(t,x,y,o);
+   };
+  }
+  if(typeof doc.autoTable==='function'){
+   const old=doc.autoTable.bind(doc);
+   doc.autoTable=function(o){
+    if(!done&&isActionTable(o)){
+     done=true;
+     let y=titleY||Number(o?.startY)||38;
+     const ph=doc.internal.pageSize.getHeight();
+     if(y+122>ph-15){
+      doc.addPage();
+      try{
+       if(typeof masterReportPageHeader==='function'){
+        const type=document.querySelector('input[name="masterReportType"]:checked')?.value||'internal';
+        masterReportPageHeader(doc,p,type==='internal'?'INTERNAL MEETING - PROJECT MASTER REPORT':'CUSTOMER REVIEW / FEEDBACK - PROJECT REPORT',null);
+       }
+      }catch(_){}
+      y=38;
+     }
+     doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(0,51,102);
+     doc.text(title||'ACTION POINT STATUS & DETAILED ACTION POINTS',10,y);
+     return old({...o,startY:draw(doc,p,y+6)});
+    }
+    return old(o);
+   };
+  }
+  return doc;
+ }
+ try{Object.setPrototypeOf(J,Orig)}catch(_){}
+ try{Object.keys(Orig).forEach(k=>{if(!(k in J))J[k]=Orig[k]})}catch(_){}
+ jp.jsPDF=J;return()=>{jp.jsPDF=Orig};
+}
+
+window.generateProjectMasterReport=async function(){
+ if(owner()!=='all'||!selected())return await oldGenerate.apply(this,arguments);
+ const p=project();if(!p)return await oldGenerate.apply(this,arguments);
+
+ const oldGet=window.getMasterReportOptions;
+ if(typeof oldGet==='function'){
+  window.getMasterReportOptions=function(){
+   const r=oldGet.apply(this,arguments),s=r instanceof Set?new Set(r):new Set(r||[]);
+   s.delete('actionChart');s.add('actions');return s;
+  };
+ }
+ const restore=install(p);
+ try{return await oldGenerate.apply(this,arguments)}
+ finally{
+  if(typeof oldGet==='function')window.getMasterReportOptions=oldGet;
+  if(typeof restore==='function')restore();
+ }
+};
+
+console.log('[PMIS V66] Inline Overall/Inhouse/Customer donuts active.');
+})();
+</script>
+<script id="pmis-separate-action-export-donuts-v67">
+/* PMIS_SEPARATE_ACTION_EXPORT_DONUTS_V67 */
+(function () {
+    'use strict';
+
+    function normV67(value) {
+        return String(value ?? '')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .toLowerCase();
+    }
+
+    function ownerModeV67() {
+        try {
+            if (typeof pmisV49BCurrentOwnerFilter === 'function') {
+                const mode = normV67(
+                    pmisV49BCurrentOwnerFilter()
+                );
+
+                if (
+                    mode === 'all' ||
+                    mode === 'inhouse' ||
+                    mode === 'customer'
+                ) {
+                    return mode;
+                }
+            }
+        }
+        catch (_) {}
+
+        return 'all';
+    }
+
+    function ownerTypeV67(item) {
+        try {
+            if (typeof pmisV49BActionOwnerType === 'function') {
+                return pmisV49BActionOwnerType(item);
+            }
+        }
+        catch (_) {}
+
+        const explicit = normV67(
+            item?.responsibilityType ??
+            item?.ownerType ??
+            item?.responsibility_type ??
+            item?.owner_type ??
+            ''
+        );
+
+        if (explicit === 'customer' || explicit === 'client') {
+            return 'customer';
+        }
+
+        if (
+            explicit === 'inhouse' ||
+            explicit === 'in-house' ||
+            explicit === 'danprel' ||
+            explicit === 'internal'
+        ) {
+            return 'inhouse';
+        }
+
+        if (String(item?.email ?? '').trim()) {
+            return 'inhouse';
+        }
+
+        const person = normV67(
+            item?.personName ??
+            item?.responsiblePerson ??
+            item?.responsible_person ??
+            ''
+        );
+
+        if (
+            person === 'danprel' ||
+            person === 'inhouse' ||
+            person === 'in-house' ||
+            person === 'danprel (inhouse)' ||
+            person.includes('danprel (inhouse)')
+        ) {
+            return 'inhouse';
+        }
+
+        if (person === 'customer' || person === 'client') {
+            return 'customer';
+        }
+
+        if (person) return 'customer';
+
+        return 'inhouse';
+    }
+
+    function statusTypeV67(item) {
+        const text = normV67(
+            item?.statusValue ??
+            item?.status ??
+            'Open'
+        );
+
+        if (
+            text.includes('complete') ||
+            text.includes('resolved') ||
+            text.includes('closed')
+        ) {
+            return 'completed';
+        }
+
+        if (
+            text.includes('progress') ||
+            text.includes('wip')
+        ) {
+            return 'wip';
+        }
+
+        return 'open';
+    }
+
+    function countsV67(rows) {
+        const result = {
+            total: 0,
+            open: 0,
+            wip: 0,
+            completed: 0
+        };
+
+        (Array.isArray(rows) ? rows : []).forEach(item => {
+            result.total += 1;
+            result[statusTypeV67(item)] += 1;
+        });
+
+        return result;
+    }
+
+    /*
+     * Clean donut renderer.
+     * IMPORTANT:
+     * No text glyphs are painted onto the donut image itself.
+     * This intentionally removes the stray/junk "A" character
+     * seen in the old canvas-generated Action Point chart.
+     */
+    function donutDataV67(counts) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 600;
+        canvas.height = 600;
+
+        const ctx = canvas.getContext('2d');
+        const cx = 300;
+        const cy = 300;
+        const outerRadius = 218;
+        const innerRadius = 128;
+
+        const parts = [
+            [Number(counts.open || 0), '#f59e0b'],
+            [Number(counts.wip || 0), '#3b82f6'],
+            [Number(counts.completed || 0), '#10b981']
+        ];
+
+        const total = parts.reduce(
+            (sum, item) => sum + item[0],
+            0
+        );
+
+        ctx.clearRect(0, 0, 600, 600);
+
+        if (total <= 0) {
+            ctx.beginPath();
+            ctx.arc(
+                cx,
+                cy,
+                outerRadius,
+                0,
+                Math.PI * 2
+            );
+            ctx.fillStyle = '#e2e8f0';
+            ctx.fill();
+        }
+        else {
+            let start = -Math.PI / 2;
+
+            parts.forEach(([value, color]) => {
+                if (value <= 0) return;
+
+                const end =
+                    start +
+                    (value / total) *
+                    Math.PI *
+                    2;
+
+                ctx.beginPath();
+                ctx.arc(
+                    cx,
+                    cy,
+                    outerRadius,
+                    start,
+                    end
+                );
+                ctx.arc(
+                    cx,
+                    cy,
+                    innerRadius,
+                    end,
+                    start,
+                    true
+                );
+                ctx.closePath();
+
+                ctx.fillStyle = color;
+                ctx.fill();
+
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 8;
+                ctx.stroke();
+
+                start = end;
+            });
+        }
+
+        // Clean white center. No letters/text inside the PNG.
+        ctx.beginPath();
+        ctx.arc(
+            cx,
+            cy,
+            innerRadius,
+            0,
+            Math.PI * 2
+        );
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+
+        return canvas.toDataURL(
+            'image/png',
+            1.0
+        );
+    }
+
+    function fmtDateV67(value) {
+        try {
+            if (typeof apFmtDate === 'function') {
+                return apFmtDate(value);
+            }
+        }
+        catch (_) {}
+
+        if (!value) return '-';
+
+        const parts = String(value).split('-');
+
+        return parts.length === 3
+            ? parts[2] + '/' + parts[1] + '/' + parts[0]
+            : String(value);
+    }
+
+    async function logoV67() {
+        try {
+            if (typeof masterReportLogo === 'function') {
+                return await masterReportLogo();
+            }
+        }
+        catch (_) {}
+
+        try {
+            const response = await fetch(
+                'asset/image.png',
+                { cache: 'no-store' }
+            );
+
+            if (!response.ok) return null;
+
+            const blob = await response.blob();
+
+            return await new Promise(resolve => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.readAsDataURL(blob);
+            });
+        }
+        catch (_) {
+            return null;
+        }
+    }
+
+    function drawHeaderV67(
+        doc,
+        project,
+        logoData,
+        generated
+    ) {
+        const pageW =
+            doc.internal.pageSize.getWidth();
+
+        doc.setFillColor(0, 31, 63);
+        doc.rect(
+            8,
+            7,
+            pageW - 16,
+            23,
+            'F'
+        );
+
+        if (logoData) {
+            try {
+                doc.addImage(
+                    logoData,
+                    'PNG',
+                    12,
+                    10,
+                    16,
+                    16
+                );
+            }
+            catch (_) {}
+        }
+
+        doc.setTextColor(255,255,255);
+        doc.setFont('helvetica','bold');
+        doc.setFontSize(14);
+        doc.text(
+            'DANPREL ENGINEERING AUTOMATION',
+            33,
+            16
+        );
+
+        doc.setFont('helvetica','normal');
+        doc.setFontSize(8);
+        doc.text(
+            'ACTION-POINT STATUS & DETAILED REPORT',
+            33,
+            23
+        );
+
+        doc.setFont('helvetica','bold');
+        doc.setFontSize(7.5);
+        doc.text(
+            (project.code ||
+             project.tracking_code ||
+             'PROJECT') +
+            ' | ' +
+            String(project.name || '').slice(0, 48),
+            pageW - 12,
+            16,
+            { align:'right' }
+        );
+
+        doc.setFont('helvetica','normal');
+        doc.text(
+            'Generated: ' + generated,
+            pageW - 12,
+            23,
+            { align:'right' }
+        );
+    }
+
+    function drawContinuationV67(
+        doc,
+        project
+    ) {
+        const pageW =
+            doc.internal.pageSize.getWidth();
+
+        doc.setFillColor(0,31,63);
+        doc.rect(
+            8,
+            7,
+            pageW - 16,
+            14,
+            'F'
+        );
+
+        doc.setTextColor(255,255,255);
+        doc.setFont('helvetica','bold');
+        doc.setFontSize(8);
+        doc.text(
+            'ACTION POINTS | ' +
+            (project.code ||
+             project.name ||
+             'Project') +
+            ' | PM: ' +
+            (project.project_manager || 'N/A'),
+            12,
+            16
+        );
+    }
+
+    function drawProjectDetailsV67(
+        doc,
+        project,
+        rows,
+        y
+    ) {
+        const pageW =
+            doc.internal.pageSize.getWidth();
+
+        const details = [
+            ['Project Name', project.name || 'N/A'],
+            ['Project Code', project.code || project.tracking_code || 'N/A'],
+            ['Customer', project.customer_name || 'N/A'],
+            ['MQ2 / SAT Location', project.sat_location || 'N/A'],
+            ['Project Manager', project.project_manager || 'N/A'],
+            ['Total Action Points', String(rows.length)]
+        ];
+
+        doc.setFillColor(248,250,252);
+        doc.setDrawColor(226,232,240);
+        doc.roundedRect(
+            10,
+            y,
+            pageW - 20,
+            25,
+            3,
+            3,
+            'FD'
+        );
+
+        const colW =
+            (pageW - 28) / 3;
+
+        details.forEach((item, index) => {
+            const row =
+                index >= 3 ? 1 : 0;
+
+            const col =
+                index % 3;
+
+            const x =
+                14 + col * colW;
+
+            const yy =
+                y + 8 + row * 10;
+
+            doc.setFont('helvetica','bold');
+            doc.setFontSize(6.2);
+            doc.setTextColor(100,116,139);
+            doc.text(
+                String(item[0]).toUpperCase(),
+                x,
+                yy
+            );
+
+            doc.setFont('helvetica','normal');
+            doc.setFontSize(7.2);
+            doc.setTextColor(15,23,42);
+            doc.text(
+                String(item[1]).slice(0, 32),
+                x + 29,
+                yy
+            );
+        });
+
+        return y + 31;
+    }
+
+    function drawLegendV67(
+        doc,
+        x,
+        y
+    ) {
+        const items = [
+            ['Open', [245,158,11]],
+            ['WIP', [59,130,246]],
+            ['Completed', [16,185,129]]
+        ];
+
+        doc.setFont('helvetica','bold');
+        doc.setFontSize(6.8);
+        doc.setTextColor(71,85,105);
+        doc.text(
+            'STATUS LEGEND',
+            x,
+            y
+        );
+
+        let yy = y + 6;
+
+        items.forEach(([label, color]) => {
+            doc.setFillColor(
+                color[0],
+                color[1],
+                color[2]
+            );
+            doc.roundedRect(
+                x,
+                yy - 3.3,
+                4.2,
+                4.2,
+                1,
+                1,
+                'F'
+            );
+
+            doc.setFont('helvetica','normal');
+            doc.setFontSize(6.8);
+            doc.setTextColor(51,65,85);
+            doc.text(
+                label,
+                x + 6.5,
+                yy
+            );
+
+            yy += 7;
+        });
+    }
+
+    function drawDonutCardV67(
+        doc,
+        title,
+        rows,
+        centerX,
+        y,
+        width,
+        donutSizeV69 = 36
+    ) {
+        const c =
+            countsV67(rows);
+
+        doc.setFillColor(248,250,252);
+        doc.setDrawColor(226,232,240);
+        doc.roundedRect(
+            centerX - width / 2,
+            y,
+            width,
+            61,
+            3,
+            3,
+            'FD'
+        );
+
+        doc.setFont('helvetica','bold');
+        doc.setFontSize(8);
+
+        // PMIS_OVERALL_DONUT_TITLE_TEAL_V70
+        // OVERALL gets the same Danprel teal in the standalone Action Point PDF.
+        if (title === 'OVERALL') {
+            doc.setTextColor(15,118,110);
+        }
+        else {
+            doc.setTextColor(0,51,102);
+        }
+
+        doc.text(
+            title,
+            centerX,
+            y + 7,
+            { align:'center' }
+        );
+
+        doc.setFont('helvetica','normal');
+        doc.setFontSize(6.3);
+        doc.setTextColor(100,116,139);
+        doc.text(
+            'Total: ' + c.total,
+            centerX,
+            y + 12,
+            { align:'center' }
+        );
+
+        // PMIS_DONUT_VISUAL_HIERARCHY_V69
+        // Center smaller secondary donuts inside the same 36x36 visual slot.
+        const donutOffsetV69 =
+            (36 - donutSizeV69) / 2;
+
+        doc.addImage(
+            donutDataV67(c),
+            'PNG',
+            centerX - (donutSizeV69 / 2),
+            y + 15 + donutOffsetV69,
+            donutSizeV69,
+            donutSizeV69
+        );
+
+        doc.setFontSize(6);
+        doc.setTextColor(71,85,105);
+        doc.text(
+            'Open ' + c.open +
+            ' | WIP ' + c.wip +
+            ' | Completed ' + c.completed,
+            centerX,
+            y + 57,
+            { align:'center' }
+        );
+    }
+
+    function drawStatusAreaV67(
+        doc,
+        allRows,
+        selectedRows,
+        mode,
+        y
+    ) {
+        const pageW =
+            doc.internal.pageSize.getWidth();
+
+        doc.setFont('helvetica','bold');
+        doc.setFontSize(8.5);
+        doc.setTextColor(0,51,102);
+        doc.text(
+            'ACTION-POINT STATUS',
+            10,
+            y
+        );
+
+        const chartY =
+            y + 5;
+
+        if (mode === 'all') {
+            const inhouse =
+                allRows.filter(
+                    row =>
+                        ownerTypeV67(row) ===
+                        'inhouse'
+                );
+
+            const customer =
+                allRows.filter(
+                    row =>
+                        ownerTypeV67(row) ===
+                        'customer'
+                );
+
+            const centers = [
+                pageW * 0.19,
+                pageW * 0.50,
+                pageW * 0.81
+            ];
+
+            drawDonutCardV67(
+                doc,
+                'OVERALL',
+                allRows,
+                centers[0],
+                chartY,
+                73,
+                36
+            );
+
+            drawDonutCardV67(
+                doc,
+                'INHOUSE',
+                inhouse,
+                centers[1],
+                chartY,
+                73,
+                28
+            );
+
+            drawDonutCardV67(
+                doc,
+                'CUSTOMER',
+                customer,
+                centers[2],
+                chartY,
+                73,
+                28
+            );
+        }
+        else {
+            drawDonutCardV67(
+                doc,
+                mode === 'inhouse'
+                    ? 'INHOUSE'
+                    : 'CUSTOMER',
+                selectedRows,
+                pageW / 2,
+                chartY,
+                86,
+                36
+            );
+        }
+
+        // One legend only.
+        drawLegendV67(
+            doc,
+            pageW - 48,
+            chartY + 67
+        );
+
+        return chartY + 88;
+    }
+
+    /*
+     * Full replacement of ONLY the separate Action Point PDF export.
+     * V56 fresh refresh + V57 identity behavior remain upstream in apDoExport().
+     */
+    window.apExportPDF =
+    apExportPDF =
+    async function (selectedProjects) {
+        const { jsPDF } =
+            window.jspdf;
+
+        const doc =
+            new jsPDF({
+                orientation:'landscape',
+                unit:'mm',
+                format:'a4'
+            });
+
+        const pageW =
+            doc.internal.pageSize.getWidth();
+
+        const pageH =
+            doc.internal.pageSize.getHeight();
+
+        const generated =
+            new Date().toLocaleString(
+                'en-GB'
+            );
+
+        const logoData =
+            await logoV67();
+
+        const mode =
+            ownerModeV67();
+
+        const bundles = [];
+
+        (Array.isArray(selectedProjects)
+            ? selectedProjects
+            : []
+        ).forEach(project => {
+            const allRows =
+                Array.isArray(project?.meetings)
+                    ? project.meetings.slice()
+                    : [];
+
+            const selectedRows =
+                mode === 'all'
+                    ? allRows
+                    : allRows.filter(
+                        row =>
+                            ownerTypeV67(row) ===
+                            mode
+                    );
+
+            if (!selectedRows.length) return;
+
+            bundles.push({
+                project,
+                allRows,
+                selectedRows
+            });
+        });
+
+        if (!bundles.length) {
+            if (typeof showToast === 'function') {
+                showToast(
+                    'No Action Points found for the selected owner filter.',
+                    true
+                );
+            }
+            return;
+        }
+
+        bundles.forEach(
+            (bundle, bundleIndex) => {
+                const {
+                    project,
+                    allRows,
+                    selectedRows
+                } = bundle;
+
+                if (bundleIndex > 0) {
+                    doc.addPage();
+                }
+
+                const firstPage =
+                    doc.internal.getNumberOfPages();
+
+                drawHeaderV67(
+                    doc,
+                    project,
+                    logoData,
+                    generated
+                );
+
+                let y =
+                    drawProjectDetailsV67(
+                        doc,
+                        project,
+                        selectedRows,
+                        35
+                    );
+
+                doc.setFont('helvetica','bold');
+                doc.setFontSize(9);
+                doc.setTextColor(0,51,102);
+                doc.text(
+                    'ACTION-POINT STATUS & DETAILED ACTION POINTS',
+                    10,
+                    y
+                );
+
+                y =
+                    drawStatusAreaV67(
+                        doc,
+                        allRows,
+                        selectedRows,
+                        mode,
+                        y + 5
+                    );
+
+                const body =
+                    selectedRows.map(
+                        (item, index) => {
+                            const revisions =
+                                (
+                                    Array.isArray(item?.revisions)
+                                        ? item.revisions
+                                        : []
+                                ).filter(
+                                    revision =>
+                                        revision?.date
+                                );
+
+                            const currentTarget =
+                                revisions.length
+                                    ? revisions[
+                                        revisions.length - 1
+                                      ].date
+                                    : (
+                                        item?.nextTarget ||
+                                        item?.targetDate
+                                      );
+
+                            const revisionText =
+                                revisions.length
+                                    ? revisions.map(
+                                        (
+                                            revision,
+                                            revisionIndex
+                                        ) =>
+                                            'R' +
+                                            (revisionIndex + 1) +
+                                            ': ' +
+                                            fmtDateV67(
+                                                revision.date
+                                            ) +
+                                            (
+                                                revision.remark
+                                                    ? ' (' +
+                                                      revision.remark +
+                                                      ')'
+                                                    : ''
+                                            )
+                                      ).join('\n')
+                                    : '-';
+
+                            return [
+                                index + 1,
+                                fmtDateV67(
+                                    item?.reviewDate
+                                ),
+                                item?.action || '-',
+                                item?.dept || '-',
+                                item?.personName ||
+                                    item?.responsiblePerson ||
+                                    '-',
+                                item?.email || '-',
+                                fmtDateV67(
+                                    item?.targetDate
+                                ),
+                                fmtDateV67(
+                                    currentTarget
+                                ),
+                                item?.statusValue ||
+                                    item?.status ||
+                                    '-',
+                                revisionText
+                            ];
+                        }
+                    );
+
+                doc.autoTable({
+                    startY: y,
+                    head:[[
+                        'S.No',
+                        'Review Date',
+                        'Action Point',
+                        'Department',
+                        'Responsible Person',
+                        'Email',
+                        'Original Target Date',
+                        'Current Target Date',
+                        'Status',
+                        'Revision History'
+                    ]],
+                    body,
+                    theme:'grid',
+                    styles:{
+                        fontSize:6.1,
+                        cellPadding:1.8,
+                        overflow:'linebreak',
+                        valign:'middle'
+                    },
+                    headStyles:{
+                        fillColor:[0,51,102],
+                        textColor:[255,255,255],
+                        fontStyle:'bold',
+                        fontSize:6.2
+                    },
+                    columnStyles:{
+                        0:{cellWidth:9},
+                        1:{cellWidth:18},
+                        2:{cellWidth:52},
+                        3:{cellWidth:24},
+                        4:{cellWidth:29},
+                        5:{cellWidth:36},
+                        6:{cellWidth:22},
+                        7:{cellWidth:22},
+                        8:{cellWidth:18},
+                        9:{cellWidth:50}
+                    },
+                    margin:{
+                        top:26,
+                        left:8,
+                        right:8,
+                        bottom:12
+                    },
+                    showHead:'everyPage',
+                    rowPageBreak:'avoid',
+                    willDrawPage:() => {
+                        if (
+                            doc.internal.getNumberOfPages() !==
+                            firstPage
+                        ) {
+                            drawContinuationV67(
+                                doc,
+                                project
+                            );
+                        }
+                    },
+                    didParseCell:data => {
+                        if (
+                            data.section !== 'body' ||
+                            data.column.index !== 8
+                        ) {
+                            return;
+                        }
+
+                        const text =
+                            normV67(
+                                data.cell.raw
+                            );
+
+                        data.cell.styles.fontStyle =
+                            'bold';
+
+                        if (
+                            text.includes('complete') ||
+                            text.includes('resolved') ||
+                            text.includes('closed')
+                        ) {
+                            data.cell.styles.textColor =
+                                [5,150,105];
+                        }
+                        else if (
+                            text.includes('wip') ||
+                            text.includes('progress')
+                        ) {
+                            data.cell.styles.textColor =
+                                [37,99,235];
+                        }
+                        else {
+                            data.cell.styles.textColor =
+                                [217,119,6];
+                        }
+                    }
+                });
+            }
+        );
+
+        const totalPages =
+            doc.internal.getNumberOfPages();
+
+        for (
+            let page = 1;
+            page <= totalPages;
+            page += 1
+        ) {
+            doc.setPage(page);
+            doc.setFont('helvetica','normal');
+            doc.setFontSize(7);
+            doc.setTextColor(100,116,139);
+
+            doc.text(
+                'DANPREL ENGINEERING AUTOMATION | ACTION-POINT REPORT',
+                10,
+                pageH - 5
+            );
+
+            doc.text(
+                'Page ' +
+                page +
+                ' of ' +
+                totalPages,
+                pageW - 10,
+                pageH - 5,
+                { align:'right' }
+            );
+        }
+
+        doc.save(
+            'DANPREL_Action_Point_Report_' +
+            new Date()
+                .toISOString()
+                .slice(0,10) +
+            '.pdf'
+        );
+
+        if (typeof showToast === 'function') {
+            showToast(
+                'PDF Downloaded Successfully'
+            );
+        }
+    };
+
+    console.log(
+        '[PMIS V67] Separate Action Point PDF uses clean donut charts and no junk A glyph.'
     );
 })();
 </script>

@@ -3913,6 +3913,131 @@ Please ensure that all necessary work is on track for completion. If the task is
 })();
 </script>
 
+<script id="pmis-review-action-owner-filter-v58">
+/* PMIS_REVIEW_ACTION_OWNER_FILTER_V58 */
+(function () {
+    'use strict';
+
+    const oldGet = window.getFilteredMeetings;
+    const oldRender = window.renderHistory;
+
+    if (typeof oldGet !== 'function' || typeof oldRender !== 'function') return;
+
+    function norm(v) {
+        return String(v ?? '').replace(/\s+/g, ' ').trim().toLowerCase();
+    }
+
+    function ownerType(item) {
+        const explicit = norm(
+            item?.responsibilityType ??
+            item?.ownerType ??
+            item?.responsibility_type ??
+            item?.owner_type ??
+            ''
+        );
+
+        if (explicit === 'customer' || explicit === 'client') return 'customer';
+        if (['inhouse','in-house','danprel','internal'].includes(explicit)) return 'inhouse';
+
+        const email = norm(item?.email ?? '');
+        if (email) return 'inhouse';
+
+        const person = norm(
+            item?.personName ??
+            item?.responsiblePerson ??
+            item?.responsible_person ??
+            ''
+        );
+
+        if (
+            person === 'danprel' ||
+            person === 'inhouse' ||
+            person === 'in-house' ||
+            person === 'danprel (inhouse)' ||
+            person.includes('danprel (inhouse)')
+        ) return 'inhouse';
+
+        if (person === 'customer' || person === 'client') return 'customer';
+
+        if (person) {
+            try {
+                const list = typeof employees !== 'undefined' && Array.isArray(employees)
+                    ? employees : [];
+
+                const known = list.some(emp =>
+                    [
+                        emp?.name,
+                        emp?.employee_name,
+                        emp?.displayName,
+                        emp?.email,
+                        emp?.employee_id,
+                        emp?.employeeId
+                    ].some(v => norm(v) === person)
+                );
+
+                if (known) return 'inhouse';
+            } catch (_) {}
+
+            return 'customer';
+        }
+
+        return 'inhouse';
+    }
+
+    function ensureUi() {
+        if (document.getElementById('filterOwnerV58')) return;
+
+        const status = document.getElementById('filterStatus');
+        if (!status?.parentElement) return;
+
+        const wrap = document.createElement('div');
+        wrap.id = 'filterOwnerWrapV58';
+        wrap.className = 'd-flex align-items-center gap-2 border-end pe-3 me-1';
+        wrap.innerHTML = `
+            <i class="bi bi-people-fill text-secondary" style="font-size:.85rem;opacity:.65;"></i>
+            <select id="filterOwnerV58"
+                    class="form-select border-0 bg-transparent fw-bold"
+                    title="Filter Action Points by Owner Type"
+                    style="width:125px;font-size:.78rem;color:#475569;cursor:pointer;padding-left:0;">
+                <option value="all">All Owners</option>
+                <option value="inhouse">Inhouse</option>
+                <option value="customer">Customer</option>
+            </select>`;
+
+        status.parentElement.insertAdjacentElement('afterend', wrap);
+
+        document.getElementById('filterOwnerV58')
+            ?.addEventListener('change', () => window.renderHistory());
+    }
+
+    window.getFilteredMeetings = function () {
+        const rows = oldGet.apply(this, arguments);
+        const owner = norm(document.getElementById('filterOwnerV58')?.value || 'all');
+
+        if (owner === 'all') return Array.isArray(rows) ? rows : [];
+
+        return (Array.isArray(rows) ? rows : [])
+            .filter(item => ownerType(item) === owner);
+    };
+
+    window.renderHistory = function () {
+        ensureUi();
+        const result = oldRender.apply(this, arguments);
+
+        const owner = norm(document.getElementById('filterOwnerV58')?.value || 'all');
+        if (owner !== 'all' && window.getFilteredMeetings().length === 0) {
+            const text = document.querySelector('#historyBody .empty-state p');
+            if (text) text.textContent = 'No records match your active filters.';
+        }
+
+        return result;
+    };
+
+    ensureUi();
+    window.renderHistory();
+    console.log('[PMIS V58] Review Meeting Owner filter active.');
+})();
+</script>
 </body>
 
 </html>
