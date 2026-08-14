@@ -14180,6 +14180,193 @@ console.log('[PMIS V66] Inline Overall/Inhouse/Customer donuts active.');
     );
 })();
 </script>
+<script id="pmis-master-checkbox-click-fix-v71c">
+/* PMIS_MASTER_CHECKBOX_CLICK_FIX_V71C */
+(function () {
+    'use strict';
+
+    const checklistSelectorV71C = '#masterReportChecklist';
+    const optionSelectorV71C = '#masterReportChecklist .master-report-option';
+
+    function currentTypeV71C() {
+        return (
+            document.querySelector('input[name="masterReportType"]:checked')?.value ||
+            (
+                typeof masterReportActiveType !== 'undefined'
+                    ? masterReportActiveType
+                    : 'internal'
+            )
+        );
+    }
+
+    function optionsV71C() {
+        return Array.from(
+            document.querySelectorAll(optionSelectorV71C)
+        );
+    }
+
+    function enableV71C() {
+        optionsV71C().forEach(input => {
+            input.disabled = false;
+            input.removeAttribute('disabled');
+            input.removeAttribute('title');
+            input.style.pointerEvents = '';
+            input.style.opacity = '';
+        });
+    }
+
+    function saveExactV71C() {
+        const selected = new Set(
+            optionsV71C()
+                .filter(input => input.checked)
+                .map(input => input.value)
+        );
+
+        try {
+            masterReportSelectionState[currentTypeV71C()] =
+                new Set(selected);
+        }
+        catch (_) {
+            try {
+                if (typeof saveMasterReportSelection === 'function') {
+                    saveMasterReportSelection(currentTypeV71C());
+                }
+            }
+            catch (_) {}
+        }
+
+        return selected;
+    }
+
+    /*
+     * STRONG FIX:
+     * Intercept checkbox clicks BEFORE old listeners/label behaviour.
+     * We perform exactly one manual toggle and do NOT emit a change event.
+     * Therefore no old "force everything back on" handler can run.
+     */
+    document.addEventListener(
+        'click',
+        function (event) {
+            const target = event.target;
+            if (!target || !target.closest) return;
+
+            const checklist =
+                document.querySelector(checklistSelectorV71C);
+
+            if (!checklist) return;
+
+            const item = target.closest(
+                '#masterReportChecklist .master-report-check-item'
+            );
+
+            if (item) {
+                const input = item.querySelector(
+                    '.master-report-option'
+                );
+
+                if (!input) return;
+
+                event.preventDefault();
+                event.stopImmediatePropagation();
+
+                enableV71C();
+
+                input.checked = !input.checked;
+
+                saveExactV71C();
+                return;
+            }
+
+            const actionButton = target.closest(
+                '.master-report-checklist-actions button'
+            );
+
+            if (!actionButton) return;
+
+            const label = String(
+                actionButton.textContent || ''
+            ).replace(/\s+/g, ' ').trim().toLowerCase();
+
+            if (label !== 'select all' && label !== 'clear') {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopImmediatePropagation();
+
+            const shouldCheck = label === 'select all';
+
+            enableV71C();
+
+            optionsV71C().forEach(input => {
+                input.checked = shouldCheck;
+            });
+
+            saveExactV71C();
+        },
+        true
+    );
+
+    /*
+     * Keep global helpers correct for any non-click callers.
+     */
+    window.setMasterReportChecklist = function (checked) {
+        enableV71C();
+
+        optionsV71C().forEach(input => {
+            input.checked = Boolean(checked);
+        });
+
+        saveExactV71C();
+    };
+
+    window.getMasterReportOptions = function (type) {
+        if (
+            typeof masterReportActiveType !== 'undefined' &&
+            type === masterReportActiveType
+        ) {
+            saveExactV71C();
+        }
+
+        try {
+            return new Set(
+                masterReportSelectionState[type] || []
+            );
+        }
+        catch (_) {
+            return new Set(
+                optionsV71C()
+                    .filter(input => input.checked)
+                    .map(input => input.value)
+            );
+        }
+    };
+
+    const modal = document.getElementById('masterReportModal');
+
+    if (modal) {
+        modal.addEventListener(
+            'shown.bs.modal',
+            enableV71C
+        );
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener(
+            'DOMContentLoaded',
+            enableV71C,
+            { once: true }
+        );
+    }
+    else {
+        enableV71C();
+    }
+
+    console.log(
+        '[PMIS V71C] Master Report checkbox click fix active.'
+    );
+})();
+</script>
 </body>
 
 </html>
