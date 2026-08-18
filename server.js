@@ -50,7 +50,7 @@ app.use('/api', (req, res, next) => {
     // PMIS_CUSTOMER_REPORT_SMTP_EMAIL_V72B
     const isCustomerReportEmail =
         req.method === 'POST' &&
-        requestPath === '/api/action-points/customer-report-email';
+        (/^\/api\/action-points\/customer-report-email(?:-chunk)?$/).test(requestPath);
     // PMIS_FILTER_EDIT_PERSISTENCE_V22: optional local testing for edits to existing records only.
     const isExistingRecordEdit =
         (req.method === 'PATCH' && /^\/api\/projects\/[^/]+$/.test(requestPath)) ||
@@ -1329,9 +1329,9 @@ function pmisV72BAttachment(pdfBase64, fileName) {
         throw new Error('Generated PDF attachment is invalid.');
     }
 
-    if (content.length > 12 * 1024 * 1024) {
+    if (content.length > 16 * 1024 * 1024) {
         const error = new Error(
-            'PDF is larger than 12 MB. Reduce the selected report sections or download it normally.'
+            'PDF is larger than 16 MB. Reduce the selected report sections or download it normally.'
         );
         error.code = 'PMIS_V72B_PDF_TOO_LARGE';
         throw error;
@@ -1345,9 +1345,256 @@ function pmisV72BAttachment(pdfBase64, fileName) {
     };
 }
 
+// PMIS_LARGE_REPORT_EMAIL_FIX_V74R2
+// Temporary MongoDB chunks avoid oversized serverless request payloads.
+// Chunks are deleted after assembly and have a TTL fallback cleanup.
+const PMIS_V74R2_EMAIL_CHUNK_COLLECTION =
+    'pmis_temp_report_email_chunks_v74r2';
+
+async function pmisV74R2ChunkCollection() {
+    await ensureMongoConnected();
+
+    const db =
+        mongoose?.connection?.db;
+
+    if (!db) {
+        throw new Error(
+            'Temporary report upload storage is unavailable.'
+        );
+    }
+
+    const collection =
+        db.collection(
+            PMIS_V74R2_EMAIL_CHUNK_COLLECTION
+        );
+
+    try {
+        await collection.createIndex(
+            { expiresAt:1 },
+            {
+                expireAfterSeconds:0,
+                name:'pmis_v74r2_email_chunk_ttl'
+            }
+        );
+    }
+    catch (error) {
+        console.warn(
+            '[PMIS V74R2] TTL index check skipped:',
+            error.message
+        );
+    }
+
+    return collection;
+}
+
+app.post(
+    '/api/action-points/customer-report-email-chunk',
+    async (req,res) => {
+        try {
+            const uploadId =
+                String(
+                    req.body?.uploadId || ''
+                ).trim();
+
+            const index =
+                Number(req.body?.index);
+
+            const total =
+                Number(req.body?.total);
+
+            const data =
+                String(
+                    req.body?.data || ''
+                );
+
+            if (
+                !/^[a-zA-Z0-9_-]{10,160}$/.test(
+                    uploadId
+                )
+            ) {
+                return res.status(400).json({
+                    error:'Invalid PDF upload ID.'
+                });
+            }
+
+            if (
+                !Number.isInteger(index) ||
+                !Number.isInteger(total) ||
+                index < 0 ||
+                total < 1 ||
+                total > 20 ||
+                index >= total
+            ) {
+                return res.status(400).json({
+                    error:'Invalid PDF chunk sequence.'
+                });
+            }
+
+            if (
+                !data ||
+                data.length > 2200000
+            ) {
+                return res.status(413).json({
+                    error:'PDF chunk is too large.'
+                });
+            }
+
+            const collection =
+                await pmisV74R2ChunkCollection();
+
+            await collection.updateOne(
+                {
+                    uploadId,
+                    index
+                },
+                {
+                    $set:{
+                        uploadId,
+                        index,
+                        total,
+                        data,
+                        expiresAt:
+                            new Date(
+                                Date.now() +
+                                15 * 60 * 1000
+                            )
+                    }
+                },
+                {
+                    upsert:true
+                }
+            );
+
+            return res.json({
+                ok:true,
+                uploadId,
+                index,
+                total
+            });
+        }
+        catch (error) {
+            console.error(
+                '[PMIS V74R2] PDF chunk upload failed:',
+                error.message
+            );
+
+            return res.status(500).json({
+                error:
+                    error.message ||
+                    'PDF chunk upload failed.'
+            });
+        }
+    }
+);
+
+async function pmisV74R2ResolvePdfBase64(body) {
+    const inline =
+        String(
+            body?.pdfBase64 || ''
+        ).trim();
+
+    if (inline) {
+        return inline;
+    }
+
+    const uploadId =
+        String(
+            body?.pdfUploadId || ''
+        ).trim();
+
+    if (!uploadId) {
+        return '';
+    }
+
+    if (
+        !/^[a-zA-Z0-9_-]{10,160}$/.test(
+            uploadId
+        )
+    ) {
+        throw new Error(
+            'Invalid temporary PDF upload ID.'
+        );
+    }
+
+    const collection =
+        await pmisV74R2ChunkCollection();
+
+    const rows =
+        await collection
+            .find({
+                uploadId
+            })
+            .sort({
+                index:1
+            })
+            .toArray();
+
+    if (!rows.length) {
+        throw new Error(
+            'Temporary PDF upload was not found or has expired.'
+        );
+    }
+
+    const expectedTotal =
+        Number(
+            rows[0]?.total
+        );
+
+    if (
+        !Number.isInteger(expectedTotal) ||
+        expectedTotal < 1 ||
+        rows.length !== expectedTotal
+    ) {
+        throw new Error(
+            `PDF upload is incomplete (${rows.length}/${expectedTotal || '?'} chunks).`
+        );
+    }
+
+    for (
+        let expectedIndex = 0;
+        expectedIndex < expectedTotal;
+        expectedIndex++
+    ) {
+        if (
+            Number(
+                rows[expectedIndex]?.index
+            ) !== expectedIndex
+        ) {
+            throw new Error(
+                'PDF upload chunk order is incomplete.'
+            );
+        }
+    }
+
+    const pdfBase64 =
+        rows
+            .map(
+                row =>
+                    String(
+                        row.data || ''
+                    )
+            )
+            .join('');
+
+    await collection.deleteMany({
+        uploadId
+    });
+
+    console.log(
+        `[PMIS V74R2] Reassembled PDF from ${expectedTotal} temporary chunks.`
+    );
+
+    return pdfBase64;
+}
+
 app.post('/api/action-points/customer-report-email', async (req, res) => {
     try {
         await ensureMongoConnected();
+        // PMIS_LARGE_REPORT_EMAIL_FIX_V74R2
+        const pdfBase64 =
+            await pmisV74R2ResolvePdfBase64(
+                req.body
+            );
 
         const reportType = String(
             req.body?.reportType || ''
@@ -1699,7 +1946,7 @@ app.post('/api/action-points/customer-report-email', async (req, res) => {
             html,
             attachments: [
                 pmisV72BAttachment(
-                    req.body?.pdfBase64,
+                    pdfBase64,
                     req.body?.fileName
                 )
             ]

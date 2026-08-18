@@ -14924,8 +14924,114 @@ function panelHtml(inputId,buttonId,label) {
         }
     }
 
-    async function sendReport(payload,button,originalHtml) {
+        // PMIS_LARGE_REPORT_EMAIL_FIX_V74R2
+    // Large generated PDFs are uploaded in small chunks so serverless request
+    // limits do not reject one oversized Base64 JSON payload.
+    async function pmisV74R2PrepareReportPayload(payload) {
+        const pdfBase64 =
+            String(payload?.pdfBase64 || '');
+
+        // Small reports keep the original fast one-request path.
+        if (
+            !pdfBase64 ||
+            pdfBase64.length <= 2500000
+        ) {
+            return payload;
+        }
+
+        const chunkSize = 2000000;
+        const total =
+            Math.ceil(
+                pdfBase64.length / chunkSize
+            );
+
+        if (total > 20) {
+            throw new Error(
+                'The generated PDF is too large to email safely. Please reduce the report selection.'
+            );
+        }
+
+        const randomPart =
+            (
+                globalThis.crypto?.randomUUID?.() ||
+                (
+                    Math.random().toString(36).slice(2) +
+                    Date.now().toString(36)
+                )
+            )
+                .replace(
+                    /[^a-zA-Z0-9_-]/g,
+                    ''
+                );
+
+        const uploadId =
+            'pmis-' +
+            Date.now().toString(36) +
+            '-' +
+            randomPart;
+
+        for (
+            let index = 0;
+            index < total;
+            index++
+        ) {
+            const data =
+                pdfBase64.slice(
+                    index * chunkSize,
+                    (index + 1) * chunkSize
+                );
+
+            const response =
+                await fetch(
+                    '/api/action-points/customer-report-email-chunk',
+                    {
+                        method:'POST',
+                        headers:{
+                            'Content-Type':'application/json'
+                        },
+                        body:JSON.stringify({
+                            uploadId,
+                            index,
+                            total,
+                            data
+                        })
+                    }
+                );
+
+            const result =
+                await response
+                    .json()
+                    .catch(() => ({}));
+
+            if (!response.ok) {
+                throw new Error(
+                    result.error ||
+                    `PDF upload failed at chunk ${index + 1} of ${total}.`
+                );
+            }
+        }
+
+        const prepared = {
+            ...payload,
+            pdfUploadId:uploadId
+        };
+
+        delete prepared.pdfBase64;
+
+        console.log(
+            `[PMIS V74R2] Large PDF uploaded in ${total} temporary chunks.`
+        );
+
+        return prepared;
+    }
+
+async function sendReport(payload,button,originalHtml) {
         try {
+            const preparedPayload =
+                await pmisV74R2PrepareReportPayload(
+                    payload
+                );
+
             const response = await fetch(
                 '/api/action-points/customer-report-email',
                 {
@@ -14933,7 +15039,7 @@ function panelHtml(inputId,buttonId,label) {
                     headers:{
                         'Content-Type':'application/json'
                     },
-                    body:JSON.stringify(payload)
+                    body:JSON.stringify(preparedPayload)
                 }
             );
 
