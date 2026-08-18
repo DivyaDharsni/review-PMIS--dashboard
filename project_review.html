@@ -16005,16 +16005,22 @@ function panelHtml(inputId,buttonId,label) {
                 : '0 selected → all included';
     }
 
-    function pointRowHtml(project,item) {
+    function pointRowHtml(project,item,context) {
         const key =
             pointKey(project,item);
 
         const owner =
             ownerType(item);
 
+        // PMIS_MASTER_ACTION_SELECTION_STATE_FIX_V74P
+        // Each report must use only its own selection state.
+        const selectedState =
+            context === 'master'
+                ? state.master
+                : state.action;
+
         const checked =
-            state.action.has(key) ||
-            state.master.has(key);
+            selectedState.has(key);
 
         const action =
             String(
@@ -16163,6 +16169,27 @@ function panelHtml(inputId,buttonId,label) {
         let html = '';
         let visibleCount = 0;
 
+                // PMIS_ACTION_EXPORT_PRECHECK_ALL_V74Q
+        // Action Point Export starts with every currently visible point selected.
+        // PM can then uncheck only the points that should be excluded.
+        if (!isMaster && state.action.size === 0) {
+            projectsList.forEach(project => {
+                const defaultRows =
+                    filterOwner(
+                        Array.isArray(project?.meetings)
+                            ? project.meetings
+                            : [],
+                        owner
+                    );
+
+                defaultRows.forEach(item => {
+                    state.action.add(
+                        pointKey(project,item)
+                    );
+                });
+            });
+        }
+
         projectsList.forEach(project => {
             const rows =
                 filterOwner(
@@ -16200,7 +16227,8 @@ function panelHtml(inputId,buttonId,label) {
                             item =>
                                 pointRowHtml(
                                     project,
-                                    item
+                                    item,
+                                    context
                                 )
                         )
                         .join('')}
@@ -16589,10 +16617,10 @@ function panelHtml(inputId,buttonId,label) {
         list.forEach(input => {
             input.disabled = false;
 
-            if (!input.checked) {
-                input.checked = true;
-                dispatchChange(input);
-            }
+            // PMIS_MASTER_ACTION_SELECTION_STATE_FIX_V74P
+            // Force DOM checkbox and state.master to stay synchronized.
+            input.checked = true;
+            dispatchChange(input);
         });
 
         pendingSelectAll = false;
