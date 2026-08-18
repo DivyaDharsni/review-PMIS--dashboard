@@ -3549,11 +3549,29 @@
             return '\u20B9' + value.toLocaleString('en-US');
         }
 
-        function formatExportPoValueForCurrentUser(project) {
-            if (!canCurrentUserViewProjectPoValue(project)) return '-';
-            const value = parseFloat(String(project && project.po_value || '0').replace(/,/g, '')) || 0;
-            return value > 0 ? 'Rs.' + value.toLocaleString('en-US') : '-';
-        }
+        // PMIS_EXPORT_ALL_VALUES_FOLLOW_EYE_V72D
+function formatExportPoValueForCurrentUser(project) {
+    const valuesVisible =
+        typeof window.pmisDashboardValuesVisibleV72C === 'function'
+            ? !!window.pmisDashboardValuesVisibleV72C()
+            : false;
+
+    // Eye CLOSED = hide every monetary/project value in dashboard export.
+    if (!valuesVisible) return '-';
+
+    if (!canCurrentUserViewProjectPoValue(project)) return '-';
+
+    const value =
+        parseFloat(
+            String(
+                project && project.po_value || '0'
+            ).replace(/,/g, '')
+        ) || 0;
+
+    return value > 0
+        ? 'Rs.' + value.toLocaleString('en-US')
+        : '-';
+}
 
         // PMIS_ASSOCIATED_PROJECT_FILTER_METRICS_V2
         function normalizeRoleProjectIdentity(value) {
@@ -6462,7 +6480,151 @@
                     }
                 }
 
-const pageCount = doc.internal.getNumberOfPages();
+                // PMIS_PLAN_REVISION_HISTORY_V74B
+                if (options.has('revisions')) {
+                    const planRevisionRowsV74B = [];
+
+                    phaseRows.forEach(row => {
+                        const revisions =
+                            Array.isArray(row?.revisions)
+                                ? row.revisions
+                                : [];
+
+                        revisions.forEach((revision,index) => {
+                            const rawTimestamp =
+                                revision?.timestamp ||
+                                revision?.approvalTimestamp ||
+                                revision?.approvedAt ||
+                                revision?.createdAt ||
+                                '';
+
+                            planRevisionRowsV74B.push({
+                                revisionNo:
+                                    revision?.label ||
+                                    `R${index + 1}`,
+                                revisionDate:
+                                    rawTimestamp
+                                        ? masterReportDate(
+                                            String(rawTimestamp).slice(0,10)
+                                          )
+                                        : '-',
+                                phase:
+                                    row?.name ||
+                                    row?.key ||
+                                    '-',
+                                revisedStart:
+                                    masterReportDate(
+                                        revision?.start
+                                    ),
+                                revisedEnd:
+                                    masterReportDate(
+                                        revision?.end
+                                    ),
+                                reason:
+                                    revision?.remark ||
+                                    revision?.reason ||
+                                    '-',
+                                sortKey:
+                                    String(rawTimestamp || '')
+                            });
+                        });
+                    });
+
+                    planRevisionRowsV74B.sort(
+                        (a,b) =>
+                            a.sortKey.localeCompare(
+                                b.sortKey
+                            )
+                    );
+
+                    y = masterReportSection(
+                        doc,
+                        nextSectionTitle(
+                            'PLAN REVISION HISTORY (' +
+                            planRevisionRowsV74B.length +
+                            ' APPROVED REVISION' +
+                            (
+                                planRevisionRowsV74B.length === 1
+                                    ? ''
+                                    : 'S'
+                            ) +
+                            ')'
+                        ),
+                        y,
+                        project,
+                        reportTitle,
+                        logoData,
+                        38
+                    );
+
+                    const bodyV74B =
+                        planRevisionRowsV74B.length
+                            ? planRevisionRowsV74B.map(item => [
+                                item.revisionNo,
+                                item.revisionDate,
+                                item.phase,
+                                item.revisedStart,
+                                item.revisedEnd,
+                                item.reason
+                              ])
+                            : [[
+                                '-',
+                                '-',
+                                'No approved schedule revisions recorded',
+                                '-',
+                                '-',
+                                '-'
+                              ]];
+
+                    doc.autoTable({
+                        startY:y,
+                        head:[[
+                            'Revision No.',
+                            'Revision Date',
+                            'Phase / Workstream',
+                            'Revised Plan Start',
+                            'Revised Plan End',
+                            'Reason / Remark'
+                        ]],
+                        body:bodyV74B,
+                        theme:'grid',
+                        styles:{
+                            fontSize:6.7,
+                            cellPadding:2.1,
+                            overflow:'linebreak',
+                            valign:'middle'
+                        },
+                        headStyles:{
+                            fillColor:[0,51,102],
+                            textColor:[255,255,255],
+                            fontStyle:'bold',
+                            fontSize:6.8
+                        },
+                        columnStyles:{
+                            0:{cellWidth:20,halign:'center',fontStyle:'bold'},
+                            1:{cellWidth:25,halign:'center'},
+                            2:{cellWidth:56},
+                            3:{cellWidth:27,halign:'center'},
+                            4:{cellWidth:27,halign:'center'},
+                            5:{cellWidth:105}
+                        },
+                        margin:{
+                            top:34,
+                            left:8,
+                            right:8,
+                            bottom:14
+                        },
+                        showHead:'everyPage',
+                        rowPageBreak:'avoid',
+                        willDrawPage:continuationHeader
+                    });
+
+                    y =
+                        doc.lastAutoTable.finalY +
+                        6;
+                }
+
+                const pageCount = doc.internal.getNumberOfPages();
                 for (let page = 1; page <= pageCount; page++) {
                     doc.setPage(page); doc.setFontSize(7); doc.setTextColor(100,116,139);
                     doc.text(`Page ${page} of ${pageCount}`,doc.internal.pageSize.getWidth()-10,doc.internal.pageSize.getHeight()-6,{align:'right'});
@@ -7037,6 +7199,21 @@ const pageCount = doc.internal.getNumberOfPages();
 
             const originalTable = document.getElementById('registryTable');
             const tableClone = originalTable.cloneNode(true);
+
+            // PMIS_EXPORT_ALL_VALUES_FOLLOW_EYE_V72D
+            // Keep Excel confidentiality synchronized with the ONE Total Value eye.
+            const pmisV72DValuesVisible =
+                typeof window.pmisDashboardValuesVisibleV72C === 'function'
+                    ? !!window.pmisDashboardValuesVisibleV72C()
+                    : false;
+
+            if (!pmisV72DValuesVisible) {
+                tableClone
+                    .querySelectorAll('.cell-value, [title="PO value"]')
+                    .forEach(cell => {
+                        cell.textContent = '-';
+                    });
+            }
 
             // Clean up elements that shouldn't be in Excel and remove filtered-out (hidden) rows
             tableClone.querySelectorAll('.btn-toggle-row, .no-print, button, .dropdown').forEach(el => el.remove());
@@ -8071,7 +8248,14 @@ const pageCount = doc.internal.getNumberOfPages();
             let exportedSheets = 0;
 
             selectedProjects.forEach((project,projectIndex) => {
-                const meetings = pmisV26VisibleActionRows(project);
+                const meetings =
+                    typeof window.pmisV73ApplyPointSelection === 'function'
+                        ? window.pmisV73ApplyPointSelection(
+                            project,
+                            pmisV26VisibleActionRows(project),
+                            'action'
+                        )
+                        : pmisV26VisibleActionRows(project);
                 if (!meetings.length) return;
                 const counts = pmisV26ActionCounts(meetings);
                 const rows = [
@@ -13059,7 +13243,11 @@ function legend(doc,x,y){
  a.forEach(([n,c])=>{doc.setFillColor(...c);doc.roundedRect(x,yy-3.4,4.5,4.5,1,1,'F');doc.setFont('helvetica','normal');doc.setTextColor(51,65,85);doc.text(n,x+7,yy);yy+=7;});
 }
 function draw(doc,p,y){
- const all=Array.isArray(p?.meetings)?p.meetings.slice():[];
+ let all=Array.isArray(p?.meetings)?p.meetings.slice():[];
+  // PMIS_ACTION_POINT_INDIVIDUAL_SELECTION_V73
+  if(typeof window.pmisV73ApplyPointSelection==='function'){
+   all=window.pmisV73ApplyPointSelection(p,all,'master');
+  }
  const groups=[
   ['OVERALL',all],
   ['INHOUSE',all.filter(a=>ownerType(a)==='inhouse')],
@@ -13879,10 +14067,19 @@ console.log('[PMIS V66] Inline Overall/Inhouse/Customer donuts active.');
             ? selectedProjects
             : []
         ).forEach(project => {
-            const allRows =
+            let allRows =
                 Array.isArray(project?.meetings)
                     ? project.meetings.slice()
                     : [];
+
+            // PMIS_ACTION_POINT_INDIVIDUAL_SELECTION_V73
+            if (typeof window.pmisV73ApplyPointSelection === 'function') {
+                allRows = window.pmisV73ApplyPointSelection(
+                    project,
+                    allRows,
+                    'action'
+                );
+            }
 
             const selectedRows =
                 mode === 'all'
@@ -14364,6 +14561,4491 @@ console.log('[PMIS V66] Inline Overall/Inhouse/Customer donuts active.');
 
     console.log(
         '[PMIS V71C] Master Report checkbox click fix active.'
+    );
+})();
+</script>
+<style id="pmis-customer-report-smtp-email-v72b-style">
+/* PMIS_CUSTOMER_REPORT_SMTP_EMAIL_V72B */
+.pmis-v72b-email-panel {
+    margin-top:14px;
+    padding:14px;
+    border:1px solid #dbe5f0;
+    border-radius:14px;
+    background:#f8fbff;
+}
+.pmis-v72b-email-row {
+    display:flex;
+    gap:10px;
+    align-items:end;
+    flex-wrap:wrap;
+}
+.pmis-v72b-email-field { flex:1 1 320px; }
+.pmis-v72b-email-field label {
+    display:block;
+    margin-bottom:5px;
+    color:#64748b;
+    font-size:.72rem;
+    font-weight:850;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+}
+.pmis-v72b-email-field input {
+    width:100%;
+    min-height:42px;
+    border:1px solid #cbd5e1;
+    border-radius:10px;
+    padding:8px 11px;
+    outline:none;
+    background:#fff;
+}
+.pmis-v72b-email-btn {
+    min-height:42px;
+    border:0;
+    border-radius:10px;
+    padding:9px 15px;
+    background:#003366;
+    color:#fff;
+    font-weight:850;
+    white-space:nowrap;
+}
+.pmis-v72b-email-btn:disabled { opacity:.6; cursor:wait; }
+.pmis-v72b-email-note {
+    margin-top:7px;
+    color:#64748b;
+    font-size:.72rem;
+}
+</style>
+
+<script id="pmis-customer-report-smtp-email-v72b">
+/* PMIS_CUSTOMER_REPORT_SMTP_EMAIL_V72B */
+(function () {
+    'use strict';
+
+    if (window.__PMIS_V72B_REPORT_EMAIL__) return;
+    window.__PMIS_V72B_REPORT_EMAIL__ = true;
+
+    function validEmail(value) {
+        const email = String(value || '').trim().toLowerCase();
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : '';
+    }
+
+    function toast(message,error) {
+        if (typeof window.showToast === 'function') {
+            window.showToast(message,!!error);
+        }
+        else {
+            alert(message);
+        }
+    }
+
+    function isLeadView() {
+        try {
+            if (typeof window.pmisIsLeadViewV51E === 'function') {
+                return !!window.pmisIsLeadViewV51E();
+            }
+        }
+        catch (_) {}
+
+        const role = String(
+            localStorage.getItem('danprel_auth_role') || ''
+        ).trim().toLowerCase();
+
+        const user = String(
+            localStorage.getItem('danprel_username') || ''
+        ).trim().toLowerCase();
+
+        return (
+            role === 'lead_view' ||
+            user === 'projects@danprel' ||
+            user === 'project@danprel'
+        );
+    }
+
+    // PMIS_CUSTOMER_REPORT_CC_V72F
+// PMIS_REPORT_EMAIL_EXTERNAL_INTERNAL_TEMPLATE_V72G
+function panelHtml(inputId,buttonId,label) {
+        const ccId = `${inputId}Cc`;
+        const typeId = `${inputId}Type`;
+
+        return `
+            <div class="pmis-v72b-email-row">
+                <div class="pmis-v72b-email-field" style="flex:0 1 220px;">
+                    <label for="${typeId}">Email Type</label>
+                    <select
+                        id="${typeId}"
+                        class="form-select"
+                        style="min-height:42px;border-radius:10px;"
+                    >
+                        <option value="external" selected>External Customer</option>
+                        <option value="internal">Internal</option>
+                    </select>
+                </div>
+
+                <div class="pmis-v72b-email-field">
+                    <label for="${inputId}">To Email</label>
+                    <input
+                        type="email"
+                        id="${inputId}"
+                        maxlength="254"
+                        autocomplete="email"
+                        placeholder="recipient@company.com"
+                    >
+                </div>
+
+                <div class="pmis-v72b-email-field">
+                    <label for="${ccId}">CC (Optional)</label>
+                    <input
+                        type="text"
+                        id="${ccId}"
+                        maxlength="1000"
+                        autocomplete="off"
+                        placeholder="manager@company.com, quality@company.com"
+                    >
+                </div>
+
+                <button
+                    type="button"
+                    class="pmis-v72b-email-btn"
+                    id="${buttonId}"
+                >
+                    <i class="bi bi-envelope-paper me-1"></i>${label}
+                </button>
+            </div>
+
+            <div class="pmis-v72b-email-note">
+                Select External Customer or Internal. CC is optional and supports multiple addresses separated by comma or semicolon.
+            </div>
+        `;
+    }
+
+    function insertPanel(modalId,panelId,inputId,buttonId,label,handler) {
+        if (document.getElementById(panelId)) return true;
+
+        const modal = document.getElementById(modalId);
+        if (!modal) return false;
+
+        const body = modal.querySelector('.modal-body');
+        if (!body) return false;
+
+        const panel = document.createElement('div');
+        panel.id = panelId;
+        panel.className = 'pmis-v72b-email-panel';
+        panel.innerHTML = panelHtml(inputId,buttonId,label);
+
+        body.appendChild(panel);
+
+        document.getElementById(buttonId)
+            ?.addEventListener('click',handler);
+
+        if (isLeadView()) panel.style.display = 'none';
+
+        return true;
+    }
+
+    // PMIS_CUSTOMER_REPORT_CC_V72F
+    // PMIS_REPORT_EMAIL_EXTERNAL_INTERNAL_TEMPLATE_V72G
+    function emailTypeFor(inputId) {
+        const value = String(
+            document.getElementById(`${inputId}Type`)?.value || 'external'
+        ).trim().toLowerCase();
+
+        return value === 'internal'
+            ? 'internal'
+            : 'external';
+    }
+    function ccListFor(inputId) {
+        const value = String(
+            document.getElementById(`${inputId}Cc`)?.value || ''
+        ).trim();
+
+        if (!value) return [];
+
+        const items = value
+            .split(/[;,]/)
+            .map(item => item.trim())
+            .filter(Boolean);
+
+        const invalid = items.find(item => !validEmail(item));
+
+        if (invalid) {
+            throw new Error(`Invalid CC email address: ${invalid}`);
+        }
+
+        return Array.from(new Set(items.map(item => validEmail(item))));
+    }
+    function selectedActionProjects() {
+        try {
+            if (typeof window.apGetSelectedProjects === 'function') {
+                const result = window.apGetSelectedProjects();
+                if (Array.isArray(result)) return result;
+            }
+        }
+        catch (_) {}
+
+        try {
+            if (!Array.isArray(projects)) return [];
+
+            const ids = Array.from(
+                document.querySelectorAll(
+                    '#apProjectList input[type="checkbox"]:checked'
+                )
+            )
+                .map(
+                    input =>
+                        String(
+                            input.value ||
+                            input.dataset.projectId ||
+                            ''
+                        ).trim()
+                )
+                .filter(Boolean);
+
+            return projects.filter(
+                project =>
+                    ids.includes(String(project?._id || ''))
+            );
+        }
+        catch (_) {
+            return [];
+        }
+    }
+
+    function selectedMasterProject() {
+        const id = String(
+            document.getElementById('masterReportProject')?.value || ''
+        ).trim();
+
+        if (!id) return null;
+
+        try {
+            return Array.isArray(projects)
+                ? projects.find(
+                    project => String(project?._id || '') === id
+                ) || null
+                : null;
+        }
+        catch (_) {
+            return null;
+        }
+    }
+
+    function installPdfCapture() {
+        const jspdf = window.jspdf;
+
+        if (!jspdf || typeof jspdf.jsPDF !== 'function') {
+            throw new Error('PDF engine is unavailable.');
+        }
+
+        const OriginalJsPDF = jspdf.jsPDF;
+        let captured = null;
+
+        function CaptureJsPDF(...args) {
+            const doc = new OriginalJsPDF(...args);
+
+            doc.save = function (fileName) {
+                const dataUri = doc.output('datauristring');
+                const comma = String(dataUri || '').indexOf(',');
+
+                captured = {
+                    fileName: String(fileName || 'DANPREL_Report.pdf'),
+                    pdfBase64:
+                        comma >= 0
+                            ? String(dataUri).slice(comma + 1)
+                            : ''
+                };
+
+                return doc;
+            };
+
+            return doc;
+        }
+
+        try {
+            Object.setPrototypeOf(CaptureJsPDF,OriginalJsPDF);
+        }
+        catch (_) {}
+
+        try {
+            Object.keys(OriginalJsPDF).forEach(key => {
+                if (!(key in CaptureJsPDF)) {
+                    CaptureJsPDF[key] = OriginalJsPDF[key];
+                }
+            });
+        }
+        catch (_) {}
+
+        jspdf.jsPDF = CaptureJsPDF;
+
+        return {
+            getCaptured: () => captured,
+            restore: () => {
+                jspdf.jsPDF = OriginalJsPDF;
+            }
+        };
+    }
+
+    async function captureExistingPdf(generator) {
+        const capture = installPdfCapture();
+        const oldToast = window.showToast;
+
+        if (typeof oldToast === 'function') {
+            window.showToast = function (message) {
+                const text = String(message || '');
+
+                if (
+                    /pdf\s+downloaded|downloaded\s+successfully/i.test(text)
+                ) {
+                    return;
+                }
+
+                return oldToast.apply(this,arguments);
+            };
+        }
+
+        try {
+            await Promise.resolve(generator());
+
+            const result = capture.getCaptured();
+
+            if (!result?.pdfBase64) {
+                throw new Error(
+                    'The PDF was not generated. Check the current report selections and try again.'
+                );
+            }
+
+            return result;
+        }
+        finally {
+            capture.restore();
+
+            if (typeof oldToast === 'function') {
+                window.showToast = oldToast;
+            }
+        }
+    }
+
+    async function sendReport(payload,button,originalHtml) {
+        try {
+            const response = await fetch(
+                '/api/action-points/customer-report-email',
+                {
+                    method:'POST',
+                    headers:{
+                        'Content-Type':'application/json'
+                    },
+                    body:JSON.stringify(payload)
+                }
+            );
+
+            const result = await response.json().catch(() => ({}));
+
+            // PMIS_CUSTOMER_REPORT_EMAIL_SIZE_FIX_V72E
+            if (!response.ok) {
+                if (response.status === 413) {
+                    throw new Error(
+                        result.error ||
+                        'The generated PDF is too large for the email request. Reduce the report selection and try again.'
+                    );
+                }
+
+                throw new Error(
+                    result.error ||
+                    `Email failed with HTTP ${response.status}`
+                );
+            }
+
+            toast(result.message || 'Report emailed successfully.');
+        }
+        catch (error) {
+            console.error('[PMIS V72B] report email failed:',error);
+            toast(error.message || 'Report email failed.',true);
+        }
+        finally {
+            if (button) {
+                button.disabled = false;
+                button.innerHTML = originalHtml;
+            }
+        }
+    }
+
+    async function emailActionPointReport() {
+        if (isLeadView()) return;
+
+        const emailInput =
+            document.getElementById('apCustomerEmailV72B');
+
+        const recipient =
+            validEmail(emailInput?.value);
+
+        if (!recipient) {
+            toast('Enter a valid Customer email address.',true);
+            emailInput?.focus();
+            return;
+        }
+
+        const selected = selectedActionProjects();
+
+        if (!selected.length) {
+            toast(
+                'Select at least one project before emailing the Action Point report.',
+                true
+            );
+            return;
+        }
+
+        const button =
+            document.getElementById('apEmailCustomerV72B');
+
+        const originalHtml =
+            button?.innerHTML || '';
+
+        if (button) {
+            button.disabled = true;
+            button.innerHTML =
+                '<span class="spinner-border spinner-border-sm me-2"></span>Generating & Sending...';
+        }
+
+        try {
+            const pdf = await captureExistingPdf(
+                () => window.apDoExport('pdf')
+            );
+
+            const projectIds = selected
+                .map(project => String(project?._id || ''))
+                .filter(Boolean);
+
+            const cc = ccListFor('apCustomerEmailV72B');
+            const emailType = emailTypeFor('apCustomerEmailV72B');
+
+            await sendReport(
+                {
+                    reportType:'action_points',
+                    recipient,
+                    // PMIS_REPORT_EMAIL_EXTERNAL_INTERNAL_TEMPLATE_V72G
+                    emailType,
+                    // PMIS_CUSTOMER_REPORT_CC_V72F
+                    cc,
+                    projectId:projectIds[0],
+                    projectIds,
+                    fileName:pdf.fileName,
+                    pdfBase64:pdf.pdfBase64
+                },
+                button,
+                originalHtml
+            );
+        }
+        catch (error) {
+            if (button) {
+                button.disabled = false;
+                button.innerHTML = originalHtml;
+            }
+
+            toast(
+                error.message ||
+                'Unable to generate Action Point PDF.',
+                true
+            );
+        }
+    }
+
+    async function emailMasterReport() {
+        if (isLeadView()) return;
+
+        const emailInput =
+            document.getElementById('masterCustomerEmailV72B');
+
+        const recipient =
+            validEmail(emailInput?.value);
+
+        if (!recipient) {
+            toast('Enter a valid Customer email address.',true);
+            emailInput?.focus();
+            return;
+        }
+
+        const project = selectedMasterProject();
+
+        if (!project) {
+            toast(
+                'Select a project before emailing the Project Master Report.',
+                true
+            );
+            return;
+        }
+
+        const button =
+            document.getElementById('masterEmailCustomerV72B');
+
+        const originalHtml =
+            button?.innerHTML || '';
+
+        if (button) {
+            button.disabled = true;
+            button.innerHTML =
+                '<span class="spinner-border spinner-border-sm me-2"></span>Generating & Sending...';
+        }
+
+        try {
+            const pdf = await captureExistingPdf(
+                () => window.generateProjectMasterReport()
+            );
+
+            const projectId =
+                String(project?._id || '');
+
+            const cc = ccListFor('masterCustomerEmailV72B');
+            const emailType = emailTypeFor('masterCustomerEmailV72B');
+
+            await sendReport(
+                {
+                    reportType:'project_master',
+                    recipient,
+                    // PMIS_REPORT_EMAIL_EXTERNAL_INTERNAL_TEMPLATE_V72G
+                    emailType,
+                    // PMIS_CUSTOMER_REPORT_CC_V72F
+                    cc,
+                    projectId,
+                    projectIds:[projectId],
+                    fileName:pdf.fileName,
+                    pdfBase64:pdf.pdfBase64
+                },
+                button,
+                originalHtml
+            );
+        }
+        catch (error) {
+            if (button) {
+                button.disabled = false;
+                button.innerHTML = originalHtml;
+            }
+
+            toast(
+                error.message ||
+                'Unable to generate Project Master PDF.',
+                true
+            );
+        }
+    }
+
+    function install() {
+        insertPanel(
+            'actionExportModal',
+            'apCustomerEmailPanelV72B',
+            'apCustomerEmailV72B',
+            'apEmailCustomerV72B',
+            'Email Action Point PDF',
+            emailActionPointReport
+        );
+
+        insertPanel(
+            'masterReportModal',
+            'masterCustomerEmailPanelV72B',
+            'masterCustomerEmailV72B',
+            'masterEmailCustomerV72B',
+            'Email Master Report PDF',
+            emailMasterReport
+        );
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded',install,{ once:true });
+    }
+    else {
+        install();
+    }
+
+    setTimeout(install,350);
+    setTimeout(install,1200);
+
+    console.log(
+        '[PMIS V72B] Customer report SMTP email active.'
+    );
+})();
+</script>
+<style id="pmis-dashboard-single-value-eye-v72c-style">
+/* PMIS_DASHBOARD_SINGLE_VALUE_EYE_FIX_V72C */
+.pmis-v72c-eye {
+    width: 30px;
+    height: 30px;
+    margin-left: 8px;
+    border: 0;
+    border-radius: 50%;
+    background: #eef5fb;
+    color: #003366;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    vertical-align: middle;
+}
+.pmis-v72c-eye:hover { background:#e0edf8; }
+.pmis-v72c-eye i { font-size:.95rem; }
+</style>
+
+<script id="pmis-dashboard-single-value-eye-v72c">
+/* PMIS_DASHBOARD_SINGLE_VALUE_EYE_FIX_V72C */
+(function () {
+    'use strict';
+
+    if (window.__PMIS_V72C_VALUE_EYE__) return;
+    window.__PMIS_V72C_VALUE_EYE__ = true;
+
+    let visible = false;
+    let observer = null;
+
+    const ids = [
+        'statDispatchedValue',
+        'statTotalValue'
+    ];
+
+    function els() {
+        return ids
+            .map(id => document.getElementById(id))
+            .filter(Boolean);
+    }
+
+    function isMasked(text) {
+        return String(text || '').trim() === '••••••';
+    }
+
+    function remember(el) {
+        if (!el) return;
+
+        const text = String(el.textContent || '').trim();
+
+        if (text && !isMasked(text)) {
+            el.dataset.pmisV72cRealValue = text;
+        }
+    }
+
+    function disconnectObserver() {
+        if (observer) observer.disconnect();
+    }
+
+    function observeValues() {
+        if (!observer) return;
+
+        els().forEach(el => {
+            observer.observe(el,{
+                childList:true,
+                subtree:true,
+                characterData:true
+            });
+        });
+    }
+
+    function updateButton() {
+        const btn = document.getElementById('pmisV72cTotalValueEye');
+        if (!btn) return;
+
+        btn.innerHTML = visible
+            ? '<i class="bi bi-eye"></i>'
+            : '<i class="bi bi-eye-slash"></i>';
+
+        btn.title = visible
+            ? 'Hide dashboard values'
+            : 'Show dashboard values';
+
+        btn.setAttribute('aria-label',btn.title);
+        btn.setAttribute('aria-pressed',visible ? 'true' : 'false');
+    }
+
+    function applyState() {
+        disconnectObserver();
+
+        els().forEach(el => {
+            if (visible) {
+                const real = el.dataset.pmisV72cRealValue;
+
+                if (real && String(el.textContent || '').trim() !== real) {
+                    el.textContent = real;
+                }
+            }
+            else {
+                remember(el);
+
+                if (!isMasked(el.textContent)) {
+                    el.textContent = '••••••';
+                }
+            }
+        });
+
+        updateButton();
+        observeValues();
+    }
+
+    function handleExternalValueChange() {
+        disconnectObserver();
+
+        els().forEach(el => {
+            const text = String(el.textContent || '').trim();
+
+            // Any non-mask value written by the real dashboard is saved.
+            if (text && !isMasked(text)) {
+                el.dataset.pmisV72cRealValue = text;
+            }
+        });
+
+        // Respect the current eye state without creating an observer loop.
+        els().forEach(el => {
+            if (visible) {
+                const real = el.dataset.pmisV72cRealValue;
+                if (real && String(el.textContent || '').trim() !== real) {
+                    el.textContent = real;
+                }
+            }
+            else if (!isMasked(el.textContent)) {
+                el.textContent = '••••••';
+            }
+        });
+
+        observeValues();
+    }
+
+    function install() {
+        const totalValue = document.getElementById('statTotalValue');
+        if (!totalValue) return false;
+
+        els().forEach(remember);
+
+        if (!document.getElementById('pmisV72cTotalValueEye')) {
+            const btn = document.createElement('button');
+
+            btn.type = 'button';
+            btn.id = 'pmisV72cTotalValueEye';
+            btn.className = 'pmis-v72c-eye';
+
+            btn.addEventListener('click',function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+
+                visible = !visible;
+                applyState();
+            });
+
+            totalValue.insertAdjacentElement('afterend',btn);
+        }
+
+        if (!observer) {
+            observer = new MutationObserver(function () {
+                handleExternalValueChange();
+            });
+        }
+
+        applyState();
+        return true;
+    }
+
+    window.pmisDashboardValuesVisibleV72C = function () {
+        return visible;
+    };
+
+    function start() {
+        install();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded',start,{ once:true });
+    }
+    else {
+        start();
+    }
+
+    setTimeout(install,350);
+    setTimeout(install,1200);
+
+    console.log(
+        '[PMIS V72C] Single Total Value eye fixed; no MutationObserver loop.'
+    );
+})();
+</script>
+<style id="pmis-action-point-individual-selection-v73-style">
+/* PMIS_ACTION_POINT_INDIVIDUAL_SELECTION_V73 */
+.pmis-v73-point-panel {
+    margin: 14px 20px 4px;
+    border: 1px solid #dbe5f0;
+    border-radius: 14px;
+    background: #f8fbff;
+    overflow: hidden;
+}
+.pmis-v73-point-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 12px 14px;
+    border-bottom: 1px solid #e2e8f0;
+}
+.pmis-v73-point-title {
+    font-size: .78rem;
+    font-weight: 900;
+    color: #0f172a;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+.pmis-v73-point-note {
+    margin-top: 3px;
+    font-size: .72rem;
+    color: #64748b;
+}
+.pmis-v73-point-count {
+    padding: 5px 9px;
+    border-radius: 999px;
+    background: #e2e8f0;
+    color: #334155;
+    font-size: .69rem;
+    font-weight: 850;
+    white-space: nowrap;
+}
+.pmis-v73-point-list {
+    max-height: 245px;
+    overflow: auto;
+    padding: 8px;
+}
+.pmis-v73-project-group {
+    margin: 6px;
+    border: 1px solid #e2e8f0;
+    border-radius: 11px;
+    background: #fff;
+    overflow: hidden;
+}
+.pmis-v73-project-label {
+    padding: 8px 10px;
+    background: #f1f5f9;
+    color: #003366;
+    font-size: .72rem;
+    font-weight: 900;
+}
+.pmis-v73-point-row {
+    display: grid;
+    grid-template-columns: 22px minmax(0,1fr) auto;
+    gap: 8px;
+    align-items: start;
+    padding: 9px 10px;
+    border-top: 1px solid #eef2f7;
+    cursor: pointer;
+}
+.pmis-v73-point-row:first-of-type {
+    border-top: 0;
+}
+.pmis-v73-point-row:hover {
+    background: #f8fafc;
+}
+.pmis-v73-point-row input {
+    width: 17px;
+    height: 17px;
+    margin-top: 2px;
+    accent-color: #0f766e;
+}
+.pmis-v73-point-action {
+    color: #0f172a;
+    font-size: .76rem;
+    font-weight: 780;
+    line-height: 1.35;
+}
+.pmis-v73-point-meta {
+    margin-top: 4px;
+    color: #64748b;
+    font-size: .66rem;
+    line-height: 1.35;
+}
+.pmis-v73-owner-tag {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 3px 7px;
+    font-size: .62rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+.pmis-v73-owner-tag.inhouse {
+    background: #e0f2fe;
+    color: #075985;
+}
+.pmis-v73-owner-tag.customer {
+    background: #ecfdf5;
+    color: #047857;
+}
+.pmis-v73-empty {
+    padding: 22px 14px;
+    text-align: center;
+    color: #64748b;
+    font-size: .75rem;
+    font-weight: 700;
+}
+.pmis-v73-clear {
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    color: #334155;
+    border-radius: 9px;
+    padding: 6px 10px;
+    font-size: .7rem;
+    font-weight: 850;
+    cursor: pointer;
+}
+</style>
+
+<script id="pmis-action-point-individual-selection-v73">
+/* PMIS_ACTION_POINT_INDIVIDUAL_SELECTION_V73 */
+(function () {
+    'use strict';
+
+    if (window.__PMIS_ACTION_POINT_INDIVIDUAL_SELECTION_V73__) return;
+    window.__PMIS_ACTION_POINT_INDIVIDUAL_SELECTION_V73__ = true;
+
+    const state = {
+        action: new Set(),
+        master: new Set(),
+        actionScope: '',
+        masterScope: ''
+    };
+
+    function norm(value) {
+        return String(value ?? '')
+            .replace(/\s+/g,' ')
+            .trim()
+            .toLowerCase();
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g,'&amp;')
+            .replace(/</g,'&lt;')
+            .replace(/>/g,'&gt;')
+            .replace(/"/g,'&quot;')
+            .replace(/'/g,'&#039;');
+    }
+
+    function projectKey(project) {
+        return String(
+            project?._id ||
+            project?.id ||
+            project?.code ||
+            project?.tracking_code ||
+            project?.name ||
+            ''
+        ).trim();
+    }
+
+    /*
+     * Stable-enough row key:
+     * use DB _id when available; otherwise use the meaningful
+     * Action Point fields that already identify the displayed row.
+     */
+    function pointKey(project,item) {
+        const p = projectKey(project);
+
+        const id = String(
+            item?._id ||
+            item?.id ||
+            ''
+        ).trim();
+
+        if (id) return p + '::id::' + id;
+
+        return [
+            p,
+            item?.reviewDate,
+            item?.action,
+            item?.dept,
+            item?.personName ??
+                item?.responsiblePerson ??
+                item?.responsible_person,
+            item?.email,
+            item?.targetDate,
+            item?.nextTarget,
+            item?.statusValue ?? item?.status
+        ]
+            .map(value => norm(value))
+            .join('::');
+    }
+
+    function ownerType(item) {
+        try {
+            if (typeof window.pmisV49BActionOwnerType === 'function') {
+                const value = norm(
+                    window.pmisV49BActionOwnerType(item)
+                );
+
+                if (
+                    value === 'inhouse' ||
+                    value === 'customer'
+                ) {
+                    return value;
+                }
+            }
+        }
+        catch (_) {}
+
+        const explicit = norm(
+            item?.responsibilityType ??
+            item?.ownerType ??
+            item?.responsibility_type ??
+            item?.owner_type ??
+            ''
+        );
+
+        if (
+            explicit === 'customer' ||
+            explicit === 'client'
+        ) {
+            return 'customer';
+        }
+
+        if (
+            explicit === 'inhouse' ||
+            explicit === 'in-house' ||
+            explicit === 'danprel' ||
+            explicit === 'internal'
+        ) {
+            return 'inhouse';
+        }
+
+        if (norm(item?.email ?? '')) {
+            return 'inhouse';
+        }
+
+        const person = norm(
+            item?.personName ??
+            item?.responsiblePerson ??
+            item?.responsible_person ??
+            ''
+        );
+
+        if (
+            person === 'danprel' ||
+            person === 'inhouse' ||
+            person === 'in-house' ||
+            person === 'danprel (inhouse)' ||
+            person.includes('danprel (inhouse)')
+        ) {
+            return 'inhouse';
+        }
+
+        if (
+            person === 'customer' ||
+            person === 'client'
+        ) {
+            return 'customer';
+        }
+
+        if (person) {
+            try {
+                const list =
+                    typeof employees !== 'undefined' &&
+                    Array.isArray(employees)
+                        ? employees
+                        : [];
+
+                const known = list.some(emp =>
+                    [
+                        emp?.name,
+                        emp?.employee_name,
+                        emp?.displayName,
+                        emp?.email,
+                        emp?.employee_id,
+                        emp?.employeeId
+                    ].some(value => norm(value) === person)
+                );
+
+                if (known) return 'inhouse';
+            }
+            catch (_) {}
+
+            return 'customer';
+        }
+
+        return 'inhouse';
+    }
+
+    function actionOwner() {
+        try {
+            if (typeof pmisV49BCurrentOwnerFilter === 'function') {
+                const value = norm(
+                    pmisV49BCurrentOwnerFilter()
+                );
+
+                if (
+                    value === 'all' ||
+                    value === 'inhouse' ||
+                    value === 'customer'
+                ) {
+                    return value;
+                }
+            }
+        }
+        catch (_) {}
+
+        return 'all';
+    }
+
+    function masterOwner() {
+        const value = norm(
+            window.__PMIS_MASTER_ACTION_OWNER_V58__ ||
+            'all'
+        );
+
+        return (
+            value === 'all' ||
+            value === 'inhouse' ||
+            value === 'customer'
+        )
+            ? value
+            : 'all';
+    }
+
+    function filterOwner(rows,mode) {
+        const list =
+            Array.isArray(rows)
+                ? rows
+                : [];
+
+        if (mode === 'all') {
+            return list.slice();
+        }
+
+        return list.filter(
+            item => ownerType(item) === mode
+        );
+    }
+
+    /*
+     * Core export hook.
+     * IMPORTANT USER RULE:
+     *   - 1+ checked = ONLY those checked points.
+     *   - 0 checked = ALL points (current behavior).
+     */
+    window.pmisV73ApplyPointSelection =
+        function (project,rows,context) {
+            const key =
+                context === 'master'
+                    ? 'master'
+                    : 'action';
+
+            const selected = state[key];
+
+            if (!(selected instanceof Set)) {
+                return Array.isArray(rows)
+                    ? rows.slice()
+                    : [];
+            }
+
+            // PMIS_MASTER_ACTION_POINT_PARENT_CHILD_V73C
+            if (key === 'master') {
+                const parent =
+                    document.querySelector(
+                        '#masterReportChecklist input[value="actions"]'
+                    );
+
+                if (!parent?.checked) {
+                    return [];
+                }
+
+                if (selected.size === 0) {
+                    return [];
+                }
+            }
+            else if (selected.size === 0) {
+                return Array.isArray(rows)
+                    ? rows.slice()
+                    : [];
+            }
+
+            return (Array.isArray(rows) ? rows : [])
+                .filter(
+                    item =>
+                        selected.has(
+                            pointKey(project,item)
+                        )
+                );
+        };
+
+    function selectedProjectsAction() {
+        try {
+            if (typeof window.apGetSelectedProjects === 'function') {
+                const result =
+                    window.apGetSelectedProjects();
+
+                if (Array.isArray(result)) {
+                    return result;
+                }
+            }
+        }
+        catch (_) {}
+
+        try {
+            const ids = Array.from(
+                document.querySelectorAll(
+                    '.ap-proj-cb:checked'
+                )
+            )
+                .map(cb =>
+                    String(
+                        cb.dataset.projId ||
+                        cb.value ||
+                        ''
+                    )
+                )
+                .filter(Boolean);
+
+            return (
+                typeof projects !== 'undefined' &&
+                Array.isArray(projects)
+            )
+                ? projects.filter(
+                    project =>
+                        ids.includes(
+                            String(project?._id || '')
+                        )
+                )
+                : [];
+        }
+        catch (_) {
+            return [];
+        }
+    }
+
+    function selectedProjectMaster() {
+        const id =
+            String(
+                document.getElementById(
+                    'masterReportProject'
+                )?.value || ''
+            ).trim();
+
+        if (!id) return null;
+
+        try {
+            return (
+                typeof projects !== 'undefined' &&
+                Array.isArray(projects)
+            )
+                ? projects.find(
+                    project =>
+                        String(project?._id || '') === id
+                ) || null
+                : null;
+        }
+        catch (_) {
+            return null;
+        }
+    }
+
+    function scopeSignature(context,projectsList,owner) {
+        return [
+            context,
+            owner,
+            ...(projectsList || [])
+                .map(projectKey)
+                .sort()
+        ].join('|');
+    }
+
+    function ensurePanel(context) {
+        const isMaster =
+            context === 'master';
+
+        const modal =
+            document.getElementById(
+                isMaster
+                    ? 'masterReportModal'
+                    : 'actionExportModal'
+            );
+
+        if (!modal) return null;
+
+        const panelId =
+            isMaster
+                ? 'masterPointSelectorV73'
+                : 'apPointSelectorV73';
+
+        let panel =
+            document.getElementById(panelId);
+
+        if (panel) return panel;
+
+        panel =
+            document.createElement('div');
+
+        panel.id = panelId;
+        panel.className =
+            'pmis-v73-point-panel';
+
+        panel.innerHTML = `
+            <div class="pmis-v73-point-head">
+                <div>
+                    <div class="pmis-v73-point-title">
+                        Specific Action Points (Optional)
+                    </div>
+                    <div class="pmis-v73-point-note">
+                        Select only the points you want to include.
+                        <strong>If none are selected, all points matching the Owner filter are included.</strong>
+                    </div>
+                </div>
+
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span
+                        class="pmis-v73-point-count"
+                        data-v73-count
+                    >
+                        0 selected → all included
+                    </span>
+
+                    <button
+                        type="button"
+                        class="pmis-v73-clear"
+                        data-v73-clear
+                    >
+                        Clear (Use All)
+                    </button>
+                </div>
+            </div>
+
+            <div
+                class="pmis-v73-point-list"
+                data-v73-list
+            ></div>
+        `;
+
+        /*
+         * Put individual point selection BEFORE the email panel
+         * where possible, so workflow reads:
+         * Project/Owner -> Points -> Email Type/To/CC -> Send.
+         */
+        const emailPanel =
+            document.getElementById(
+                isMaster
+                    ? 'masterCustomerEmailPanelV72B'
+                    : 'apCustomerEmailPanelV72B'
+            );
+
+        if (
+            emailPanel &&
+            emailPanel.parentElement
+        ) {
+            emailPanel.insertAdjacentElement(
+                'beforebegin',
+                panel
+            );
+        }
+        else {
+            const body =
+                modal.querySelector('.modal-body');
+
+            body?.appendChild(panel);
+        }
+
+        panel
+            .querySelector('[data-v73-clear]')
+            ?.addEventListener(
+                'click',
+                function () {
+                    state[context].clear();
+                    render(context,false);
+                }
+            );
+
+        panel.addEventListener(
+            'change',
+            function (event) {
+                const input =
+                    event.target?.closest?.(
+                        'input[data-v73-point-key]'
+                    );
+
+                if (!input) return;
+
+                const key =
+                    String(
+                        input.dataset.v73PointKey ||
+                        ''
+                    );
+
+                if (!key) return;
+
+                if (input.checked) {
+                    state[context].add(key);
+                }
+                else {
+                    state[context].delete(key);
+                }
+
+                updateCount(context);
+            }
+        );
+
+        return panel;
+    }
+
+    function updateCount(context) {
+        const panel =
+            document.getElementById(
+                context === 'master'
+                    ? 'masterPointSelectorV73'
+                    : 'apPointSelectorV73'
+            );
+
+        if (!panel) return;
+
+        const count =
+            state[context].size;
+
+        const el =
+            panel.querySelector(
+                '[data-v73-count]'
+            );
+
+        if (!el) return;
+
+        el.textContent =
+            count > 0
+                ? `${count} selected`
+                : '0 selected → all included';
+    }
+
+    function pointRowHtml(project,item) {
+        const key =
+            pointKey(project,item);
+
+        const owner =
+            ownerType(item);
+
+        const checked =
+            state.action.has(key) ||
+            state.master.has(key);
+
+        const action =
+            String(
+                item?.action ||
+                'Untitled Action Point'
+            ).trim();
+
+        const person =
+            String(
+                item?.personName ??
+                item?.responsiblePerson ??
+                item?.responsible_person ??
+                (
+                    owner === 'customer'
+                        ? 'Customer'
+                        : 'Danprel (Inhouse)'
+                )
+            ).trim();
+
+        const status =
+            String(
+                item?.statusValue ??
+                item?.status ??
+                'Open'
+            ).trim();
+
+        const target =
+            String(
+                item?.nextTarget ??
+                item?.targetDate ??
+                ''
+            ).trim();
+
+        const reviewDate =
+            String(
+                item?.reviewDate ??
+                ''
+            ).trim();
+
+        return `
+            <label class="pmis-v73-point-row">
+                <input
+                    type="checkbox"
+                    data-v73-point-key="${escapeHtml(key)}"
+                    ${checked ? 'checked' : ''}
+                >
+
+                <div>
+                    <div class="pmis-v73-point-action">
+                        ${escapeHtml(action)}
+                    </div>
+
+                    <div class="pmis-v73-point-meta">
+                        ${escapeHtml(person || '-')}
+                        &nbsp;•&nbsp;
+                        ${escapeHtml(status || '-')}
+                        ${
+                            target
+                                ? '&nbsp;•&nbsp; Target: ' +
+                                  escapeHtml(target)
+                                : ''
+                        }
+                        ${
+                            reviewDate
+                                ? '&nbsp;•&nbsp; Review: ' +
+                                  escapeHtml(reviewDate)
+                                : ''
+                        }
+                    </div>
+                </div>
+
+                <span class="pmis-v73-owner-tag ${owner}">
+                    ${owner === 'customer' ? 'Customer' : 'Inhouse'}
+                </span>
+            </label>
+        `;
+    }
+
+    function render(context,resetWhenScopeChanges=true) {
+        const panel =
+            ensurePanel(context);
+
+        if (!panel) return;
+
+        const isMaster =
+            context === 'master';
+
+        const owner =
+            isMaster
+                ? masterOwner()
+                : actionOwner();
+
+        const projectsList =
+            isMaster
+                ? (
+                    selectedProjectMaster()
+                        ? [selectedProjectMaster()]
+                        : []
+                  )
+                : selectedProjectsAction();
+
+        const scope =
+            scopeSignature(
+                context,
+                projectsList,
+                owner
+            );
+
+        const scopeKey =
+            context === 'master'
+                ? 'masterScope'
+                : 'actionScope';
+
+        if (
+            resetWhenScopeChanges &&
+            state[scopeKey] &&
+            state[scopeKey] !== scope
+        ) {
+            state[context].clear();
+        }
+
+        state[scopeKey] = scope;
+
+        const list =
+            panel.querySelector(
+                '[data-v73-list]'
+            );
+
+        if (!list) return;
+
+        if (!projectsList.length) {
+            list.innerHTML = `
+                <div class="pmis-v73-empty">
+                    ${
+                        isMaster
+                            ? 'Select a project to choose individual Action Points.'
+                            : 'Select one or more projects to choose individual Action Points.'
+                    }
+                </div>
+            `;
+
+            updateCount(context);
+            return;
+        }
+
+        let html = '';
+        let visibleCount = 0;
+
+        projectsList.forEach(project => {
+            const rows =
+                filterOwner(
+                    Array.isArray(project?.meetings)
+                        ? project.meetings
+                        : [],
+                    owner
+                );
+
+            if (!rows.length) return;
+
+            visibleCount += rows.length;
+
+            html += `
+                <div class="pmis-v73-project-group">
+                    <div class="pmis-v73-project-label">
+                        ${escapeHtml(
+                            project?.code ||
+                            project?.tracking_code ||
+                            'Project'
+                        )}
+                        ${
+                            project?.name
+                                ? ' — ' +
+                                  escapeHtml(project.name)
+                                : ''
+                        }
+                        <span style="color:#64748b;font-weight:700;">
+                            &nbsp;(${rows.length} point${rows.length === 1 ? '' : 's'})
+                        </span>
+                    </div>
+
+                    ${rows
+                        .map(
+                            item =>
+                                pointRowHtml(
+                                    project,
+                                    item
+                                )
+                        )
+                        .join('')}
+                </div>
+            `;
+        });
+
+        if (!visibleCount) {
+            html = `
+                <div class="pmis-v73-empty">
+                    No Action Points match the current
+                    <strong>${escapeHtml(owner)}</strong>
+                    owner filter.
+                </div>
+            `;
+        }
+
+        list.innerHTML = html;
+        updateCount(context);
+    }
+
+    async function refreshMasterPoints() {
+        const project =
+            selectedProjectMaster();
+
+        if (!project?._id) {
+            render('master');
+            return;
+        }
+
+        try {
+            const headers = {
+                'Accept':'application/json',
+                'Cache-Control':'no-cache'
+            };
+
+            const token =
+                String(
+                    localStorage.getItem(
+                        'danprel_access_token'
+                    ) || ''
+                ).trim();
+
+            if (token) {
+                headers.Authorization =
+                    'Bearer ' + token;
+            }
+
+            const response =
+                await fetch(
+                    '/api/action-points?projectId=' +
+                    encodeURIComponent(
+                        project._id
+                    ) +
+                    '&t=' +
+                    Date.now(),
+                    {
+                        method:'GET',
+                        headers,
+                        cache:'no-store'
+                    }
+                );
+
+            if (response.ok) {
+                const data =
+                    await response.json();
+
+                if (Array.isArray(data)) {
+                    project.meetings = data;
+                }
+            }
+        }
+        catch (error) {
+            console.warn(
+                '[PMIS V73] Point-list refresh failed; using loaded Action Points.',
+                error
+            );
+        }
+
+        render('master',false);
+    }
+
+    /*
+     * Master Report base table/KPIs obtain rows from
+     * window.masterReportActionRows (V58). Wrap the CURRENT
+     * function so existing owner filtering stays intact.
+     */
+    const oldMasterRows =
+        typeof window.masterReportActionRows === 'function'
+            ? window.masterReportActionRows
+            : null;
+
+    if (oldMasterRows) {
+        window.masterReportActionRows =
+            function (project) {
+                const rows =
+                    oldMasterRows.apply(
+                        this,
+                        arguments
+                    );
+
+                return window.pmisV73ApplyPointSelection(
+                    project,
+                    rows,
+                    'master'
+                );
+            };
+    }
+
+    function install() {
+        ensurePanel('action');
+        ensurePanel('master');
+
+        const actionModal =
+            document.getElementById(
+                'actionExportModal'
+            );
+
+        const masterModal =
+            document.getElementById(
+                'masterReportModal'
+            );
+
+        if (
+            actionModal &&
+            actionModal.dataset.pmisV73Bound !== 'true'
+        ) {
+            actionModal.dataset.pmisV73Bound =
+                'true';
+
+            actionModal.addEventListener(
+                'shown.bs.modal',
+                function () {
+                    state.action.clear();
+                    state.actionScope = '';
+
+                    // openActionPointExport loads fresh rows asynchronously.
+                    setTimeout(
+                        () => render('action',false),
+                        250
+                    );
+
+                    setTimeout(
+                        () => render('action',false),
+                        900
+                    );
+                }
+            );
+        }
+
+        if (
+            masterModal &&
+            masterModal.dataset.pmisV73Bound !== 'true'
+        ) {
+            masterModal.dataset.pmisV73Bound =
+                'true';
+
+            masterModal.addEventListener(
+                'shown.bs.modal',
+                function () {
+                    state.master.clear();
+                    state.masterScope = '';
+
+                    setTimeout(
+                        refreshMasterPoints,
+                        80
+                    );
+                }
+            );
+        }
+
+        document.addEventListener(
+            'change',
+            function (event) {
+                const target =
+                    event.target;
+
+                if (!target) return;
+
+                if (
+                    target.matches?.(
+                        '.ap-proj-cb, #apSelectAll'
+                    )
+                ) {
+                    state.action.clear();
+
+                    setTimeout(
+                        () => render('action',false),
+                        40
+                    );
+
+                    return;
+                }
+
+                if (
+                    target.matches?.(
+                        '#masterReportProject'
+                    )
+                ) {
+                    state.master.clear();
+
+                    setTimeout(
+                        refreshMasterPoints,
+                        40
+                    );
+                }
+            }
+        );
+
+        document.addEventListener(
+            'click',
+            function (event) {
+                const target =
+                    event.target;
+
+                if (!target?.closest) return;
+
+                if (
+                    target.closest(
+                        '#apOwnerFilterV49B button[data-owner]'
+                    )
+                ) {
+                    state.action.clear();
+
+                    setTimeout(
+                        () => render('action',false),
+                        30
+                    );
+
+                    return;
+                }
+
+                if (
+                    target.closest(
+                        '#masterActionOwnerV58 button[data-owner]'
+                    )
+                ) {
+                    state.master.clear();
+
+                    setTimeout(
+                        () => render('master',false),
+                        30
+                    );
+                }
+            }
+        );
+
+        render('action',false);
+        render('master',false);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener(
+            'DOMContentLoaded',
+            install,
+            { once:true }
+        );
+    }
+    else {
+        install();
+    }
+
+    setTimeout(install,400);
+    setTimeout(install,1300);
+
+    console.log(
+        '[PMIS V73] Optional individual Action Point selection active for standalone export/email and Project Master Report/email.'
+    );
+})();
+</script>
+<script id="pmis-master-action-point-parent-child-v73c">
+/* PMIS_MASTER_ACTION_POINT_PARENT_CHILD_V73C */
+(function () {
+    'use strict';
+
+    if (window.__PMIS_MASTER_ACTION_POINT_PARENT_CHILD_V73C__) return;
+    window.__PMIS_MASTER_ACTION_POINT_PARENT_CHILD_V73C__ = true;
+
+    let pendingSelectAll = false;
+    let lastParentChecked = null;
+    let observer = null;
+
+    function parent() {
+        return document.querySelector(
+            '#masterReportChecklist input[value="actions"]'
+        );
+    }
+
+    function panel() {
+        return document.getElementById(
+            'masterPointSelectorV73'
+        );
+    }
+
+    function inputs() {
+        return Array.from(
+            panel()?.querySelectorAll(
+                'input[data-v73-point-key]'
+            ) || []
+        );
+    }
+
+    function dispatchChange(input) {
+        input.dispatchEvent(
+            new Event('change',{ bubbles:true })
+        );
+    }
+
+    function updateMasterCopy() {
+        const box = panel();
+        if (!box) return;
+
+        const note =
+            box.querySelector('.pmis-v73-point-note');
+
+        if (note) {
+            note.innerHTML =
+                'The <strong>Action Points (Status + Details)</strong> checkbox above is the parent. ' +
+                'When selected, all matching Action Points below are selected automatically. ' +
+                'Uncheck only the points you do not want in the report.';
+        }
+
+        const clear =
+            box.querySelector('[data-v73-clear]');
+
+        if (clear) {
+            clear.textContent = 'Uncheck All';
+        }
+    }
+
+    function updateCount() {
+        const box = panel();
+        const p = parent();
+        if (!box) return;
+
+        const counter =
+            box.querySelector('[data-v73-count]');
+
+        if (!counter) return;
+
+        if (!p?.checked) {
+            counter.textContent = 'Parent unchecked';
+            return;
+        }
+
+        const checked =
+            inputs().filter(input => input.checked).length;
+
+        counter.textContent =
+            checked === 1
+                ? '1 selected'
+                : `${checked} selected`;
+    }
+
+    function clearAndDisable() {
+        pendingSelectAll = false;
+
+        inputs().forEach(input => {
+            if (input.checked) {
+                input.checked = false;
+                dispatchChange(input);
+            }
+
+            input.disabled = true;
+        });
+
+        updateCount();
+    }
+
+    function enablePreservingSelection() {
+        inputs().forEach(input => {
+            input.disabled = false;
+        });
+
+        updateCount();
+    }
+
+    function selectEveryChild() {
+        const list = inputs();
+
+        if (!list.length) {
+            pendingSelectAll = true;
+            return false;
+        }
+
+        list.forEach(input => {
+            input.disabled = false;
+
+            if (!input.checked) {
+                input.checked = true;
+                dispatchChange(input);
+            }
+        });
+
+        pendingSelectAll = false;
+        updateCount();
+        return true;
+    }
+
+    function enforceAfterRender() {
+        updateMasterCopy();
+
+        const p = parent();
+
+        if (!p?.checked) {
+            clearAndDisable();
+            return;
+        }
+
+        if (pendingSelectAll) {
+            selectEveryChild();
+            return;
+        }
+
+        enablePreservingSelection();
+    }
+
+    function requestFreshAllSelection() {
+        const p = parent();
+
+        if (!p?.checked) {
+            clearAndDisable();
+            return;
+        }
+
+        pendingSelectAll = true;
+    }
+
+    function bindObserver() {
+        const list =
+            panel()?.querySelector('[data-v73-list]');
+
+        if (!list) return;
+
+        if (
+            observer &&
+            observer.__pmisV73CTarget === list
+        ) {
+            return;
+        }
+
+        try {
+            observer?.disconnect();
+        }
+        catch (_) {}
+
+        observer =
+            new MutationObserver(function () {
+                enforceAfterRender();
+            });
+
+        observer.__pmisV73CTarget = list;
+
+        observer.observe(
+            list,
+            {
+                childList:true,
+                subtree:true
+            }
+        );
+    }
+
+    function install() {
+        const p = parent();
+        const box = panel();
+
+        if (!p || !box) return;
+
+        updateMasterCopy();
+        bindObserver();
+
+        if (
+            box.dataset.pmisV73CChildChangeBound !== 'true'
+        ) {
+            box.dataset.pmisV73CChildChangeBound = 'true';
+
+            box.addEventListener(
+                'change',
+                function (event) {
+                    if (
+                        event.target?.matches?.(
+                            'input[data-v73-point-key]'
+                        )
+                    ) {
+                        setTimeout(updateCount,0);
+                    }
+                }
+            );
+        }
+
+        if (
+            p.dataset.pmisV73CParentBound !== 'true'
+        ) {
+            p.dataset.pmisV73CParentBound = 'true';
+
+            p.addEventListener(
+                'change',
+                function () {
+                    if (p.checked) {
+                        pendingSelectAll = true;
+                        selectEveryChild();
+                    }
+                    else {
+                        clearAndDisable();
+                    }
+
+                    lastParentChecked = !!p.checked;
+                }
+            );
+        }
+
+        enforceAfterRender();
+
+        if (lastParentChecked === null) {
+            lastParentChecked = !!p.checked;
+        }
+    }
+
+    setInterval(
+        function () {
+            install();
+
+            const p = parent();
+            if (!p) return;
+
+            const current = !!p.checked;
+
+            if (lastParentChecked === null) {
+                lastParentChecked = current;
+                return;
+            }
+
+            if (current === lastParentChecked) {
+                return;
+            }
+
+            lastParentChecked = current;
+
+            if (current) {
+                pendingSelectAll = true;
+                selectEveryChild();
+            }
+            else {
+                clearAndDisable();
+            }
+        },
+        250
+    );
+
+    document.addEventListener(
+        'click',
+        function (event) {
+            const target = event.target;
+            if (!target?.closest) return;
+
+            if (
+                target.closest(
+                    '#masterActionOwnerV58 button[data-owner]'
+                )
+            ) {
+                requestFreshAllSelection();
+                setTimeout(enforceAfterRender,80);
+            }
+        },
+        false
+    );
+
+    document.addEventListener(
+        'change',
+        function (event) {
+            const target = event.target;
+
+            if (
+                target?.matches?.(
+                    '#masterReportProject'
+                )
+            ) {
+                requestFreshAllSelection();
+                setTimeout(enforceAfterRender,100);
+            }
+        },
+        false
+    );
+
+    const modal =
+        document.getElementById('masterReportModal');
+
+    if (
+        modal &&
+        modal.dataset.pmisV73CShownBound !== 'true'
+    ) {
+        modal.dataset.pmisV73CShownBound = 'true';
+
+        modal.addEventListener(
+            'shown.bs.modal',
+            function () {
+                const p = parent();
+                pendingSelectAll = !!p?.checked;
+
+                setTimeout(
+                    function () {
+                        install();
+                        enforceAfterRender();
+                    },
+                    120
+                );
+            }
+        );
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener(
+            'DOMContentLoaded',
+            function () {
+                setTimeout(install,200);
+            },
+            { once:true }
+        );
+    }
+    else {
+        setTimeout(install,100);
+    }
+
+    setTimeout(install,600);
+    setTimeout(install,1400);
+
+    console.log(
+        '[PMIS V73C] Master Report Action Points parent/child selection active.'
+    );
+})();
+</script>
+<style id="pmis-revision-audit-v74c-style">
+/* PMIS_PLAN_PRINT_AND_REVISION_AUDIT_V74C */
+.pmis-v74c-revision-summary {
+    margin: 8px 0 14px;
+    padding: 10px 12px;
+    border: 1px solid #dbe4ee;
+    border-radius: 12px;
+    background: #f8fbff;
+}
+.pmis-v74c-revision-summary-main {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    font-size: .72rem;
+    font-weight: 850;
+    color: #334155;
+}
+.pmis-v74c-revision-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: #e0f2fe;
+    color: #075985;
+    font-size: .66rem;
+    font-weight: 900;
+}
+.pmis-v74c-stage-counts {
+    margin-top: 6px;
+    color: #64748b;
+    font-size: .66rem;
+    font-weight: 750;
+}
+.pmis-v74c-card-meta {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-wrap: wrap;
+    margin: 0 0 10px;
+    padding: 7px 9px;
+    border-radius: 10px;
+    background: #eef7ff;
+    border: 1px solid #dbeafe;
+}
+.pmis-v74c-card-rno {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 34px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: #075985;
+    color: #ffffff;
+    font-size: .67rem;
+    font-weight: 950;
+}
+.pmis-v74c-card-detail {
+    color: #334155;
+    font-size: .67rem;
+    font-weight: 850;
+}
+.pmis-v74c-card-date {
+    margin-left: auto;
+    color: #64748b;
+    font-size: .65rem;
+    font-weight: 800;
+}
+</style>
+
+<script id="pmis-revision-audit-v74c">
+/* PMIS_PLAN_PRINT_AND_REVISION_AUDIT_V74C */
+(function () {
+    'use strict';
+
+    if (window.__PMIS_REVISION_AUDIT_V74C__) return;
+    window.__PMIS_REVISION_AUDIT_V74C__ = true;
+
+    function norm(value) {
+        return String(value ?? '')
+            .replace(/\s+/g,' ')
+            .trim()
+            .toLowerCase();
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g,'&amp;')
+            .replace(/</g,'&lt;')
+            .replace(/>/g,'&gt;')
+            .replace(/"/g,'&quot;')
+            .replace(/'/g,'&#039;');
+    }
+
+    function formatDateV74C(value) {
+        if (!value) return '-';
+
+        const iso =
+            String(value).slice(0,10);
+
+        const match =
+            iso.match(
+                /^(\d{4})-(\d{2})-(\d{2})$/
+            );
+
+        return match
+            ? `${match[3]}/${match[2]}/${match[1]}`
+            : String(value);
+    }
+
+    function revisionEntries() {
+        const output = [];
+
+        (
+            typeof projects !== 'undefined' &&
+            Array.isArray(projects)
+                ? projects
+                : []
+        ).forEach(project => {
+            const approved =
+                (
+                    Array.isArray(
+                        project?.revision_requests
+                    )
+                        ? project.revision_requests
+                        : []
+                )
+                    .filter(
+                        request =>
+                            norm(request?.status) ===
+                            'approved'
+                    );
+
+            const groups =
+                new Map();
+
+            approved.forEach(request => {
+                const phaseId =
+                    String(
+                        request?.phaseId ||
+                        ''
+                    );
+
+                if (!groups.has(phaseId)) {
+                    groups.set(
+                        phaseId,
+                        []
+                    );
+                }
+
+                groups
+                    .get(phaseId)
+                    .push(request);
+            });
+
+            groups.forEach(
+                (requests,phaseId) => {
+                    requests.sort(
+                        (a,b) =>
+                            String(
+                                a?.approvalTimestamp ||
+                                a?.timestamp ||
+                                ''
+                            ).localeCompare(
+                                String(
+                                    b?.approvalTimestamp ||
+                                    b?.timestamp ||
+                                    ''
+                                )
+                            )
+                    );
+
+                    const stored =
+                        Array.isArray(
+                            project
+                                ?.detailed_phases
+                                ?.[phaseId]
+                                ?.revisions
+                        )
+                            ? project
+                                .detailed_phases[
+                                    phaseId
+                                ]
+                                .revisions
+                            : [];
+
+                    requests.forEach(
+                        (request,index) => {
+                            const matching =
+                                stored.find(revision =>
+                                    norm(
+                                        revision?.start
+                                    ) ===
+                                        norm(
+                                            request?.newStart
+                                        ) &&
+                                    norm(
+                                        revision?.end
+                                    ) ===
+                                        norm(
+                                            request?.newEnd
+                                        )
+                                ) ||
+                                stored[index] ||
+                                null;
+
+                            const date =
+                                request
+                                    ?.approvalTimestamp ||
+                                matching
+                                    ?.timestamp ||
+                                request
+                                    ?.timestamp ||
+                                '';
+
+                            output.push({
+                                projectCode:
+                                    project?.code ||
+                                    project
+                                        ?.tracking_code ||
+                                    '',
+                                projectName:
+                                    project?.name ||
+                                    '',
+                                phaseId,
+                                phaseName:
+                                    request
+                                        ?.phaseName ||
+                                    phaseId ||
+                                    '-',
+                                revisionNo:
+                                    matching
+                                        ?.label ||
+                                    `R${index + 1}`,
+                                stageIndex:
+                                    index + 1,
+                                stageTotal:
+                                    requests.length,
+                                date:
+                                    formatDateV74C(
+                                        date
+                                    ),
+                                oldStart:
+                                    formatDateV74C(
+                                        request
+                                            ?.oldStart
+                                    ),
+                                oldEnd:
+                                    formatDateV74C(
+                                        request
+                                            ?.oldEnd
+                                    ),
+                                newStart:
+                                    formatDateV74C(
+                                        request
+                                            ?.newStart
+                                    ),
+                                newEnd:
+                                    formatDateV74C(
+                                        request
+                                            ?.newEnd
+                                    ),
+                                reason:
+                                    request
+                                        ?.reason ||
+                                    matching
+                                        ?.remark ||
+                                    ''
+                            });
+                        }
+                    );
+                }
+            );
+        });
+
+        return output;
+    }
+
+    function scoreCard(text,entry) {
+        let score = 0;
+
+        const haystack =
+            norm(text);
+
+        [
+            entry.projectCode,
+            entry.projectName,
+            entry.phaseName,
+            entry.reason,
+            entry.newStart,
+            entry.newEnd
+        ].forEach(value => {
+            const needle =
+                norm(value);
+
+            if (
+                needle &&
+                needle !== '-' &&
+                haystack.includes(needle)
+            ) {
+                score += 1;
+            }
+        });
+
+        return score;
+    }
+
+    function likelyCards(container) {
+        const direct =
+            Array.from(
+                container?.children ||
+                []
+            )
+                .filter(element =>
+                    element instanceof
+                    HTMLElement
+                );
+
+        if (direct.length) {
+            return direct;
+        }
+
+        return Array.from(
+            container?.querySelectorAll(
+                '.card'
+            ) || []
+        );
+    }
+
+    function addSummary(
+        container,
+        entries,
+        id
+    ) {
+        if (!container?.parentElement) {
+            return;
+        }
+
+        let summary =
+            document.getElementById(id);
+
+        if (!summary) {
+            summary =
+                document.createElement(
+                    'div'
+                );
+
+            summary.id = id;
+            summary.className =
+                'pmis-v74c-revision-summary';
+
+            container
+                .parentElement
+                .insertBefore(
+                    summary,
+                    container
+                );
+        }
+
+        const stageCounts =
+            new Map();
+
+        entries.forEach(entry => {
+            stageCounts.set(
+                entry.phaseName,
+                (
+                    stageCounts.get(
+                        entry.phaseName
+                    ) || 0
+                ) + 1
+            );
+        });
+
+        const stageText =
+            Array.from(
+                stageCounts.entries()
+            )
+                .map(
+                    ([stage,count]) =>
+                        `${escapeHtml(stage)}: ${count}`
+                )
+                .join(' &nbsp;•&nbsp; ');
+
+        summary.innerHTML = `
+            <div class="pmis-v74c-revision-summary-main">
+                <span class="pmis-v74c-revision-chip">
+                    ${entries.length} Approved Revision${entries.length === 1 ? '' : 's'}
+                </span>
+
+                <span>
+                    Revision numbering is stage-wise
+                    (R1, R2, R3...)
+                </span>
+            </div>
+
+            <div class="pmis-v74c-stage-counts">
+                ${
+                    stageText
+                        ? 'Stage count: ' +
+                          stageText
+                        : 'No approved revisions yet.'
+                }
+            </div>
+        `;
+    }
+
+    function enhanceList(container) {
+        if (!container) return;
+
+        const entries =
+            revisionEntries();
+
+        addSummary(
+            container,
+            entries,
+            container.id ===
+                'revisionList'
+                    ? 'pmisRevisionSummaryV74C'
+                    : 'pmisHubRevisionSummaryV74C'
+        );
+
+        const cards =
+            likelyCards(container);
+
+        const used =
+            new Set();
+
+        cards.forEach(card => {
+            card
+                .querySelector(
+                    '.pmis-v74c-card-meta'
+                )
+                ?.remove();
+
+            const text =
+                card.textContent ||
+                '';
+
+            if (
+                !/approved/i.test(text)
+            ) {
+                return;
+            }
+
+            let best = null;
+            let bestScore = 0;
+
+            entries.forEach(
+                (entry,index) => {
+                    if (used.has(index)) {
+                        return;
+                    }
+
+                    const score =
+                        scoreCard(
+                            text,
+                            entry
+                        );
+
+                    if (
+                        score > bestScore
+                    ) {
+                        bestScore =
+                            score;
+
+                        best = {
+                            entry,
+                            index
+                        };
+                    }
+                }
+            );
+
+            /*
+             * Project + stage + one extra field is
+             * normally enough to uniquely identify
+             * the existing approved card.
+             */
+            if (
+                !best ||
+                bestScore < 2
+            ) {
+                return;
+            }
+
+            used.add(best.index);
+
+            const entry =
+                best.entry;
+
+            const meta =
+                document.createElement(
+                    'div'
+                );
+
+            meta.className =
+                'pmis-v74c-card-meta';
+
+            meta.innerHTML = `
+                <span class="pmis-v74c-card-rno">
+                    ${escapeHtml(entry.revisionNo)}
+                </span>
+
+                <span class="pmis-v74c-card-detail">
+                    ${escapeHtml(entry.phaseName)}
+                    • Revision
+                    ${entry.stageIndex}
+                    of
+                    ${entry.stageTotal}
+                </span>
+
+                <span class="pmis-v74c-card-date">
+                    Revision Date:
+                    ${escapeHtml(entry.date)}
+                </span>
+            `;
+
+            card.insertBefore(
+                meta,
+                card.firstChild
+            );
+        });
+
+        const pending =
+            (
+                typeof projects !==
+                    'undefined' &&
+                Array.isArray(projects)
+                    ? projects
+                    : []
+            )
+                .flatMap(
+                    project =>
+                        Array.isArray(
+                            project
+                                ?.revision_requests
+                        )
+                            ? project
+                                .revision_requests
+                            : []
+                )
+                .filter(
+                    request =>
+                        norm(
+                            request?.status
+                        ) === 'pending'
+                )
+                .length;
+
+        const countLabel =
+            document.getElementById(
+                'revCountLabel'
+            );
+
+        if (countLabel) {
+            countLabel.textContent =
+                `${entries.length} Approved Revision${
+                    entries.length === 1
+                        ? ''
+                        : 's'
+                } • ${pending} Pending Request${
+                    pending === 1
+                        ? ''
+                        : 's'
+                }`;
+        }
+    }
+
+    function enhanceAll() {
+        enhanceList(
+            document.getElementById(
+                'revisionList'
+            )
+        );
+
+        enhanceList(
+            document.getElementById(
+                'hubRevisionList'
+            )
+        );
+    }
+
+    const previous =
+        window.renderRevisions;
+
+    if (
+        typeof previous ===
+        'function'
+    ) {
+        window.renderRevisions =
+            function () {
+                const result =
+                    previous.apply(
+                        this,
+                        arguments
+                    );
+
+                setTimeout(
+                    enhanceAll,
+                    0
+                );
+
+                setTimeout(
+                    enhanceAll,
+                    120
+                );
+
+                return result;
+            };
+    }
+
+    const revisionModal =
+        document.getElementById(
+            'revisionModal'
+        );
+
+    revisionModal?.addEventListener(
+        'shown.bs.modal',
+        function () {
+            setTimeout(
+                enhanceAll,
+                40
+            );
+        }
+    );
+
+    setTimeout(
+        enhanceAll,
+        500
+    );
+
+    console.log(
+        '[PMIS V74C] Revision History numbering/count/date enhancement active.'
+    );
+})();
+</script>
+<script id="pmis-master-revision-table-fix-v74d">
+/* PMIS_PLAN_PRINT_MASTER_REVISION_FIX_V74D */
+(function () {
+    'use strict';
+
+    if (window.__PMIS_MASTER_REVISION_TABLE_FIX_V74D__) return;
+    window.__PMIS_MASTER_REVISION_TABLE_FIX_V74D__ = true;
+
+    function norm(value) {
+        return String(value ?? '')
+            .replace(/\s+/g,' ')
+            .trim()
+            .toLowerCase();
+    }
+
+    function dateOnly(value) {
+        if (!value) return '-';
+
+        const raw =
+            String(value);
+
+        const iso =
+            raw.slice(0,10);
+
+        const match =
+            iso.match(
+                /^(\d{4})-(\d{2})-(\d{2})$/
+            );
+
+        return match
+            ? `${match[3]}/${match[2]}/${match[1]}`
+            : raw;
+    }
+
+    function selectedProject() {
+        const id =
+            String(
+                document
+                    .getElementById('masterReportProject')
+                    ?.value || ''
+            );
+
+        try {
+            return (
+                typeof projects !== 'undefined' &&
+                Array.isArray(projects)
+            )
+                ? projects.find(
+                    item =>
+                        String(item?._id || '') === id
+                ) || null
+                : null;
+        }
+        catch (_) {
+            return null;
+        }
+    }
+
+    function approvedRevisionMap(project) {
+        const requests =
+            (
+                Array.isArray(
+                    project?.revision_requests
+                )
+                    ? project.revision_requests
+                    : []
+            )
+                .filter(
+                    request =>
+                        norm(request?.status) ===
+                        'approved'
+                );
+
+        const byPhase =
+            new Map();
+
+        requests.forEach(request => {
+            const key =
+                String(
+                    request?.phaseId ||
+                    request?.phaseName ||
+                    ''
+                );
+
+            if (!byPhase.has(key)) {
+                byPhase.set(key,[]);
+            }
+
+            byPhase.get(key).push(request);
+        });
+
+        byPhase.forEach(list => {
+            list.sort(
+                (a,b) =>
+                    String(
+                        a?.approvalTimestamp ||
+                        a?.timestamp ||
+                        ''
+                    ).localeCompare(
+                        String(
+                            b?.approvalTimestamp ||
+                            b?.timestamp ||
+                            ''
+                        )
+                    )
+            );
+        });
+
+        return {
+            requests,
+            byPhase
+        };
+    }
+
+    function phaseRevisionLabel(
+        project,
+        request,
+        index
+    ) {
+        const phaseId =
+            String(
+                request?.phaseId || ''
+            );
+
+        const stored =
+            Array.isArray(
+                project
+                    ?.detailed_phases
+                    ?.[phaseId]
+                    ?.revisions
+            )
+                ? project
+                    .detailed_phases[
+                        phaseId
+                    ]
+                    .revisions
+                : [];
+
+        const match =
+            stored.find(revision =>
+                norm(revision?.start) ===
+                    norm(request?.newStart) &&
+                norm(revision?.end) ===
+                    norm(request?.newEnd)
+            ) ||
+            stored[index] ||
+            null;
+
+        return {
+            label:
+                match?.label ||
+                `R${index + 1}`,
+            timestamp:
+                request?.approvalTimestamp ||
+                match?.timestamp ||
+                request?.timestamp ||
+                ''
+        };
+    }
+
+    function isRevisionTable(options) {
+        const head =
+            options?.head;
+
+        if (
+            !Array.isArray(head) ||
+            !Array.isArray(head[0])
+        ) {
+            return false;
+        }
+
+        const labels =
+            head[0]
+                .map(cell =>
+                    norm(
+                        typeof cell === 'object'
+                            ? cell?.content
+                            : cell
+                    )
+                )
+                .join('|');
+
+        return (
+            labels.includes('phase') &&
+            labels.includes('original') &&
+            labels.includes('requested') &&
+            labels.includes('reason') &&
+            labels.includes('status') &&
+            labels.includes('approved by') &&
+            labels.includes('updated')
+        );
+    }
+
+    function enhanceRevisionTable(options) {
+        if (!isRevisionTable(options)) {
+            return options;
+        }
+
+        const project =
+            selectedProject();
+
+        if (!project) {
+            return options;
+        }
+
+        const info =
+            approvedRevisionMap(project);
+
+        const counters =
+            new Map();
+
+        const totalsByName =
+            new Map();
+
+        info.requests.forEach(request => {
+            const name =
+                norm(
+                    request?.phaseName ||
+                    request?.phaseId ||
+                    ''
+                );
+
+            totalsByName.set(
+                name,
+                (totalsByName.get(name) || 0) + 1
+            );
+        });
+
+        const enhancedBody =
+            (
+                Array.isArray(options.body)
+                    ? options.body
+                    : []
+            )
+                .map(row => {
+                    const values =
+                        Array.isArray(row)
+                            ? row.slice()
+                            : row;
+
+                    if (!Array.isArray(values)) {
+                        return values;
+                    }
+
+                    const phaseText =
+                        String(values[0] || '');
+
+                    const statusText =
+                        norm(values[4]);
+
+                    const phaseNameKey =
+                        norm(phaseText);
+
+                    let revisionNo = '-';
+                    let stageCount = '-';
+                    let revisionDate = '-';
+
+                    if (statusText === 'approved') {
+                        const current =
+                            (counters.get(phaseNameKey) || 0);
+
+                        const candidates =
+                            info.requests.filter(request =>
+                                norm(
+                                    request?.phaseName ||
+                                    request?.phaseId ||
+                                    ''
+                                ) === phaseNameKey
+                            );
+
+                        const request =
+                            candidates[current] ||
+                            null;
+
+                        if (request) {
+                            const label =
+                                phaseRevisionLabel(
+                                    project,
+                                    request,
+                                    current
+                                );
+
+                            revisionNo =
+                                label.label;
+
+                            const total =
+                                totalsByName.get(
+                                    phaseNameKey
+                                ) ||
+                                candidates.length ||
+                                1;
+
+                            stageCount =
+                                `${current + 1} of ${total}`;
+
+                            revisionDate =
+                                dateOnly(
+                                    label.timestamp
+                                );
+
+                            counters.set(
+                                phaseNameKey,
+                                current + 1
+                            );
+                        }
+                    }
+
+                    /*
+                     * Existing:
+                     * Phase | Original | Requested | Reason | Status | Approved By | Updated
+                     *
+                     * New:
+                     * Phase | Rev No. | Stage Rev Count | Revision Date |
+                     * Original | Requested | Reason | Status | Approved By
+                     *
+                     * "Updated" is removed because it was the malformed timestamp
+                     * shown in the current report. Revision Date now carries the
+                     * clean audit date.
+                     */
+                    return [
+                        values[0],
+                        revisionNo,
+                        stageCount,
+                        revisionDate,
+                        values[1],
+                        values[2],
+                        values[3],
+                        values[4],
+                        values[5]
+                    ];
+                });
+
+        options.head = [[
+            'Phase',
+            'Revision No.',
+            'Stage Rev Count',
+            'Revision Date',
+            'Original',
+            'Requested',
+            'Reason',
+            'Status',
+            'Approved By'
+        ]];
+
+        options.body =
+            enhancedBody;
+
+        options.styles = {
+            ...(options.styles || {}),
+            fontSize:6.1,
+            cellPadding:1.8,
+            overflow:'linebreak',
+            valign:'middle'
+        };
+
+        options.columnStyles = {
+            ...(options.columnStyles || {}),
+            0:{cellWidth:39},
+            1:{cellWidth:17,halign:'center',fontStyle:'bold'},
+            2:{cellWidth:22,halign:'center'},
+            3:{cellWidth:23,halign:'center'},
+            4:{cellWidth:37},
+            5:{cellWidth:37},
+            6:{cellWidth:72},
+            7:{cellWidth:21,halign:'center'},
+            8:{cellWidth:24}
+        };
+
+        return options;
+    }
+
+    function installAutoTableHook() {
+        const jsPDF =
+            window.jspdf?.jsPDF;
+
+        const api =
+            jsPDF?.API;
+
+        if (
+            !api ||
+            typeof api.autoTable !== 'function'
+        ) {
+            return false;
+        }
+
+        if (
+            api.autoTable.__pmisV74DWrapped
+        ) {
+            return true;
+        }
+
+        const original =
+            api.autoTable;
+
+        function wrappedAutoTable(options) {
+            try {
+                if (
+                    options &&
+                    typeof options === 'object'
+                ) {
+                    options =
+                        enhanceRevisionTable(
+                            options
+                        );
+                }
+            }
+            catch (error) {
+                console.warn(
+                    '[PMIS V74D] Revision table enhancement skipped:',
+                    error
+                );
+            }
+
+            return original.call(
+                this,
+                options
+            );
+        }
+
+        wrappedAutoTable.__pmisV74DWrapped =
+            true;
+
+        wrappedAutoTable.__pmisV74DOriginal =
+            original;
+
+        api.autoTable =
+            wrappedAutoTable;
+
+        console.log(
+            '[PMIS V74D] Existing Master Report revision table hook installed.'
+        );
+
+        return true;
+    }
+
+    if (!installAutoTableHook()) {
+        let tries = 0;
+
+        const timer =
+            setInterval(
+                function () {
+                    tries += 1;
+
+                    if (
+                        installAutoTableHook() ||
+                        tries >= 20
+                    ) {
+                        clearInterval(timer);
+                    }
+                },
+                250
+            );
+    }
+
+    console.log(
+        '[PMIS V74D] Master revision table enhancement active.'
+    );
+})();
+</script>
+<script id="pmis-master-revision-final-v74e">
+/* PMIS_PLAN_EXPORT_MASTER_REVISION_FINAL_V74E */
+(function () {
+    'use strict';
+
+    if (window.__PMIS_MASTER_REVISION_FINAL_V74E__) return;
+    window.__PMIS_MASTER_REVISION_FINAL_V74E__ = true;
+
+    function norm(value) {
+        return String(value ?? '')
+            .replace(/\s+/g,' ')
+            .trim()
+            .toLowerCase();
+    }
+
+    function fmtDate(value) {
+        if (!value) return '-';
+
+        const raw =
+            String(value);
+
+        const iso =
+            raw.slice(0,10);
+
+        const match =
+            iso.match(
+                /^(\d{4})-(\d{2})-(\d{2})$/
+            );
+
+        return match
+            ? `${match[3]}/${match[2]}/${match[1]}`
+            : raw;
+    }
+
+    function selectedProjectV74E() {
+        const id =
+            String(
+                document
+                    .getElementById(
+                        'masterReportProject'
+                    )
+                    ?.value || ''
+            );
+
+        try {
+            return (
+                typeof projects !== 'undefined' &&
+                Array.isArray(projects)
+            )
+                ? projects.find(
+                    item =>
+                        String(item?._id || '') === id
+                ) || null
+                : null;
+        }
+        catch (_) {
+            return null;
+        }
+    }
+
+    function cellText(cell) {
+        if (
+            cell &&
+            typeof cell === 'object'
+        ) {
+            return String(
+                cell.content ??
+                cell.text ??
+                ''
+            );
+        }
+
+        return String(cell ?? '');
+    }
+
+    function isExistingRevisionTable(options) {
+        const head =
+            options?.head;
+
+        if (
+            !Array.isArray(head) ||
+            !Array.isArray(head[0])
+        ) {
+            return false;
+        }
+
+        const labels =
+            head[0]
+                .map(cellText)
+                .map(norm);
+
+        return (
+            labels.includes('phase') &&
+            labels.includes('original') &&
+            labels.includes('requested') &&
+            labels.includes('reason') &&
+            labels.includes('status') &&
+            labels.includes('approved by') &&
+            labels.includes('updated')
+        );
+    }
+
+    function projectRevisionInfo(project) {
+        const requests =
+            (
+                Array.isArray(
+                    project?.revision_requests
+                )
+                    ? project.revision_requests
+                    : []
+            );
+
+        const byStage =
+            new Map();
+
+        requests.forEach(request => {
+            const stage =
+                norm(
+                    request?.phaseName ||
+                    request?.phaseId ||
+                    ''
+                );
+
+            if (!byStage.has(stage)) {
+                byStage.set(stage,[]);
+            }
+
+            byStage.get(stage).push(request);
+        });
+
+        byStage.forEach(list => {
+            list.sort(
+                (a,b) =>
+                    String(
+                        a?.approvalTimestamp ||
+                        a?.timestamp ||
+                        ''
+                    ).localeCompare(
+                        String(
+                            b?.approvalTimestamp ||
+                            b?.timestamp ||
+                            ''
+                        )
+                    )
+            );
+        });
+
+        return {
+            requests,
+            byStage
+        };
+    }
+
+    function storedRevision(project,request,index) {
+        const phaseId =
+            String(
+                request?.phaseId ||
+                ''
+            );
+
+        const stored =
+            Array.isArray(
+                project
+                    ?.detailed_phases
+                    ?.[phaseId]
+                    ?.revisions
+            )
+                ? project
+                    .detailed_phases[
+                        phaseId
+                    ]
+                    .revisions
+                : [];
+
+        return (
+            stored.find(revision =>
+                norm(revision?.start) ===
+                    norm(request?.newStart) &&
+                norm(revision?.end) ===
+                    norm(request?.newEnd)
+            ) ||
+            stored[index] ||
+            null
+        );
+    }
+
+    function enhanceExistingRevisionTable(options) {
+        if (!isExistingRevisionTable(options)) {
+            return options;
+        }
+
+        const project =
+            selectedProjectV74E();
+
+        if (!project) {
+            console.warn(
+                '[PMIS V74E] Master revision table found but project could not be resolved.'
+            );
+            return options;
+        }
+
+        const info =
+            projectRevisionInfo(project);
+
+        const occurrence =
+            new Map();
+
+        const body =
+            Array.isArray(options.body)
+                ? options.body
+                : [];
+
+        const enhanced =
+            body.map(row => {
+                if (!Array.isArray(row)) {
+                    return row;
+                }
+
+                const values =
+                    row.slice();
+
+                const stageText =
+                    cellText(values[0]);
+
+                const stageKey =
+                    norm(stageText);
+
+                const status =
+                    norm(values[4]);
+
+                let revisionNo = '-';
+                let stageCount = '-';
+                let revisionDate = '-';
+
+                const candidates =
+                    info.byStage.get(stageKey) ||
+                    [];
+
+                const currentIndex =
+                    occurrence.get(stageKey) ||
+                    0;
+
+                let request =
+                    candidates[currentIndex] ||
+                    null;
+
+                /*
+                 * If the stage-name key did not match exactly,
+                 * try matching by requested dates and phase name
+                 * contained in the existing row.
+                 */
+                if (!request) {
+                    const requestedText =
+                        norm(
+                            cellText(values[2])
+                        );
+
+                    request =
+                        info.requests.find(candidate => {
+                            const candidateStage =
+                                norm(
+                                    candidate?.phaseName ||
+                                    candidate?.phaseId ||
+                                    ''
+                                );
+
+                            const start =
+                                fmtDate(
+                                    candidate?.newStart
+                                );
+
+                            const end =
+                                fmtDate(
+                                    candidate?.newEnd
+                                );
+
+                            return (
+                                (
+                                    !candidateStage ||
+                                    stageKey.includes(candidateStage) ||
+                                    candidateStage.includes(stageKey)
+                                ) &&
+                                (
+                                    requestedText.includes(
+                                        norm(start)
+                                    ) ||
+                                    requestedText.includes(
+                                        norm(end)
+                                    )
+                                )
+                            );
+                        }) || null;
+                }
+
+                if (
+                    request &&
+                    status === 'approved'
+                ) {
+                    const indexWithinStage =
+                        candidates.indexOf(request) >= 0
+                            ? candidates.indexOf(request)
+                            : currentIndex;
+
+                    const stored =
+                        storedRevision(
+                            project,
+                            request,
+                            indexWithinStage
+                        );
+
+                    revisionNo =
+                        stored?.label ||
+                        `R${indexWithinStage + 1}`;
+
+                    const approvedCount =
+                        candidates.filter(item =>
+                            norm(item?.status) ===
+                            'approved'
+                        ).length ||
+                        candidates.length ||
+                        1;
+
+                    const approvedPosition =
+                        candidates
+                            .slice(
+                                0,
+                                indexWithinStage + 1
+                            )
+                            .filter(item =>
+                                norm(item?.status) ===
+                                'approved'
+                            )
+                            .length;
+
+                    stageCount =
+                        `${Math.max(approvedPosition,1)} of ${approvedCount}`;
+
+                    revisionDate =
+                        fmtDate(
+                            request?.approvalTimestamp ||
+                            stored?.timestamp ||
+                            request?.timestamp ||
+                            ''
+                        );
+                }
+
+                occurrence.set(
+                    stageKey,
+                    currentIndex + 1
+                );
+
+                /*
+                 * Existing:
+                 * Phase | Original | Requested | Reason |
+                 * Status | Approved By | Updated
+                 *
+                 * New:
+                 * Phase | Revision No. | Stage Rev Count |
+                 * Revision Date | Original | Requested |
+                 * Reason | Status | Approved By
+                 */
+                return [
+                    values[0],
+                    revisionNo,
+                    stageCount,
+                    revisionDate,
+                    values[1],
+                    values[2],
+                    values[3],
+                    values[4],
+                    values[5]
+                ];
+            });
+
+        options.head = [[
+            'Phase',
+            'Revision No.',
+            'Stage Rev Count',
+            'Revision Date',
+            'Original',
+            'Requested',
+            'Reason',
+            'Status',
+            'Approved By'
+        ]];
+
+        options.body =
+            enhanced;
+
+        options.styles = {
+            ...(options.styles || {}),
+            fontSize:5.9,
+            cellPadding:1.65,
+            overflow:'linebreak',
+            valign:'middle'
+        };
+
+        options.headStyles = {
+            ...(options.headStyles || {}),
+            fontSize:5.9
+        };
+
+        options.columnStyles = {
+            0:{
+                cellWidth:40
+            },
+            1:{
+                cellWidth:18,
+                halign:'center',
+                fontStyle:'bold'
+            },
+            2:{
+                cellWidth:23,
+                halign:'center'
+            },
+            3:{
+                cellWidth:24,
+                halign:'center'
+            },
+            4:{
+                cellWidth:37
+            },
+            5:{
+                cellWidth:39
+            },
+            6:{
+                cellWidth:70
+            },
+            7:{
+                cellWidth:22,
+                halign:'center'
+            },
+            8:{
+                cellWidth:23,
+                halign:'center'
+            }
+        };
+
+        console.log(
+            '[PMIS V74E] Existing Master Report Revision History table enhanced.',
+            {
+                project:
+                    project?.code ||
+                    project?.name,
+                rows:
+                    enhanced.length
+            }
+        );
+
+        return options;
+    }
+
+    function decorateDoc(doc) {
+        if (
+            !doc ||
+            typeof doc.autoTable !== 'function' ||
+            doc.autoTable.__pmisV74EWrapped
+        ) {
+            return doc;
+        }
+
+        const originalAutoTable =
+            doc.autoTable;
+
+        function wrappedAutoTable(options) {
+            let nextOptions =
+                options;
+
+            try {
+                nextOptions =
+                    enhanceExistingRevisionTable(
+                        options
+                    );
+            }
+            catch (error) {
+                console.warn(
+                    '[PMIS V74E] Revision History enhancement skipped:',
+                    error
+                );
+
+                nextOptions =
+                    options;
+            }
+
+            return originalAutoTable.call(
+                this,
+                nextOptions
+            );
+        }
+
+        wrappedAutoTable.__pmisV74EWrapped =
+            true;
+
+        wrappedAutoTable.__pmisV74EOriginal =
+            originalAutoTable;
+
+        doc.autoTable =
+            wrappedAutoTable;
+
+        return doc;
+    }
+
+    function installConstructorWrapper() {
+        const holder =
+            window.jspdf;
+
+        const Current =
+            holder?.jsPDF;
+
+        if (
+            !holder ||
+            typeof Current !== 'function'
+        ) {
+            return false;
+        }
+
+        if (
+            Current.__pmisV74EWrapped
+        ) {
+            return true;
+        }
+
+        const Original =
+            Current;
+
+        function WrappedJsPDF(...args) {
+            const doc =
+                new Original(...args);
+
+            return decorateDoc(doc);
+        }
+
+        try {
+            Object.setPrototypeOf(
+                WrappedJsPDF,
+                Original
+            );
+        }
+        catch (_) {}
+
+        try {
+            Object.assign(
+                WrappedJsPDF,
+                Original
+            );
+        }
+        catch (_) {}
+
+        WrappedJsPDF.prototype =
+            Original.prototype;
+
+        WrappedJsPDF.__pmisV74EWrapped =
+            true;
+
+        WrappedJsPDF.__pmisV74EOriginal =
+            Original;
+
+        holder.jsPDF =
+            WrappedJsPDF;
+
+        console.log(
+            '[PMIS V74E] jsPDF instance wrapper installed for Master Revision History.'
+        );
+
+        return true;
+    }
+
+    if (!installConstructorWrapper()) {
+        let tries = 0;
+
+        const timer =
+            setInterval(
+                function () {
+                    tries += 1;
+
+                    if (
+                        installConstructorWrapper() ||
+                        tries >= 30
+                    ) {
+                        clearInterval(timer);
+                    }
+                },
+                200
+            );
+    }
+
+    /*
+     * Reinstall immediately before the Master Report button executes,
+     * in case another feature temporarily wrapped/restored jsPDF.
+     */
+    document.addEventListener(
+        'click',
+        function (event) {
+            const target =
+                event.target?.closest?.(
+                    '#generateMasterReportBtn, [onclick*="generateProjectMasterReport"]'
+                );
+
+            if (!target) return;
+
+            installConstructorWrapper();
+        },
+        true
+    );
+
+    console.log(
+        '[PMIS V74E] Master Revision History final enhancement active.'
+    );
+})();
+</script>
+<script id="pmis-master-revision-alignment-v74f">
+/* PMIS_PLAN_VECTOR_CLARITY_MASTER_ALIGN_V74F */
+(function () {
+    'use strict';
+
+    if (window.__PMIS_MASTER_REVISION_ALIGNMENT_V74F__) return;
+    window.__PMIS_MASTER_REVISION_ALIGNMENT_V74F__ = true;
+
+    function norm(value) {
+        return String(value ?? '')
+            .replace(/\s+/g,' ')
+            .trim()
+            .toLowerCase();
+    }
+
+    function fmt(value) {
+        if (!value) return '-';
+
+        const raw = String(value);
+        const iso = raw.slice(0,10);
+        const match = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+        return match
+            ? `${match[3]}/${match[2]}/${match[1]}`
+            : raw;
+    }
+
+    function cellText(cell) {
+        if (
+            cell &&
+            typeof cell === 'object'
+        ) {
+            return String(
+                cell.content ??
+                cell.text ??
+                ''
+            );
+        }
+
+        return String(cell ?? '');
+    }
+
+    function selectedProject() {
+        const id =
+            String(
+                document
+                    .getElementById(
+                        'masterReportProject'
+                    )
+                    ?.value || ''
+            );
+
+        try {
+            return (
+                typeof projects !== 'undefined' &&
+                Array.isArray(projects)
+            )
+                ? projects.find(
+                    item =>
+                        String(item?._id || '') === id
+                ) || null
+                : null;
+        }
+        catch (_) {
+            return null;
+        }
+    }
+
+    function isOldRevisionTable(options) {
+        const first =
+            options?.head?.[0];
+
+        if (!Array.isArray(first)) {
+            return false;
+        }
+
+        const labels =
+            first
+                .map(cellText)
+                .map(norm);
+
+        return (
+            labels.includes('phase') &&
+            labels.includes('original') &&
+            labels.includes('requested') &&
+            labels.includes('reason') &&
+            labels.includes('status') &&
+            labels.includes('approved by') &&
+            labels.includes('updated')
+        );
+    }
+
+    function stageInfo(project) {
+        const requests =
+            Array.isArray(
+                project?.revision_requests
+            )
+                ? project.revision_requests
+                : [];
+
+        const map =
+            new Map();
+
+        requests.forEach(request => {
+            const key =
+                norm(
+                    request?.phaseName ||
+                    request?.phaseId ||
+                    ''
+                );
+
+            if (!map.has(key)) {
+                map.set(key,[]);
+            }
+
+            map.get(key).push(request);
+        });
+
+        map.forEach(list => {
+            list.sort((a,b) =>
+                String(
+                    a?.approvalTimestamp ||
+                    a?.timestamp ||
+                    ''
+                ).localeCompare(
+                    String(
+                        b?.approvalTimestamp ||
+                        b?.timestamp ||
+                        ''
+                    )
+                )
+            );
+        });
+
+        return map;
+    }
+
+    function storedRevision(
+        project,
+        request,
+        index
+    ) {
+        const rows =
+            Array.isArray(
+                project
+                    ?.detailed_phases
+                    ?.[request?.phaseId]
+                    ?.revisions
+            )
+                ? project
+                    .detailed_phases[
+                        request.phaseId
+                    ]
+                    .revisions
+                : [];
+
+        return (
+            rows.find(revision =>
+                norm(revision?.start) ===
+                    norm(request?.newStart) &&
+                norm(revision?.end) ===
+                    norm(request?.newEnd)
+            ) ||
+            rows[index] ||
+            null
+        );
+    }
+
+    function enhance(options) {
+        if (!isOldRevisionTable(options)) {
+            return options;
+        }
+
+        const project =
+            selectedProject();
+
+        if (!project) {
+            return options;
+        }
+
+        const byStage =
+            stageInfo(project);
+
+        const occurrence =
+            new Map();
+
+        const enhancedBody =
+            (
+                Array.isArray(options.body)
+                    ? options.body
+                    : []
+            ).map(row => {
+                if (!Array.isArray(row)) {
+                    return row;
+                }
+
+                const values =
+                    row.slice();
+
+                const stageName =
+                    cellText(values[0]);
+
+                const key =
+                    norm(stageName);
+
+                const list =
+                    byStage.get(key) ||
+                    [];
+
+                const current =
+                    occurrence.get(key) ||
+                    0;
+
+                const request =
+                    list[current] ||
+                    null;
+
+                let revisionNo = '-';
+                let revisionCount = '-';
+                let revisionDate = '-';
+
+                if (
+                    request &&
+                    norm(values[4]) ===
+                    'approved'
+                ) {
+                    const stored =
+                        storedRevision(
+                            project,
+                            request,
+                            current
+                        );
+
+                    revisionNo =
+                        stored?.label ||
+                        `R${current + 1}`;
+
+                    const approved =
+                        list.filter(item =>
+                            norm(item?.status) ===
+                            'approved'
+                        );
+
+                    const approvedPosition =
+                        list
+                            .slice(
+                                0,
+                                current + 1
+                            )
+                            .filter(item =>
+                                norm(item?.status) ===
+                                'approved'
+                            )
+                            .length;
+
+                    revisionCount =
+                        `${Math.max(approvedPosition,1)} of ${Math.max(approved.length,1)}`;
+
+                    revisionDate =
+                        fmt(
+                            request?.approvalTimestamp ||
+                            stored?.timestamp ||
+                            request?.timestamp ||
+                            ''
+                        );
+                }
+
+                occurrence.set(
+                    key,
+                    current + 1
+                );
+
+                return [
+                    values[0],
+                    revisionNo,
+                    revisionCount,
+                    revisionDate,
+                    values[1],
+                    values[2],
+                    values[3],
+                    values[4],
+                    values[5]
+                ];
+            });
+
+        options.head = [[
+            'Phase',
+            'Revision No.',
+            'Stage Rev Count',
+            'Revision Date',
+            'Original',
+            'Requested',
+            'Reason',
+            'Status',
+            'Approved By'
+        ]];
+
+        options.body =
+            enhancedBody;
+
+        options.margin = {
+            ...(options.margin || {}),
+            left:8,
+            right:8
+        };
+
+        options.styles = {
+            ...(options.styles || {}),
+            font:'helvetica',
+            fontSize:6.35,
+            cellPadding:1.85,
+            overflow:'linebreak',
+            valign:'middle',
+            lineWidth:0.15
+        };
+
+        options.headStyles = {
+            ...(options.headStyles || {}),
+            fontSize:6.05,
+            fontStyle:'bold',
+            halign:'center',
+            minCellHeight:7
+        };
+
+        /*
+         * A4 landscape width = 297 mm.
+         * With 8 mm margins each, usable width = 281 mm.
+         * These widths total 276 mm, so nothing is clipped.
+         */
+        options.columnStyles = {
+            0:{
+                cellWidth:38
+            },
+            1:{
+                cellWidth:17,
+                halign:'center',
+                fontStyle:'bold'
+            },
+            2:{
+                cellWidth:21,
+                halign:'center'
+            },
+            3:{
+                cellWidth:23,
+                halign:'center'
+            },
+            4:{
+                cellWidth:34
+            },
+            5:{
+                cellWidth:36
+            },
+            6:{
+                cellWidth:62
+            },
+            7:{
+                cellWidth:20,
+                halign:'center'
+            },
+            8:{
+                cellWidth:25,
+                halign:'center'
+            }
+        };
+
+        options.alternateRowStyles = {
+            fillColor:[
+                248,
+                250,
+                252
+            ]
+        };
+
+        return options;
+    }
+
+    function decorateDoc(doc) {
+        if (
+            !doc ||
+            typeof doc.autoTable !== 'function' ||
+            doc.autoTable.__pmisV74FWrapped
+        ) {
+            return doc;
+        }
+
+        const previous =
+            doc.autoTable;
+
+        function wrapped(options) {
+            let next =
+                options;
+
+            try {
+                next =
+                    enhance(options);
+            }
+            catch (error) {
+                console.warn(
+                    '[PMIS V74F] Master revision alignment skipped:',
+                    error
+                );
+            }
+
+            return previous.call(
+                this,
+                next
+            );
+        }
+
+        wrapped.__pmisV74FWrapped =
+            true;
+
+        doc.autoTable =
+            wrapped;
+
+        return doc;
+    }
+
+    function install() {
+        const holder =
+            window.jspdf;
+
+        const Current =
+            holder?.jsPDF;
+
+        if (
+            !holder ||
+            typeof Current !== 'function'
+        ) {
+            return false;
+        }
+
+        if (
+            Current.__pmisV74FWrapped
+        ) {
+            return true;
+        }
+
+        function Wrapped(...args) {
+            const doc =
+                new Current(...args);
+
+            return decorateDoc(doc);
+        }
+
+        try {
+            Object.setPrototypeOf(
+                Wrapped,
+                Current
+            );
+        }
+        catch (_) {}
+
+        try {
+            Object.assign(
+                Wrapped,
+                Current
+            );
+        }
+        catch (_) {}
+
+        Wrapped.prototype =
+            Current.prototype;
+
+        Wrapped.__pmisV74FWrapped =
+            true;
+
+        Wrapped.__pmisV74FOriginal =
+            Current;
+
+        holder.jsPDF =
+            Wrapped;
+
+        return true;
+    }
+
+    if (!install()) {
+        let tries = 0;
+
+        const timer =
+            setInterval(() => {
+                tries += 1;
+
+                if (
+                    install() ||
+                    tries >= 30
+                ) {
+                    clearInterval(timer);
+                }
+            },200);
+    }
+
+    document.addEventListener(
+        'click',
+        function (event) {
+            const button =
+                event.target?.closest?.(
+                    '#btnGenerateMasterReport, [onclick*="generateProjectMasterReport"]'
+                );
+
+            if (!button) return;
+
+            install();
+        },
+        true
+    );
+
+    console.log(
+        '[PMIS V74F] Master revision table width/readability fix active.'
     );
 })();
 </script>

@@ -19,8 +19,18 @@ const ALLOW_LOCAL_FEEDBACK_WRITES =
 const ALLOW_LOCAL_FEEDBACK_REQUIREMENT_WRITES =
     process.env.ALLOW_LOCAL_FEEDBACK_REQUIREMENT_WRITES === 'true';
 
+// PMIS_CUSTOMER_REPORT_SMTP_EMAIL_V72B
+// Set true only in local .env when intentionally testing real report email.
+const ALLOW_LOCAL_CUSTOMER_REPORT_EMAILS =
+    process.env.ALLOW_LOCAL_CUSTOMER_REPORT_EMAILS === 'true';
+
 // Middleware
-app.use(express.json());
+// PMIS_CUSTOMER_REPORT_SMTP_EMAIL_V72B
+// Emailing reuses the already-generated PDF as base64.
+// PMIS_CUSTOMER_REPORT_EMAIL_SIZE_FIX_V72E
+// Larger bounded payload for generated report PDFs.
+// Base64 is larger than the original binary PDF.
+app.use(express.json({ limit: '20mb' }));
 app.use(cors());
 // Block production database changes while working locally.
 // Feedback writes are allowed locally only with ALLOW_LOCAL_FEEDBACK_WRITES=true.
@@ -36,6 +46,11 @@ app.use('/api', (req, res, next) => {
     const isCustomerFeedbackRequirementWrite =
         req.method === 'PATCH' &&
         /^\/api\/projects\/[^/]+\/customer-feedback-requirement$/.test(requestPath);
+
+    // PMIS_CUSTOMER_REPORT_SMTP_EMAIL_V72B
+    const isCustomerReportEmail =
+        req.method === 'POST' &&
+        requestPath === '/api/action-points/customer-report-email';
     // PMIS_FILTER_EDIT_PERSISTENCE_V22: optional local testing for edits to existing records only.
     const isExistingRecordEdit =
         (req.method === 'PATCH' && /^\/api\/projects\/[^/]+$/.test(requestPath)) ||
@@ -44,6 +59,7 @@ app.use('/api', (req, res, next) => {
         isLoginRequest ||
         (ALLOW_LOCAL_FEEDBACK_WRITES && isFeedbackWrite) ||
         isCustomerFeedbackRequirementWrite ||
+        (ALLOW_LOCAL_CUSTOMER_REPORT_EMAILS && isCustomerReportEmail) ||
         (ALLOW_LOCAL_EDIT_WRITES && isExistingRecordEdit);
 
     if (
@@ -1255,6 +1271,468 @@ app.delete('/api/projects/:id', async (req, res) => {
     }
 });
 
+// PMIS_CUSTOMER_REPORT_SMTP_EMAIL_V72B
+function pmisV72BValidEmail(value) {
+    const email = String(value || '').trim().toLowerCase();
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : '';
+}
+
+// PMIS_CUSTOMER_REPORT_CC_V72F
+function pmisV72FParseCc(value) {
+    const raw = Array.isArray(value)
+        ? value
+        : String(value || '').split(/[;,]/);
+
+    const unique = Array.from(
+        new Set(
+            raw
+                .map(item => pmisV72BValidEmail(item))
+                .filter(Boolean)
+        )
+    );
+
+    if (unique.length > 10) {
+        throw new Error('A maximum of 10 CC recipients is allowed.');
+    }
+
+    return unique;
+}
+
+function pmisV72BHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function pmisV72BAttachment(pdfBase64, fileName) {
+    const clean = String(pdfBase64 || '')
+        .replace(/^data:application\/pdf;base64,/i, '')
+        .replace(/\s+/g, '');
+
+    if (!clean) {
+        throw new Error('Generated PDF attachment is empty.');
+    }
+
+    let content;
+
+    try {
+        content = Buffer.from(clean, 'base64');
+    }
+    catch (_) {
+        throw new Error('Generated PDF attachment is invalid.');
+    }
+
+    if (!content.length) {
+        throw new Error('Generated PDF attachment is invalid.');
+    }
+
+    if (content.length > 12 * 1024 * 1024) {
+        const error = new Error(
+            'PDF is larger than 12 MB. Reduce the selected report sections or download it normally.'
+        );
+        error.code = 'PMIS_V72B_PDF_TOO_LARGE';
+        throw error;
+    }
+
+    return {
+        filename: String(fileName || 'DANPREL_Report.pdf')
+            .replace(/[\\/:*?"<>|]/g, '_'),
+        content,
+        contentType: 'application/pdf'
+    };
+}
+
+app.post('/api/action-points/customer-report-email', async (req, res) => {
+    try {
+        await ensureMongoConnected();
+
+        const reportType = String(
+            req.body?.reportType || ''
+        ).trim().toLowerCase();
+
+        // PMIS_REPORT_EMAIL_EXTERNAL_INTERNAL_TEMPLATE_V72G
+        const emailType = String(
+            req.body?.emailType || 'external'
+        ).trim().toLowerCase();
+
+        if (!['external','internal'].includes(emailType)) {
+            return res.status(400).json({
+                error: 'Invalid email type.'
+            });
+        }
+
+        const recipient = pmisV72BValidEmail(
+            req.body?.recipient
+        );
+
+        // PMIS_CUSTOMER_REPORT_CC_V72F
+        const ccRecipients = pmisV72FParseCc(
+            req.body?.cc
+        );
+
+        const projectId = String(
+            req.body?.projectId || ''
+        ).trim();
+
+        const projectIds = Array.from(new Set(
+            [projectId]
+                .concat(
+                    Array.isArray(req.body?.projectIds)
+                        ? req.body.projectIds
+                        : []
+                )
+                .map(value => String(value || '').trim())
+                .filter(Boolean)
+        ));
+
+        if (!['action_points','project_master'].includes(reportType)) {
+            return res.status(400).json({
+                error: 'Invalid report type.'
+            });
+        }
+
+        if (!recipient) {
+            return res.status(400).json({
+                error: 'Enter a valid customer email address.'
+            });
+        }
+
+        if (!projectId || !projectIds.length) {
+            return res.status(400).json({
+                error: 'Project ID is required.'
+            });
+        }
+
+        const objectIds = projectIds.filter(
+            id => mongoose.Types.ObjectId.isValid(id)
+        );
+
+        if (objectIds.length !== projectIds.length) {
+            return res.status(400).json({
+                error: 'One or more selected project IDs are invalid.'
+            });
+        }
+
+        const selectedProjects = await Project.find({
+            _id: { $in: objectIds }
+        }).lean();
+
+        if (selectedProjects.length !== projectIds.length) {
+            return res.status(404).json({
+                error: 'One or more selected projects were not found.'
+            });
+        }
+
+        const user =
+            req.pmisUser ||
+            pmisRequestUserV24(req);
+
+        if (!user) {
+            return res.status(401).json({
+                error: 'Please sign in again.'
+            });
+        }
+
+        const isAdmin =
+            String(user.role || '')
+                .trim()
+                .toLowerCase() === 'admin';
+
+        if (!isAdmin) {
+            const denied = selectedProjects.find(
+                project =>
+                    !pmisProjectAssociatedV24(
+                        project,
+                        user
+                    )
+            );
+
+            if (denied) {
+                return res.status(403).json({
+                    error:
+                        'You can email reports only for your associated projects.'
+                });
+            }
+        }
+
+        if (
+            reportType === 'project_master' &&
+            selectedProjects.length !== 1
+        ) {
+            return res.status(400).json({
+                error:
+                    'Project Master Report email must contain exactly one project.'
+            });
+        }
+
+        const codes = selectedProjects
+            .map(
+                project =>
+                    project.code ||
+                    project.tracking_code ||
+                    project.name ||
+                    'Project'
+            )
+            .filter(Boolean);
+
+        const customerNames = Array.from(new Set(
+            selectedProjects
+                .map(
+                    project =>
+                        String(
+                            project.customer_name || ''
+                        ).trim()
+                )
+                .filter(Boolean)
+        ));
+
+        // PMIS_REPORT_EMAIL_EXTERNAL_INTERNAL_TEMPLATE_V72G
+        const isActionPoint =
+            reportType === 'action_points';
+
+        const title =
+            isActionPoint
+                ? 'Action Point Report'
+                : 'Project Master Report';
+
+        const projectNames = selectedProjects
+            .map(project => String(project.name || '').trim())
+            .filter(Boolean);
+
+        const projectLabel =
+            projectNames.length === 1
+                ? projectNames[0]
+                : codes.join(', ');
+
+        const projectRef =
+            codes.length === 1
+                ? codes[0]
+                : codes.join(', ');
+
+        const customerLabel =
+            customerNames.length === 1
+                ? customerNames[0]
+                : 'Customer';
+
+        const externalSubject =
+            isActionPoint
+                ? `Action Point Update - ${projectLabel} | ${projectRef}`
+                : `Project Progress Update - ${projectLabel} | ${projectRef}`;
+
+        const internalSubject =
+            isActionPoint
+                ? `Action Point Report - ${projectLabel} | ${projectRef}`
+                : `Project Progress Report - ${projectLabel} | ${projectRef}`;
+
+        const subject =
+            emailType === 'internal'
+                ? internalSubject
+                : externalSubject;
+
+        const externalBody =
+            isActionPoint
+                ? `
+                    <p>Dear <strong>${pmisV72BHtml(customerLabel)}</strong>,</p>
+
+                    <p>
+                        Warm greetings from
+                        <strong>Danprel Engineering Automation Pvt. Ltd., Hosur, Tamil Nadu, India.</strong>
+                    </p>
+
+                    <p>
+                        We are writing regarding the ongoing project
+                        <strong>${pmisV72BHtml(projectLabel)} (${pmisV72BHtml(projectRef)})</strong>
+                        to keep you informed about the current action points and pending coordination items.
+                    </p>
+
+                    <p>
+                        Please find attached the latest
+                        <strong>Action Point Report</strong>
+                        for your review.
+                    </p>
+
+                    <p>
+                        Kindly review the attached report and coordinate with the respective
+                        Project Manager for any clarification, update, or closure action.
+                    </p>
+                `
+                : `
+                    <p>Dear <strong>${pmisV72BHtml(customerLabel)}</strong>,</p>
+
+                    <p>
+                        Warm greetings from
+                        <strong>Danprel Engineering Automation Pvt. Ltd., Hosur, Tamil Nadu, India.</strong>
+                    </p>
+
+                    <p>
+                        We are writing regarding the ongoing project
+                        <strong>${pmisV72BHtml(projectLabel)} (${pmisV72BHtml(projectRef)})</strong>
+                        to keep you informed about the current project progress.
+                    </p>
+
+                    <p>
+                        Please find attached the
+                        <strong>Project Master Report</strong>,
+                        which provides an overview of the current project status, progress,
+                        key activities, and action points.
+                    </p>
+
+                    <p>
+                        Kindly review the attached report and contact the respective
+                        Project Manager should you require any clarification, update,
+                        or further coordination.
+                    </p>
+                `;
+
+        const internalBody =
+            isActionPoint
+                ? `
+                    <p>Dear Team,</p>
+
+                    <p>
+                        Please find attached the latest
+                        <strong>Action Point Report</strong>
+                        for
+                        <strong>${pmisV72BHtml(projectLabel)} (${pmisV72BHtml(projectRef)})</strong>.
+                    </p>
+
+                    <p>
+                        Kindly review the pending action points and coordinate with the
+                        concerned team members for the required updates and closures.
+                    </p>
+
+                    <p>
+                        Please ensure that completed items are updated in PMIS so that
+                        the report remains current.
+                    </p>
+                `
+                : `
+                    <p>Dear Team,</p>
+
+                    <p>
+                        Please find attached the latest
+                        <strong>Project Master Report</strong>
+                        for
+                        <strong>${pmisV72BHtml(projectLabel)} (${pmisV72BHtml(projectRef)})</strong>.
+                    </p>
+
+                    <p>
+                        The report provides the current project progress, status,
+                        key activities, and pending action points for review.
+                    </p>
+
+                    <p>
+                        Kindly review the report and coordinate with the concerned team
+                        members for any pending actions, updates, or closures.
+                    </p>
+                `;
+
+        const automatedNote =
+            emailType === 'internal'
+                ? `
+                    <p style="margin-top:22px;padding:12px 14px;background:#f8fafc;border-left:4px solid #003366;">
+                        <strong>Please note:</strong>
+                        This is an automated email generated through PMIS.
+                        For any clarification or required action, please coordinate directly
+                        with the respective Project Manager.
+                    </p>
+                `
+                : `
+                    <p style="margin-top:22px;padding:12px 14px;background:#f8fafc;border-left:4px solid #003366;">
+                        <strong>Please note:</strong>
+                        This is an automated email generated through our Project Management
+                        Information System (PMIS), and replies to this email are not monitored.
+                        For any communication regarding the project, kindly contact the
+                        respective Project Manager directly.
+                    </p>
+                `;
+
+        const html = `
+            <div style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;line-height:1.6;max-width:760px;margin:0 auto;">
+                <div style="background:#003366;color:#fff;padding:18px 22px;border-radius:10px 10px 0 0;">
+                    <div style="font-size:20px;font-weight:800;">
+                        DANPREL ENGINEERING AUTOMATION
+                    </div>
+                    <div style="font-size:12px;opacity:.88;margin-top:4px;">
+                        ${pmisV72BHtml(title)}
+                    </div>
+                </div>
+
+                <div style="border:1px solid #e2e8f0;border-top:0;padding:24px;border-radius:0 0 10px 10px;">
+                    ${
+                        emailType === 'internal'
+                            ? internalBody
+                            : externalBody
+                    }
+
+                    ${automatedNote}
+
+                    <p style="margin-top:24px;">
+                        Regards,<br>
+                        <strong>Projects Team</strong><br>
+                        Danprel Engineering Automation Pvt. Ltd.
+                    </p>
+                </div>
+            </div>
+        `;
+
+        const smtpUser = String(
+            process.env.SMTP_USER || ''
+        ).trim();
+
+        if (!smtpUser) {
+            return res.status(503).json({
+                error: 'SMTP_USER is not configured.'
+            });
+        }
+
+        await transporter.sendMail({
+            from: `Danprel Projects <${smtpUser}>`,
+            replyTo: smtpUser,
+            to: recipient,
+            // PMIS_CUSTOMER_REPORT_CC_V72F
+            cc: ccRecipients.length ? ccRecipients : undefined,
+            subject,
+            html,
+            attachments: [
+                pmisV72BAttachment(
+                    req.body?.pdfBase64,
+                    req.body?.fileName
+                )
+            ]
+        });
+
+        console.log(
+            `[PMIS V72B] ${title} emailed to ${recipient}`
+        );
+
+        return res.json({
+            message: `${title} emailed successfully.`,
+            recipient,
+            reportType,
+            projectCount: selectedProjects.length
+        });
+    }
+    catch (error) {
+        console.error(
+            '[PMIS V72B] Customer report email failed:',
+            error.message
+        );
+
+        return res.status(
+            error?.code === 'PMIS_V72B_PDF_TOO_LARGE'
+                ? 413
+                : 500
+        ).json({
+            error:
+                error.message ||
+                'Customer report email could not be sent.'
+        });
+    }
+});
 // --- ACTION POINT ENDPOINTS (NEW TABLE) ---
 
 // Get all action points for a project
@@ -1462,7 +1940,6 @@ app.post('/api/auth/login', async (req, res) => {
         const authRole = isLeadViewLoginV51E
             ? 'lead_view'
             : (employee.authRole || employeeRoleToAuthRole(employee.role));
-
         if (!authRole) {
             return res.status(403).json({
                 error: 'This employee is not authorized for PMIS login.'
