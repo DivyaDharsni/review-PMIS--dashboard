@@ -4065,7 +4065,7 @@ function formatExportPoValueForCurrentUser(project) {
                 const isMachineDispatched = (dispatchPhase === 100);
 
                 if (displayStatus !== 'Closed') {
-                    if (allDone) displayStatus = 'Closed'; // âœ… Automatically set to Closed if 100%
+                    if (allDone) displayStatus = (window.pmisV75ACommercialComplete && window.pmisV75ACommercialComplete((typeof p !== 'undefined' && p) ? p : (typeof project !== 'undefined' ? project : null))) ? 'Closed' : 'Payment Pending'; // âœ… Automatically set to Closed if 100%
                     else if (isMachineDispatched) displayStatus = 'Dispatched';
                     else if (hasAnyProgress || hasAnyActualStart) displayStatus = 'In Progress';
                     else displayStatus = 'Started';
@@ -5022,7 +5022,7 @@ function formatExportPoValueForCurrentUser(project) {
 
                 let displayStatus = project.status || 'Started';
                 if (displayStatus !== 'Closed') {
-                    if (allDone) displayStatus = 'Closed';
+                    if (allDone) displayStatus = (window.pmisV75ACommercialComplete && window.pmisV75ACommercialComplete((typeof p !== 'undefined' && p) ? p : (typeof project !== 'undefined' ? project : null))) ? 'Closed' : 'Payment Pending';
                     else if (dispatchProgress === 100) displayStatus = 'Dispatched';
                     else if (hasAnyProgress || hasAnyActualStart) displayStatus = 'In Progress';
                     else displayStatus = 'Started';
@@ -6740,7 +6740,7 @@ function formatExportPoValueForCurrentUser(project) {
                 const isMachineDispatched = (dispatchPhase === 100);
 
                 if (p.status === 'Closed') return 'Closed';
-                if (wAll > 0 && allActiveDone) return 'Closed'; // Automatically set to Closed if 100%
+                if (wAll > 0 && allActiveDone) return (window.pmisV75ACommercialComplete && window.pmisV75ACommercialComplete((typeof p !== 'undefined' && p) ? p : (typeof project !== 'undefined' ? project : null))) ? 'Closed' : 'Payment Pending'; // Automatically set to Closed if 100%
                 if (isMachineDispatched) return 'Dispatched';
                 if (hasAnyProgress || hasAnyActualStart) return 'In Progress';
                 return 'Started';
@@ -8814,7 +8814,7 @@ function formatExportPoValueForCurrentUser(project) {
             if (progress > 0) hasProgress = true;
             if (detail.actual_start) hasActual = true;
         });
-        if (activeCount > 0 && completedCount === activeCount) return 'Closed';
+        if (activeCount > 0 && completedCount === activeCount) return (window.pmisV75ACommercialComplete && window.pmisV75ACommercialComplete(project)) ? 'Closed' : 'Payment Pending';
         if (phaseProgress(project, PHASES[7], 7) >= 100) return 'Dispatched';
         if (hasProgress || hasActual || /progress|pending/i.test(explicit)) return 'In Progress';
         if (/dispatch|completed/i.test(explicit)) return /completed/i.test(explicit) ? 'Closed' : 'Dispatched';
@@ -9537,9 +9537,7 @@ function getFilteredProjects() {
 
         // If I&C is genuinely complete, lifecycle is complete even if an old
         // display field was not updated.
-        if (phaseComplete(p, PHASES[8], 8)) {
-            return "Project Completed / Closed";
-        }
+        if (phaseComplete(p, PHASES[8], 8)) { return (window.pmisV75ACommercialComplete && window.pmisV75ACommercialComplete(p)) ? 'Project Completed / Closed' : 'Technically Completed - Payment Pending'; }
 
         // If I&C has started / has progress, it is the current lifecycle stage.
         if (
@@ -9778,9 +9776,7 @@ function getFilteredProjects() {
             return "Project Completed / Closed";
         }
 
-        if (isComplete(p, PHASES[8], 8)) {
-            return "Project Completed / Closed";
-        }
+        if (isComplete(p, PHASES[8], 8)) { return (window.pmisV75ACommercialComplete && window.pmisV75ACommercialComplete(p)) ? 'Project Completed / Closed' : 'Technically Completed - Payment Pending'; }
 
         if (
             hasActivity(p, PHASES[8]) ||
@@ -19182,6 +19178,469 @@ async function sendReport(payload,button,originalHtml) {
         '[PMIS V74F] Master revision table width/readability fix active.'
     );
 })();
+</script>
+
+<script id="pmis-payment-milestones-cashflow-v75a">
+/* PMIS_PAYMENT_MILESTONES_CASHFLOW_V75A */
+/* PMIS_FLEX_MILESTONES_SPLIT_PAYMENTS_V75C */
+(function () {
+    'use strict';
+
+    if (window.__PMIS_FLEX_MILESTONES_SPLIT_PAYMENTS_V75C__) return;
+    window.__PMIS_FLEX_MILESTONES_SPLIT_PAYMENTS_V75C__ = true;
+
+    const FIXED_STAGE_GROUPS = [
+        { id:'kickoff', name:'Kickoff', children:[
+            ['kickoff_1','PO receipt & acknowledgement'],
+            ['kickoff_2','Knowledge transfer from tech sales to project team']
+        ]},
+        { id:'design', name:'Design', children:[
+            ['design_1','Concept Design'],
+            ['design_2','Detailed Design'],
+            ['design_critical_approval','Critical Elements Approval'],
+            ['design_3','Pre-DAP'],
+            ['design_4','Final DAP schedule with MOM updation'],
+            ['design_5','Standard parts (mech & elect) release to purchase'],
+            ['design_6','Fabrication parts release to purchase']
+        ]},
+        { id:'purchase', name:'Purchase', children:[
+            ['purchase_1','Standard parts receipt'],
+            ['purchase_2','Fabrication parts receipt']
+        ]},
+        { id:'mech_assembly', name:'Machine Assembly', children:[
+            ['mech_assembly_1','Mechanical assembly'],
+            ['mech_assembly_2','Electrical integration']
+        ]},
+        { id:'program', name:'Programming', children:[
+            ['prog_plc_offline','PLC-offline programming'],
+            ['prog_plc','PLC-online programming, IO checking and manual mode'],
+            ['prog_robot','Robot programming'],
+            ['prog_labview','LabVIEW programming']
+        ]},
+        { id:'inhouse', name:'Inhouse Trials', children:[
+            ['inhouse_1','Automated testing (dry run)'],
+            ['inhouse_2','Machine trials with customer components']
+        ]},
+        { id:'mq1_fat', name:'MQ1 / FAT (Machine Qualification)', children:[
+            ['mq1_fat_1','Customer factory visit for MQ1'],
+            ['mq1_fat_2','MQ1 points updation'],
+            ['mq1_fat_3','Customer acceptance for dispatch']
+        ]},
+        { id:'dispatch_parent', name:'Machine Dispatch', children:[
+            ['dispatch_1','Machine packaging and dispatch'],
+            ['dispatch_2','Transportation & machine delivery at customer site']
+        ]},
+        { id:'inc_parent', name:'Installation & Commissioning', children:[
+            ['inc_1','Machine unloading, positioning & power on'],
+            ['inc_2','MQ2 / SAT'],
+            ['inc_3','Training to customer'],
+            ['inc_4','Sign off and handover']
+        ]}
+    ];
+
+    let paymentFormTerms = [];
+
+    function esc(value) {
+        return String(value ?? '')
+            .replace(/&/g,'&amp;')
+            .replace(/</g,'&lt;')
+            .replace(/>/g,'&gt;')
+            .replace(/"/g,'&quot;')
+            .replace(/'/g,'&#039;');
+    }
+
+    function num(value) {
+        const n = Number(value);
+        return Number.isFinite(n) ? n : 0;
+    }
+
+    function identityName() {
+        return localStorage.getItem('danprel_display_name') ||
+            localStorage.getItem('danprel_employee_id') ||
+            localStorage.getItem('danprel_username') ||
+            'PMIS User';
+    }
+
+    function projectArray() {
+        try {
+            if (typeof projects !== 'undefined' && Array.isArray(projects)) return projects;
+        } catch (_) {}
+        return Array.isArray(window.projects) ? window.projects : [];
+    }
+
+    function defaultTerms() {
+        return [1,2,3,4].map((sequence,index) => ({
+            id: 'payment_m' + sequence,
+            sequence,
+            linked_stage_id: index === 0 ? 'po_date' : '',
+            percentage: 25,
+            credit_days: 0,
+            remarks: '',
+            actual_receipts: []
+        }));
+    }
+
+    function normalizeTerm(raw,index) {
+        const source = raw && typeof raw === 'object' ? raw : {};
+        return {
+            id: String(source.id || ('payment_m' + (index + 1))),
+            sequence: index + 1,
+            linked_stage_id: String(source.linked_stage_id || ''),
+            percentage: num(source.percentage),
+            credit_days: Math.max(0, Math.trunc(num(source.credit_days))),
+            remarks: String(source.remarks || '').slice(0,250),
+            actual_receipts: Array.isArray(source.actual_receipts)
+                ? source.actual_receipts.map(receipt => ({ ...receipt }))
+                : []
+        };
+    }
+
+    function termsForProject(project) {
+        const rows = Array.isArray(project?.payment_milestones)
+            ? project.payment_milestones
+            : [];
+        if (rows.length < 4) return defaultTerms();
+        return rows.map(normalizeTerm);
+    }
+
+    function customDefinitions(project) {
+        const rows = project?.detailed_phases?.__custom_substages_v74q;
+        if (!Array.isArray(rows)) return [];
+        return rows.filter(item => item && item.id && item.name && item.parent);
+    }
+
+    function optionHtml(project, selected) {
+        let html = `<option value="">Select linked stage / sub-stage...</option>`;
+        html += `<option value="po_date" ${selected === 'po_date' ? 'selected' : ''}>PO Date / Advance Payment</option>`;
+
+        FIXED_STAGE_GROUPS.forEach(group => {
+            html += `<optgroup label="${esc(group.name)}">`;
+            html += `<option value="${esc(group.id)}" ${selected === group.id ? 'selected' : ''}>${esc(group.name)} (Main Stage)</option>`;
+            group.children.forEach(([id,name]) => {
+                html += `<option value="${esc(id)}" ${selected === id ? 'selected' : ''}>↳ ${esc(name)}</option>`;
+            });
+            customDefinitions(project)
+                .filter(item => String(item.parent) === group.id)
+                .forEach(item => {
+                    html += `<option value="${esc(item.id)}" ${selected === String(item.id) ? 'selected' : ''}>↳ ${esc(item.name)} [Custom]</option>`;
+                });
+            html += `</optgroup>`;
+        });
+        return html;
+    }
+
+    function ensurePaymentUi() {
+        const modal = document.getElementById('projModal');
+        const body = modal?.querySelector('.modal-body');
+        if (!modal || !body) return false;
+
+        const dialog = modal.querySelector('.modal-dialog');
+        if (dialog) {
+            dialog.style.maxWidth = '1180px';
+            dialog.style.width = 'calc(100% - 24px)';
+        }
+        body.style.maxHeight = '78vh';
+        body.style.overflowY = 'auto';
+
+        if (!document.getElementById('pmisPaymentTermsV75A')) {
+            const actionRow = Array.from(body.children).find(el => el.classList?.contains('d-flex') && el.querySelector?.('[onclick*="saveProject"]'));
+            const section = document.createElement('div');
+            section.id = 'pmisPaymentTermsV75A';
+            section.className = 'mb-4';
+            section.innerHTML = `
+                <div style="border:1px solid #dbe5ef;border-radius:20px;overflow:hidden;background:#f8fafc;">
+                    <div style="padding:14px 16px;background:#0B2B4A;color:white;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
+                        <div>
+                            <div style="font-size:.66rem;font-weight:900;letter-spacing:.08em;opacity:.72;">COMMERCIAL PLAN</div>
+                            <div style="font-size:1rem;font-weight:900;">Payment Terms — 4 Default Milestones + Add if Needed</div>
+                        </div>
+                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                            <button type="button" id="pmisAddPaymentMilestoneV75C" style="border:1px solid rgba(255,255,255,.34);background:rgba(255,255,255,.12);color:white;border-radius:999px;padding:7px 12px;font-size:.76rem;font-weight:900;">
+                                + Add Payment Milestone
+                            </button>
+                            <div id="pmisPaymentTermsSumV75A" style="font-size:.78rem;font-weight:900;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.13);">Total: 100%</div>
+                        </div>
+                    </div>
+                    <div style="padding:14px 14px 8px;">
+                        <div class="table-responsive">
+                            <table class="table align-middle mb-2" style="min-width:980px;font-size:.82rem;">
+                                <thead>
+                                    <tr style="color:#475569;">
+                                        <th style="width:72px;">Milestone</th>
+                                        <th>Linked Stage / Sub-stage</th>
+                                        <th style="width:110px;">Payment %</th>
+                                        <th style="width:120px;">Credit Days</th>
+                                        <th>Remarks / Term</th>
+                                        <th style="width:82px;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pmisPaymentTermsBodyV75A"></tbody>
+                            </table>
+                        </div>
+                        <div style="font-size:.72rem;color:#64748b;line-height:1.45;padding:2px 4px 8px;">
+                            Four milestones are created by default. Use <b>+ Add Payment Milestone</b> for M5, M6 and beyond when a project has additional commercial stages. Planned realization = linked stage planned end date + credit days. All milestone percentages together must total exactly 100%.
+                        </div>
+                    </div>
+                </div>`;
+            if (actionRow) body.insertBefore(section, actionRow);
+            else body.appendChild(section);
+
+            section.querySelector('#pmisAddPaymentMilestoneV75C')?.addEventListener('click', () => {
+                const project = currentEditingProject();
+                paymentFormTerms = readTermsFromDom();
+                const index = paymentFormTerms.length;
+                paymentFormTerms.push(normalizeTerm({
+                    id: 'payment_m' + (index + 1) + '_' + Date.now(),
+                    linked_stage_id: '',
+                    percentage: 0,
+                    credit_days: 0,
+                    remarks: '',
+                    actual_receipts: []
+                }, index));
+                paintTerms(project);
+            });
+        }
+        return true;
+    }
+
+    function currentEditingProject() {
+        const id = String(document.getElementById('editProjId')?.value || '').trim();
+        return id ? projectArray().find(p => String(p?._id || '') === id) || null : null;
+    }
+
+    function readTermsFromDom() {
+        const rows = Array.from(document.querySelectorAll('#pmisPaymentTermsBodyV75A tr[data-payment-row-v75a]'));
+        if (!rows.length) return paymentFormTerms.map((row,index) => normalizeTerm(row,index));
+        return rows.map((row,index) => {
+            const old = paymentFormTerms[index] || normalizeTerm({},index);
+            const stage = row.querySelector('[data-v75a="stage"]');
+            const percentage = row.querySelector('[data-v75a="percentage"]');
+            const credit = row.querySelector('[data-v75a="credit"]');
+            const remarks = row.querySelector('[data-v75a="remarks"]');
+            return normalizeTerm({
+                ...old,
+                id: old.id || ('payment_m' + (index + 1)),
+                linked_stage_id: String(stage?.value ?? old.linked_stage_id ?? ''),
+                percentage: num(percentage?.value ?? old.percentage),
+                credit_days: Math.max(0, Math.trunc(num(credit?.value ?? old.credit_days))),
+                remarks: String(remarks?.value ?? old.remarks ?? '').trim().slice(0,250),
+                actual_receipts: Array.isArray(old.actual_receipts) ? old.actual_receipts : []
+            },index);
+        });
+    }
+
+    function paintTerms(project) {
+        const body = document.getElementById('pmisPaymentTermsBodyV75A');
+        if (!body) return;
+        body.innerHTML = paymentFormTerms.map((term,index) => {
+            const locked = term.actual_receipts.length > 0;
+            const canRemove = index >= 4 && !locked;
+            return `
+                <tr data-payment-row-v75a="${index}">
+                    <td><span style="display:inline-flex;width:34px;height:34px;border-radius:50%;align-items:center;justify-content:center;background:#e6f6f5;color:#0f766e;font-weight:900;">M${index + 1}</span></td>
+                    <td>
+                        <select class="form-select form-select-sm" data-v75a="stage" ${locked ? 'disabled' : ''}>
+                            ${optionHtml(project, term.linked_stage_id)}
+                        </select>
+                        ${locked ? '<div style="font-size:.65rem;color:#64748b;margin-top:4px;">Commercial basis locked because receipts are already recorded.</div>' : ''}
+                    </td>
+                    <td><input class="form-control form-control-sm fw-bold" data-v75a="percentage" type="number" min="0" max="100" step="0.01" value="${esc(term.percentage)}" ${locked ? 'disabled' : ''}></td>
+                    <td><input class="form-control form-control-sm" data-v75a="credit" type="number" min="0" max="3650" step="1" value="${esc(term.credit_days)}" ${locked ? 'disabled' : ''}></td>
+                    <td><input class="form-control form-control-sm" data-v75a="remarks" maxlength="250" value="${esc(term.remarks)}" placeholder="e.g. 30% against FAT approval"></td>
+                    <td>
+                        ${canRemove ? `<button type="button" class="btn btn-sm btn-outline-danger rounded-pill" data-v75c-remove="${index}" title="Remove this added milestone"><i class="bi bi-trash3"></i></button>` : (index >= 4 && locked ? '<span style="font-size:.65rem;color:#64748b;">Locked</span>' : '<span style="font-size:.65rem;color:#94a3b8;">Default</span>')}
+                    </td>
+                </tr>`;
+        }).join('');
+
+        body.querySelectorAll('input,select').forEach(el => {
+            el.addEventListener('input', updatePercentBadge);
+            el.addEventListener('change', updatePercentBadge);
+        });
+        body.querySelectorAll('[data-v75c-remove]').forEach(button => {
+            button.addEventListener('click', () => {
+                paymentFormTerms = readTermsFromDom();
+                const index = Number(button.dataset.v75cRemove);
+                const term = paymentFormTerms[index];
+                if (!term || index < 4) return;
+                if (Array.isArray(term.actual_receipts) && term.actual_receipts.length) {
+                    window.alert('This milestone already has receipts and cannot be removed.');
+                    return;
+                }
+                paymentFormTerms.splice(index,1);
+                paymentFormTerms = paymentFormTerms.map((row,i) => normalizeTerm(row,i));
+                paintTerms(project);
+            });
+        });
+        updatePercentBadge();
+    }
+
+    function renderTerms(project) {
+        if (!ensurePaymentUi()) return;
+        const section = document.getElementById('pmisPaymentTermsV75A');
+        const body = document.getElementById('pmisPaymentTermsBodyV75A');
+        if (!body) return;
+
+        const hasConfiguredTerms = Array.isArray(project?.payment_milestones) && project.payment_milestones.length >= 4;
+        const legacyClosed = !!project && /^(closed|completed)$/i.test(String(project.status || '').trim()) && !hasConfiguredTerms;
+        if (section) section.dataset.legacySkipV75a = legacyClosed ? '1' : '0';
+
+        if (legacyClosed) {
+            paymentFormTerms = [];
+            body.innerHTML = `<tr><td colspan="6" style="padding:18px;color:#64748b;"><b>Legacy closed project:</b> existing historical closure is preserved. Payment terms are not forced onto this already-closed project.</td></tr>`;
+            const badge = document.getElementById('pmisPaymentTermsSumV75A');
+            if (badge) { badge.textContent = 'Legacy Closed'; badge.style.background = 'rgba(148,163,184,.28)'; }
+            return;
+        }
+
+        paymentFormTerms = termsForProject(project);
+        paintTerms(project);
+    }
+
+    function collectTerms() {
+        const section = document.getElementById('pmisPaymentTermsV75A');
+        if (section?.dataset?.legacySkipV75a === '1') return { rows:null, legacySkip:true };
+        const next = readTermsFromDom();
+        if (next.length < 4) return { error:'At least four payment milestones are required.' };
+
+        if (next.some(row => !row.linked_stage_id)) {
+            return { error:'Select a linked stage / sub-stage for every payment milestone.' };
+        }
+        if (next.some(row => !(row.percentage > 0 && row.percentage <= 100))) {
+            return { error:'Each payment milestone must have a percentage greater than 0 and not more than 100.' };
+        }
+        if (next.some(row => row.credit_days < 0 || row.credit_days > 3650)) {
+            return { error:'Credit days must be between 0 and 3650.' };
+        }
+        const total = next.reduce((sum,row) => sum + row.percentage,0);
+        if (Math.abs(total - 100) > 0.001) {
+            return { error:'Payment milestone percentages must total exactly 100%. Current total: ' + total.toFixed(2) + '%' };
+        }
+        const poValue = num(document.getElementById('pPoValue')?.value);
+        if (!(poValue > 0)) {
+            return { error:'Enter a valid PO Value greater than 0 before saving payment terms.' };
+        }
+        paymentFormTerms = next;
+        return { rows:next };
+    }
+
+    function updatePercentBadge() {
+        const badge = document.getElementById('pmisPaymentTermsSumV75A');
+        if (!badge) return;
+        const total = Array.from(document.querySelectorAll('#pmisPaymentTermsBodyV75A [data-v75a="percentage"]'))
+            .reduce((sum,input) => sum + num(input.value),0);
+        badge.textContent = 'Total: ' + total.toFixed(total % 1 ? 2 : 0) + '%';
+        badge.style.background = Math.abs(total - 100) <= 0.001
+            ? 'rgba(16,185,129,.25)'
+            : 'rgba(245,158,11,.28)';
+    }
+
+    function totalReceived(term) {
+        return (Array.isArray(term?.actual_receipts) ? term.actual_receipts : [])
+            .reduce((sum,row) => sum + Math.max(0,num(row?.amount)),0);
+    }
+
+    window.pmisV75ACommercialComplete = function (project) {
+        const terms = Array.isArray(project?.payment_milestones) ? project.payment_milestones : [];
+        const poValue = num(project?.po_value);
+        if (terms.length < 4 || !(poValue > 0)) return false;
+        const totalPct = terms.reduce((sum,row) => sum + num(row?.percentage),0);
+        if (Math.abs(totalPct - 100) > 0.01) return false;
+        return terms.every(term => {
+            const expected = poValue * num(term?.percentage) / 100;
+            return expected > 0 && totalReceived(term) + 0.5 >= expected;
+        });
+    };
+
+    function ensureCashflowMenu() {
+        const sidebar = document.getElementById('sidebar');
+        if (!sidebar || document.getElementById('pmisCashflowMenuV75A')) return;
+        const dashboardLink = Array.from(sidebar.querySelectorAll('a.sidebar-btn')).find(a => String(a.getAttribute('href') || '').includes('project_review.html'));
+        const link = document.createElement('a');
+        link.id = 'pmisCashflowMenuV75A';
+        link.href = 'cashflow.html';
+        link.className = 'sidebar-btn';
+        link.innerHTML = `
+            <div class="sb-icon" style="background:rgba(16,185,129,.18);"><i class="bi bi-graph-up-arrow" style="color:#34d399;"></i></div>
+            Cashflow / Payments`;
+        if (dashboardLink) dashboardLink.insertAdjacentElement('afterend', link);
+        else sidebar.appendChild(link);
+    }
+
+    const originalOpenAdd = typeof window.openAddProjectModal === 'function' ? window.openAddProjectModal : null;
+    if (originalOpenAdd) {
+        window.openAddProjectModal = function (...args) {
+            const result = originalOpenAdd.apply(this,args);
+            setTimeout(() => renderTerms(null),0);
+            return result;
+        };
+    }
+
+    const originalEdit = typeof window.editProject === 'function' ? window.editProject : null;
+    if (originalEdit) {
+        window.editProject = function (id,...rest) {
+            const result = originalEdit.call(this,id,...rest);
+            const target = projectArray().find(p => String(p?._id || '') === String(id || '')) || null;
+            setTimeout(() => renderTerms(target),0);
+            return result;
+        };
+    }
+
+    const originalSave = typeof window.saveProject === 'function' ? window.saveProject : null;
+    if (originalSave) {
+        window.saveProject = async function (...args) {
+            const collected = collectTerms();
+            if (collected.error) {
+                window.alert(collected.error);
+                return;
+            }
+            const paymentRows = collected.rows;
+            const originalFetch = window.fetch;
+            let injected = false;
+            window.fetch = function (input,init = {}) {
+                const url = typeof input === 'string' ? input : String(input?.url || '');
+                const method = String(init?.method || (input?.method || 'GET')).toUpperCase();
+                const isProjectWrite = /^\/api\/projects(?:\/[^/?#]+)?(?:\?.*)?$/.test(url) && (method === 'POST' || method === 'PATCH');
+                if (!injected && isProjectWrite && typeof init.body === 'string') {
+                    try {
+                        const payload = JSON.parse(init.body);
+                        if (Array.isArray(paymentRows)) {
+                            payload.payment_milestones = paymentRows;
+                            payload.payment_terms_version = 'V75C';
+                            payload.payment_terms_updated_at = new Date().toISOString();
+                            payload.payment_terms_updated_by = identityName();
+                        }
+                        init = { ...init, body:JSON.stringify(payload) };
+                        injected = true;
+                    } catch (error) {
+                        console.warn('[PMIS V75A] Could not inject payment terms:', error);
+                    }
+                }
+                return originalFetch(input,init);
+            };
+            try {
+                return await originalSave.apply(this,args);
+            } finally {
+                window.fetch = originalFetch;
+            }
+        };
+    }
+
+    function init() {
+        ensureCashflowMenu();
+        ensurePaymentUi();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init, { once:true });
+    } else {
+        init();
+    }
+
+    window.addEventListener('pageshow', ensureCashflowMenu);
+    console.log('[PMIS V75C] Flexible payment milestones + Cashflow menu active.');
+})();
+
 </script>
 </body>
 

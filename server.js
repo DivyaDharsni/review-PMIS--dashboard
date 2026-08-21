@@ -208,6 +208,11 @@ const ProjectSchema = new mongoose.Schema({
     customer_feedback_requirement_updated_at: Date,
     customer_feedback_requirement_updated_by: { type: String, default: '' },
     detailed_phases: { type: mongoose.Schema.Types.Mixed, default: {} },
+    // PMIS_PAYMENT_MILESTONES_CASHFLOW_V75A
+    payment_milestones: { type: [mongoose.Schema.Types.Mixed], default: [] },
+    payment_terms_version: { type: String, default: '' },
+    payment_terms_updated_at: Date,
+    payment_terms_updated_by: { type: String, default: '' },
     phases: [
         { name: String, progress: { type: Number, default: 0 } }
     ],

@@ -12094,6 +12094,419 @@ console.log('[PMIS V74G] jsPDF + AutoTable libraries already present for vector 
     );
 })();
 </script>
+<script id="pmis-project-custom-substages-v74q">
+/* PMIS_PROJECT_CUSTOM_SUBSTAGES_V74Q */
+(function () {
+    'use strict';
+
+    if (window.__PMIS_PROJECT_CUSTOM_SUBSTAGES_V74Q__) return;
+    window.__PMIS_PROJECT_CUSTOM_SUBSTAGES_V74Q__ = true;
+
+    const META_KEY = '__custom_substages_v74q';
+    let addParentId = '';
+
+    function phaseDataTemplate() {
+        return {
+            plan_start: '',
+            plan_end: '',
+            plan_duration: '',
+            responsibility: '',
+            actual_start: '',
+            actual_end: '',
+            progress: 0,
+            remarks: '',
+            locked: false,
+            is_excluded: false,
+            custom_stage_v74q: true,
+            revisions: []
+        };
+    }
+
+    function customStore() {
+        if (!project) return [];
+        if (!project.detailed_phases || typeof project.detailed_phases !== 'object') {
+            project.detailed_phases = {};
+        }
+        if (!Array.isArray(project.detailed_phases[META_KEY])) {
+            project.detailed_phases[META_KEY] = [];
+        }
+        return project.detailed_phases[META_KEY];
+    }
+
+    function cleanDefinition(item) {
+        if (!item || typeof item !== 'object') return null;
+        const id = String(item.id || '').trim();
+        const name = String(item.name || '').trim();
+        const parent = String(item.parent || '').trim();
+        if (!id || !name || !parent) return null;
+        if (!/^custom_[A-Za-z0-9_\-]+$/.test(id)) return null;
+        if (/[<>]/.test(name)) return null;
+        return {
+            id,
+            name: name.slice(0, 120),
+            type: 'sub',
+            parent,
+            custom_v74q: true,
+            created_at: item.created_at || '',
+            created_by: item.created_by || ''
+        };
+    }
+
+    function hydrateCustomStages() {
+        if (!project || !Array.isArray(defaultPhases)) return;
+
+        // Remove only previously hydrated V74Q runtime rows, never a fixed PMIS row.
+        for (let i = defaultPhases.length - 1; i >= 0; i--) {
+            if (defaultPhases[i] && defaultPhases[i].custom_v74q === true) {
+                defaultPhases.splice(i, 1);
+            }
+        }
+
+        const store = customStore();
+        const valid = [];
+        const seen = new Set();
+
+        store.forEach(raw => {
+            const item = cleanDefinition(raw);
+            if (!item || seen.has(item.id)) return;
+            const parentExists = defaultPhases.some(p => p.id === item.parent && p.type === 'parent');
+            if (!parentExists) return;
+            seen.add(item.id);
+            valid.push(item);
+        });
+
+        // Normalize the stored metadata in place so corrupt/duplicate definitions cannot render.
+        project.detailed_phases[META_KEY] = valid.map(x => ({ ...x }));
+
+        const parents = defaultPhases.filter(p => p.type === 'parent').map(p => p.id);
+        parents.forEach(parentId => {
+            const rows = valid.filter(x => x.parent === parentId);
+            if (!rows.length) return;
+
+            const parentIndex = defaultPhases.findIndex(p => p.id === parentId);
+            if (parentIndex < 0) return;
+
+            let insertAt = parentIndex + 1;
+            while (insertAt < defaultPhases.length && defaultPhases[insertAt].parent === parentId) {
+                insertAt++;
+            }
+            defaultPhases.splice(insertAt, 0, ...rows.map(x => ({ ...x })));
+        });
+
+        valid.forEach(item => {
+            if (!project.detailed_phases[item.id] || typeof project.detailed_phases[item.id] !== 'object') {
+                project.detailed_phases[item.id] = phaseDataTemplate();
+            } else {
+                project.detailed_phases[item.id].custom_stage_v74q = true;
+                if (!Array.isArray(project.detailed_phases[item.id].revisions)) {
+                    project.detailed_phases[item.id].revisions = [];
+                }
+            }
+        });
+    }
+
+    function isPlanStructureLocked() {
+        return String(project?.plan_status || 'pending').toLowerCase() === 'submitted';
+    }
+
+    function notify(message, isError) {
+        if (typeof showToast === 'function') {
+            try {
+                showToast(message, !!isError);
+                return;
+            } catch (_) {}
+        }
+        window.alert(message);
+    }
+
+    function ensureModal() {
+        if (document.getElementById('pmisCustomStageModalV74Q')) return;
+        document.body.insertAdjacentHTML('beforeend', `
+            <div class="modal fade" id="pmisCustomStageModalV74Q" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered" style="max-width:460px;">
+                    <div class="modal-content border-0 shadow-lg" style="border-radius:28px;overflow:hidden;">
+                        <div class="modal-header border-0" style="background:#0B2B4A;color:#fff;padding:20px 24px;">
+                            <div>
+                                <div style="font-size:.65rem;font-weight:800;letter-spacing:.08em;opacity:.72;">PROJECT-SPECIFIC STRUCTURE</div>
+                                <h5 class="modal-title fw-bold mb-0" id="pmisCustomStageModalTitleV74Q">Add Sub Stage</h5>
+                            </div>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body" style="padding:24px;">
+                            <label for="pmisCustomStageNameV74Q" class="form-label fw-bold" style="color:#0B2B4A;">Sub-stage name</label>
+                            <input id="pmisCustomStageNameV74Q" type="text" maxlength="120" class="form-control" placeholder="e.g. Vision validation" style="border-radius:14px;padding:12px 14px;">
+                            <div class="invalid-feedback">Enter a valid sub-stage name.</div>
+                            <div style="font-size:.72rem;color:#64748b;margin-top:10px;line-height:1.45;">
+                                This sub-stage is saved only for the selected project and will use the same Plan and Actual tracking as the standard stages.
+                            </div>
+                        </div>
+                        <div class="modal-footer border-0" style="padding:0 24px 24px;">
+                            <button type="button" class="btn btn-light fw-bold px-4" style="border-radius:999px;" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn fw-bold px-4" style="border-radius:999px;background:#14b8a6;color:#fff;" onclick="pmisConfirmAddCustomSubStageV74Q()">
+                                <i class="bi bi-plus-lg me-1"></i>Add Sub Stage
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>`);
+
+        const input = document.getElementById('pmisCustomStageNameV74Q');
+        input?.addEventListener('keydown', event => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                window.pmisConfirmAddCustomSubStageV74Q();
+            }
+        });
+    }
+
+    function openAdd(parentId) {
+        if (!project || !Array.isArray(defaultPhases)) return;
+        if (isPlanStructureLocked()) {
+            notify('The baseline is submitted and locked. Custom sub-stages cannot be added now.', true);
+            return;
+        }
+
+        const parent = defaultPhases.find(p => p.id === parentId && p.type === 'parent');
+        if (!parent) return;
+
+        addParentId = parentId;
+        ensureModal();
+
+        const title = document.getElementById('pmisCustomStageModalTitleV74Q');
+        const input = document.getElementById('pmisCustomStageNameV74Q');
+        if (title) title.textContent = 'Add under ' + parent.name;
+        if (input) {
+            input.value = '';
+            input.classList.remove('is-invalid');
+        }
+
+        const modalEl = document.getElementById('pmisCustomStageModalV74Q');
+        if (window.bootstrap?.Modal && modalEl) {
+            bootstrap.Modal.getOrCreateInstance(modalEl).show();
+            setTimeout(() => input?.focus(), 200);
+        } else {
+            const typed = window.prompt('Add a sub-stage under ' + parent.name + ':');
+            if (typed !== null && input) {
+                input.value = typed;
+                window.pmisConfirmAddCustomSubStageV74Q();
+            }
+        }
+    }
+
+    async function confirmAdd() {
+        if (!project || !addParentId) return;
+        if (isPlanStructureLocked()) {
+            notify('The baseline is submitted and locked. Custom sub-stages cannot be added now.', true);
+            return;
+        }
+
+        const input = document.getElementById('pmisCustomStageNameV74Q');
+        const name = String(input?.value || '').replace(/\s+/g, ' ').trim();
+        if (!name || name.length > 120 || /[<>]/.test(name)) {
+            input?.classList.add('is-invalid');
+            return;
+        }
+
+        const duplicate = defaultPhases.some(p =>
+            p.parent === addParentId &&
+            String(p.name || '').trim().toLowerCase() === name.toLowerCase()
+        );
+        if (duplicate) {
+            if (input) {
+                input.classList.add('is-invalid');
+                input.nextElementSibling && (input.nextElementSibling.textContent = 'A sub-stage with this name already exists under this stage.');
+            }
+            return;
+        }
+
+        const id = 'custom_' + addParentId + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+        customStore().push({
+            id,
+            name,
+            type: 'sub',
+            parent: addParentId,
+            custom_v74q: true,
+            created_at: new Date().toISOString(),
+            created_by: localStorage.getItem('danprel_username') || ''
+        });
+        project.detailed_phases[id] = phaseDataTemplate();
+
+        if (typeof expandedPhases !== 'undefined' && expandedPhases?.add) {
+            expandedPhases.add(addParentId);
+        }
+
+        hydrateCustomStages();
+
+        const modalEl = document.getElementById('pmisCustomStageModalV74Q');
+        if (window.bootstrap?.Modal && modalEl) {
+            bootstrap.Modal.getInstance(modalEl)?.hide();
+        }
+
+        if (typeof renderTable === 'function') renderTable();
+        if (typeof initFlatpickr === 'function') {
+            try { initFlatpickr(); } catch (_) {}
+        }
+
+        try {
+            if (typeof syncProject === 'function') await syncProject();
+            notify('Custom sub-stage added to this project.');
+        } catch (error) {
+            console.error('[PMIS V74Q] Custom sub-stage save failed:', error);
+            notify('The sub-stage was added locally but could not be saved. Please retry.', true);
+        }
+    }
+
+    function stageHasData(id) {
+        const d = project?.detailed_phases?.[id] || {};
+        return Boolean(
+            d.plan_start || d.plan_end || d.plan_duration || d.responsibility ||
+            d.actual_start || d.actual_end || Number(d.progress || 0) > 0 ||
+            String(d.remarks || '').trim() ||
+            (Array.isArray(d.revisions) && d.revisions.length) ||
+            (Array.isArray(project?.revision_requests) && project.revision_requests.some(r => String(r?.phaseId || '') === String(id)))
+        );
+    }
+
+    async function removeCustom(id) {
+        if (isPlanStructureLocked()) {
+            notify('The baseline is submitted and locked. The stage structure cannot be changed.', true);
+            return;
+        }
+
+        const item = customStore().find(x => x.id === id);
+        if (!item) return;
+
+        if (stageHasData(id)) {
+            notify('This custom sub-stage already contains project data. Use the existing disable checkbox instead of deleting it.', true);
+            return;
+        }
+
+        if (!window.confirm('Remove the custom sub-stage "' + item.name + '"?')) return;
+
+        project.detailed_phases[META_KEY] = customStore().filter(x => x.id !== id);
+        delete project.detailed_phases[id];
+        hydrateCustomStages();
+        if (typeof renderTable === 'function') renderTable();
+
+        try {
+            if (typeof syncProject === 'function') await syncProject();
+            notify('Custom sub-stage removed.');
+        } catch (error) {
+            console.error('[PMIS V74Q] Custom sub-stage removal save failed:', error);
+            notify('The stage was removed locally but could not be saved. Please retry.', true);
+        }
+    }
+
+    function decorateRenderedTable() {
+        const tbody = document.getElementById('phasesTbody');
+        if (!tbody || !project || !Array.isArray(defaultPhases)) return;
+
+        tbody.querySelectorAll('.pmis-custom-add-row-v74q').forEach(row => row.remove());
+
+        const customDefs = customStore().map(cleanDefinition).filter(Boolean);
+        customDefs.forEach(item => {
+            const marker = tbody.querySelector(`[data-phase-id="${item.id}"]`);
+            const row = marker?.closest('tr');
+            const label = row?.querySelector('.sub-phase-name');
+            if (!label || label.querySelector('.pmis-custom-badge-v74q')) return;
+
+            const badge = document.createElement('span');
+            badge.className = 'pmis-custom-badge-v74q';
+            badge.textContent = 'CUSTOM';
+            badge.style.cssText = 'margin-left:7px;padding:2px 6px;border-radius:999px;background:#e0f2fe;color:#0369a1;font-size:.52rem;font-weight:900;letter-spacing:.04em;vertical-align:middle;';
+            label.appendChild(badge);
+
+            if (!isPlanStructureLocked()) {
+                const remove = document.createElement('button');
+                remove.type = 'button';
+                remove.className = 'btn btn-link p-0 ms-2';
+                remove.title = 'Remove empty custom sub-stage';
+                remove.style.cssText = 'color:#94a3b8;font-size:.72rem;text-decoration:none;vertical-align:middle;';
+                remove.innerHTML = '<i class="bi bi-trash3"></i>';
+                remove.addEventListener('click', event => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    window.pmisRemoveCustomSubStageV74Q(item.id);
+                });
+                label.appendChild(remove);
+            }
+        });
+
+        const table = tbody.closest('table');
+        const columnCount = table?.querySelectorAll('thead tr:last-child th').length || 12;
+        const parents = defaultPhases.filter(p => p.type === 'parent');
+
+        parents.forEach(parent => {
+            const childRows = Array.from(tbody.querySelectorAll('tr')).filter(row =>
+                row.classList.contains('sub-of-' + parent.id) &&
+                !row.classList.contains('pmis-custom-add-row-v74q')
+            );
+            if (!childRows.length) return;
+
+            const lastChild = childRows[childRows.length - 1];
+            const addRow = document.createElement('tr');
+            const expanded = typeof expandedPhases !== 'undefined' && expandedPhases?.has?.(parent.id);
+            addRow.className = `tr-sub sub-of-${parent.id} pmis-custom-add-row-v74q ${expanded ? '' : 'd-none'}`;
+
+            const td = document.createElement('td');
+            td.colSpan = columnCount;
+            td.style.cssText = 'padding:6px 18px 10px 42px;background:#fbfdff;border-bottom:1px solid #edf2f7;';
+
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'btn btn-sm fw-bold';
+            button.disabled = isPlanStructureLocked();
+            button.style.cssText = 'border:1px dashed #7dd3fc;background:#f0f9ff;color:#0369a1;border-radius:999px;padding:5px 12px;font-size:.66rem;';
+            button.innerHTML = '<i class="bi bi-plus-circle me-1"></i>ADD SUB STAGE <span style="font-weight:600;color:#64748b;">(Project specific)</span>';
+            button.addEventListener('click', event => {
+                event.preventDefault();
+                event.stopPropagation();
+                openAdd(parent.id);
+            });
+            td.appendChild(button);
+            addRow.appendChild(td);
+            lastChild.insertAdjacentElement('afterend', addRow);
+        });
+    }
+
+    // Hydrate custom definitions BEFORE the original initializer loops defaultPhases.
+    if (typeof initProjectData === 'function') {
+        const baseInitProjectData = initProjectData;
+        initProjectData = function () {
+            hydrateCustomStages();
+            return baseInitProjectData.apply(this, arguments);
+        };
+    }
+
+    // Keep all original row behavior; only add project-specific definitions and controls around it.
+    if (typeof renderTable === 'function') {
+        const baseRenderTable = renderTable;
+        renderTable = function () {
+            hydrateCustomStages();
+            const result = baseRenderTable.apply(this, arguments);
+            decorateRenderedTable();
+            return result;
+        };
+    }
+
+    window.pmisOpenAddCustomSubStageV74Q = openAdd;
+    window.pmisConfirmAddCustomSubStageV74Q = confirmAdd;
+    window.pmisRemoveCustomSubStageV74Q = removeCustom;
+    window.pmisHydrateCustomStagesV74Q = hydrateCustomStages;
+
+    // Safe for a page that already loaded its project before this block executes.
+    try {
+        if (typeof project !== 'undefined' && project) {
+            hydrateCustomStages();
+            if (typeof renderTable === 'function') renderTable();
+        }
+    } catch (error) {
+        console.error('[PMIS V74Q] Initial custom-stage hydration failed:', error);
+    }
+
+    console.log('[PMIS V74Q] Project-specific custom sub-stages enabled.');
+})();
+</script>
 </body>
 
 </html>

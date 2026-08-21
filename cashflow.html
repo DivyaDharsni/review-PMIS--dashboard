@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PMIS - Cashflow / Payments</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --navy-prime:#001f3f;
+            --navy-secondary:#003366;
+            --teal-accent:#14b8a6;
+            --bg-neutral:#f4f7fb;
+            --ink:#132238;
+            --muted:#64748b;
+            --line:#dbe5ef;
+        }
+        *{box-sizing:border-box}
+        body{
+            margin:0;
+            min-height:100vh;
+            overflow-x:hidden;
+            background:var(--bg-neutral);
+            color:#0f172a;
+            font-family:Inter,"Segoe UI",Arial,sans-serif;
+            padding:28px 32px 90px;
+        }
+        .sidebar{
+            position:fixed;top:0;left:-320px;width:320px;height:100%;
+            background:linear-gradient(180deg,#001f3f 0%,#003366 100%);
+            z-index:1100;transition:all .4s cubic-bezier(.4,0,.2,1);
+            padding:30px;display:flex;flex-direction:column;
+            box-shadow:20px 0 60px rgba(0,31,63,.30);overflow-y:auto;
+        }
+        .sidebar.active{left:0}
+        .sidebar-overlay{
+            position:fixed;inset:0;background:rgba(2,12,27,.55);backdrop-filter:blur(2px);
+            z-index:1090;opacity:0;visibility:hidden;transition:.3s;
+        }
+        .sidebar-overlay.active{opacity:1;visibility:visible}
+        .sidebar-header{display:flex;align-items:center;justify-content:space-between;padding-bottom:24px;border-bottom:1px solid rgba(255,255,255,.10);margin-bottom:22px}
+        .brand-logo-wrap{width:46px;height:46px;border-radius:14px;background:#fff;display:flex;align-items:center;justify-content:center;padding:6px;box-shadow:0 7px 20px rgba(0,0,0,.12)}
+        .brand-logo-wrap img{width:100%;height:100%;object-fit:contain}
+        .sidebar-section-title{font-size:.65rem;text-transform:uppercase;letter-spacing:.11em;color:#94a3b8;font-weight:900;margin:12px 4px 10px}
+        .sidebar-btn{
+            width:100%;min-height:54px;border:1px solid transparent;background:transparent;color:#dbeafe;
+            display:flex;align-items:center;gap:13px;text-align:left;text-decoration:none;
+            border-radius:16px;padding:9px 12px;margin:3px 0;font-size:.88rem;font-weight:800;transition:.2s;
+        }
+        .sidebar-btn:hover{background:rgba(255,255,255,.08);color:#fff;border-color:rgba(255,255,255,.08)}
+        .sidebar-btn.active{background:rgba(20,184,166,.18);border-color:rgba(45,212,191,.30);color:#fff;box-shadow:inset 3px 0 0 #2dd4bf}
+        .sb-icon{width:34px;height:34px;border-radius:11px;background:rgba(255,255,255,.09);display:flex;align-items:center;justify-content:center;flex:0 0 34px}
+        .sb-icon i{font-size:1rem;color:#5eead4}
+        .sidebar-btn.active .sb-icon{background:rgba(45,212,191,.18)}
+        .admin-only{display:none!important}
+        body.pmis-admin .admin-only{display:flex!important}
+
+        .app-header{
+            min-height:82px;background:linear-gradient(135deg,#001f3f,#003b70);color:#fff;
+            border-radius:24px;display:flex;align-items:center;justify-content:space-between;
+            gap:18px;padding:14px 20px;margin-bottom:24px;
+            box-shadow:0 12px 30px rgba(0,31,63,.16);position:relative;z-index:900;
+        }
+        .header-left{display:flex;align-items:center;gap:14px;min-width:260px}
+        .menu-toggle{
+            width:46px;height:46px;border:1px solid rgba(255,255,255,.15);border-radius:14px;
+            background:rgba(255,255,255,.10);color:#fff;display:inline-flex;align-items:center;justify-content:center;
+            font-size:1.3rem;transition:.2s;flex:0 0 auto;
+        }
+        .menu-toggle:hover{background:rgba(255,255,255,.18);transform:translateY(-1px)}
+        .brand-box{display:flex;align-items:center;gap:11px;cursor:pointer;user-select:none}
+        .brand-box .brand-logo-wrap{width:44px;height:44px;border-radius:13px}
+        .brand-name{font-size:1.05rem;font-weight:900;letter-spacing:.01em;color:#fff;line-height:1.05}
+        .brand-sub{font-size:.58rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#94a3b8;margin-top:4px}
+        .header-center-title{font-weight:900;font-size:1.04rem;letter-spacing:.01em;text-align:center;white-space:nowrap}
+        .header-right{display:flex;align-items:center;justify-content:flex-end;gap:10px;min-width:260px}
+        .user-pill{max-width:205px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.78rem;font-weight:800;color:#dbeafe;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.10);border-radius:999px;padding:9px 13px}
+
+        .cashflow-main{width:100%;max-width:1700px;margin:0 auto}
+        .title-row{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:2px 0 18px}
+        .title-row h1{font-size:1.6rem;font-weight:900;color:var(--navy-prime);margin:0;letter-spacing:-.025em}
+        .title-row p{margin:5px 0 0;color:var(--muted);font-size:.86rem}
+        .panel{background:#fff;border:1px solid #e5edf5;border-radius:22px;box-shadow:0 7px 24px rgba(15,23,42,.045)}
+        .filters{padding:18px;margin-bottom:18px}.filter-grid{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:12px}.filter-grid label{font-size:.67rem;font-weight:900;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin:0 0 5px 2px}.form-select,.form-control{border-color:#d9e3ee;border-radius:12px;font-size:.82rem;min-height:42px}.form-select:focus,.form-control:focus{border-color:#0b2b4a;box-shadow:0 0 0 4px rgba(11,43,74,.08)}
+        .kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:18px}.kpi{padding:17px}.kpi small{font-size:.66rem;color:var(--muted);font-weight:900;text-transform:uppercase;letter-spacing:.05em}.kpi b{display:block;margin-top:7px;color:var(--navy-prime);font-size:1.15rem}.kpi .sub{font-size:.69rem;color:#64748b;margin-top:3px}
+        .charts{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:14px}.chart-card{padding:17px;min-height:330px}.chart-card h3{font-size:.86rem;color:var(--navy-prime);font-weight:900;margin:0 0 3px}.chart-card p{font-size:.7rem;color:var(--muted);margin:0 0 12px}.chart-wrap{height:255px;position:relative}
+        .charts.second{grid-template-columns:2fr 1fr}.table-panel{margin-top:14px;overflow:hidden}.table-head{padding:15px 17px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.table-head h3{font-size:.9rem;font-weight:900;color:var(--navy-prime);margin:0}.table-responsive{max-height:560px}.table{font-size:.76rem;margin:0;min-width:1420px}.table thead th{position:sticky;top:0;z-index:2;background:#edf3f8;color:#334155;text-transform:uppercase;font-size:.63rem;letter-spacing:.04em;border-bottom:1px solid #cbd5e1;padding:11px 9px}.table td{padding:10px 9px;vertical-align:middle;border-color:#edf2f7}.stage-text{max-width:220px;white-space:normal}.money{font-variant-numeric:tabular-nums;font-weight:800}.badge-soft{display:inline-flex;padding:5px 8px;border-radius:999px;font-size:.65rem;font-weight:900;white-space:nowrap}.s-paid{background:#dcfce7;color:#166534}.s-partial{background:#fef3c7;color:#92400e}.s-overdue{background:#fee2e2;color:#991b1b}.s-due{background:#dbeafe;color:#1d4ed8}.s-notdue{background:#f1f5f9;color:#475569}.s-plan{background:#f3e8ff;color:#7e22ce}
+        .btn-record{border:0;background:#0f9f92;color:#fff;border-radius:9px;padding:7px 10px;font-size:.7rem;font-weight:900}.btn-record:disabled{background:#cbd5e1;color:#64748b;cursor:not-allowed}.empty{padding:42px;text-align:center;color:#64748b}.loading{padding:60px;text-align:center;color:#64748b;font-weight:800}
+        .modal-content{border:0;border-radius:24px;overflow:hidden}.modal-header{background:linear-gradient(135deg,#001f3f,#003b70);color:#fff;border:0}.modal-title{font-weight:900}.modal-body label{font-size:.7rem;font-weight:900;color:#475569;text-transform:uppercase;letter-spacing:.04em}
+        @media(max-width:1100px){.filter-grid{grid-template-columns:repeat(2,minmax(150px,1fr))}.kpis{grid-template-columns:repeat(2,1fr)}.charts,.charts.second{grid-template-columns:1fr}.header-center-title{display:none!important}.header-left,.header-right{min-width:0}}
+        @media(max-width:768px){body{padding:14px 14px 70px}.app-header{padding:12px 13px;border-radius:20px;min-height:70px}.brand-box .brand-logo-wrap{display:none}.brand-sub{display:none}.header-right .user-pill{display:none}.cashflow-main{max-width:none}.filter-grid{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}.title-row h1{font-size:1.35rem}.sidebar{width:min(320px,90vw);left:-100vw;padding:24px}.menu-toggle{width:44px;height:44px}}
+        @media(max-width:480px){.kpis{grid-template-columns:1fr}.app-header{margin-bottom:17px}.title-row{align-items:flex-start}.title-row>div:last-child{width:100%}}
+    </style>
+</head>
+<body>
+<!-- PMIS_PAYMENT_MILESTONES_CASHFLOW_V75A -->
+<!-- PMIS_CASHFLOW_NATIVE_UI_ALIGNMENT_V75B -->
+<!-- PMIS_FLEX_MILESTONES_SPLIT_PAYMENTS_V75C -->
+<div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <div class="d-flex align-items-center gap-3">
+            <div class="brand-logo-wrap" style="width:40px;height:40px;"><img src="asset/image.png" alt="Logo"></div>
+            <div>
+                <div style="font-weight:900;font-size:1.1rem;color:white;">DANPREL</div>
+                <div style="font-size:.6rem;color:#94a3b8;text-transform:uppercase;">Engineering Automation Pvt Ltd</div>
+            </div>
+        </div>
+        <button class="btn-close btn-close-white" onclick="toggleSidebar()"></button>
+    </div>
+    <div class="sidebar-section-title">Navigation</div>
+    <a href="project_review.html" class="sidebar-btn">
+        <div class="sb-icon"><i class="bi bi-speedometer2"></i></div>Project Dashboard
+    </a>
+    <a href="cashflow.html" class="sidebar-btn active">
+        <div class="sb-icon"><i class="bi bi-graph-up-arrow"></i></div>Cashflow / Payments
+    </a>
+    <a href="resource_hub.html" class="sidebar-btn admin-only">
+        <div class="sb-icon"><i class="bi bi-people-fill"></i></div>Resource Hub
+    </a>
+    <div class="sidebar-section-title" style="margin-top:22px;">Account</div>
+    <button class="sidebar-btn" onclick="pmisCashflowLogout()">
+        <div class="sb-icon"><i class="bi bi-box-arrow-right"></i></div>Logout
+    </button>
+</div>
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+<header class="app-header">
+    <div class="header-left">
+        <button class="menu-toggle" onclick="toggleSidebar()" title="Open menu"><i class="bi bi-list"></i></button>
+        <div class="brand-box" role="button" tabindex="0" title="Go to Project Dashboard" onclick="goToHomeDashboard()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();goToHomeDashboard();}">
+            <div class="brand-logo-wrap"><img src="asset/image.png" alt="Logo"></div>
+            <div><div class="brand-name">DANPREL</div><div class="brand-sub">Engineering Automation Pvt Ltd</div></div>
+        </div>
+    </div>
+    <div class="header-center-title d-none d-lg-block">Cashflow / Payment Status</div>
+    <div class="header-right">
+        <span id="userLabel" class="user-pill"></span>
+        <button class="menu-toggle" onclick="goToHomeDashboard()" title="Back to Project Dashboard" aria-label="Back to Project Dashboard"><i class="bi bi-arrow-left"></i></button>
+    </div>
+</header>
+
+<main class="cashflow-main">
+    <div class="title-row">
+        <div><h1>Cashflow / Payment Status</h1><p>Planned realization from project milestones versus actual customer receipts.</p></div>
+        <div id="scopeLabel" class="badge rounded-pill text-bg-light border px-3 py-2 text-secondary">Loading project scope…</div>
+    </div>
+
+        <section class="panel filters">
+            <div class="filter-grid">
+                <div><label>Project</label><select id="fProject" class="form-select"><option value="">All Projects</option></select></div>
+                <div><label>Customer</label><select id="fCustomer" class="form-select"><option value="">All Customers</option></select></div>
+                <div><label>PM / Project Expeditor</label><select id="fManager" class="form-select"><option value="">All Expeditors</option></select></div>
+                <div><label>Payment Status</label><select id="fStatus" class="form-select"><option value="">All Statuses</option><option>Not Due</option><option>Due</option><option>Overdue</option><option>Partially Received</option><option>Realized</option><option>Plan Date Pending</option></select></div>
+                <div><label>Financial Year</label><select id="fFy" class="form-select"><option value="">All FY</option></select></div>
+                <div><label>Date Basis</label><select id="fDateBasis" class="form-select"><option value="planned">Planned Realization</option><option value="actual">Actual Receipt</option><option value="either">Either Planned / Actual</option></select></div>
+                <div><label>Date From</label><input id="fFrom" type="date" class="form-control"></div>
+                <div><label>Date To</label><input id="fTo" type="date" class="form-control"></div>
+            </div>
+            <div class="mt-3 d-flex gap-2 justify-content-end flex-wrap"><button class="btn btn-sm btn-light border rounded-pill px-3 fw-bold" id="btnClear"><i class="bi bi-arrow-counterclockwise me-1"></i>Clear Filters</button><button class="btn btn-sm btn-success rounded-pill px-3 fw-bold" id="btnRefresh"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</button></div>
+        </section>
+
+        <div class="kpis">
+            <div class="panel kpi"><small>PO Value</small><b id="kPo">₹0</b><div class="sub">Unique projects in current filter</div></div>
+            <div class="panel kpi"><small>Planned Collection</small><b id="kPlanned">₹0</b><div class="sub">Filtered payment milestones</div></div>
+            <div class="panel kpi"><small>Actual Collected</small><b id="kActual">₹0</b><div class="sub">Customer receipts recorded</div></div>
+            <div class="panel kpi"><small>Outstanding</small><b id="kOutstanding">₹0</b><div class="sub">Planned amount less receipts</div></div>
+            <div class="panel kpi"><small>Collection %</small><b id="kCollection">0%</b><div class="sub">Actual / planned collection</div></div>
+        </div>
+
+        <div class="charts">
+            <section class="panel chart-card"><h3>Monthly Cashflow — Planned vs Actual</h3><p>Planned realization month compared with actual receipt month.</p><div class="chart-wrap"><canvas id="cashflowChart"></canvas></div></section>
+            <section class="panel chart-card"><h3>Payment Status Mix</h3><p>Number of milestones by current commercial status.</p><div class="chart-wrap"><canvas id="statusChart"></canvas></div></section>
+        </div>
+        <div class="charts second">
+            <section class="panel chart-card"><h3>Cumulative Cashflow</h3><p>Cumulative planned and actual customer collections.</p><div class="chart-wrap"><canvas id="cumulativeChart"></canvas></div></section>
+            <section class="panel chart-card"><h3>Outstanding by Project</h3><p>Largest commercial balance in the filtered scope.</p><div class="chart-wrap"><canvas id="outstandingChart"></canvas></div></section>
+        </div>
+
+        <section class="panel table-panel">
+            <div class="table-head"><h3>Payment Milestone Register</h3><div class="small text-secondary" id="rowCount">0 milestones</div></div>
+            <div id="tableArea" class="loading"><span class="spinner-border spinner-border-sm me-2"></span>Loading payment data…</div>
+        </section>
+</main>
+
+<div class="modal fade" id="receiptModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header"><div><div style="font-size:.66rem;opacity:.7;font-weight:900;letter-spacing:.08em;">ACTUAL CASHFLOW</div><h5 class="modal-title">Milestone Receipts / Split Payments</h5></div><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body p-4">
+                <div id="receiptContext" class="p-3 rounded-4 mb-3" style="background:#f1f5f9;font-size:.78rem;"></div>
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div><div class="fw-bold">Receipt History</div><div class="small text-secondary">Every split received against this milestone is retained separately.</div></div>
+                        <span id="receiptSplitCount" class="badge rounded-pill text-bg-light border">0 receipts</span>
+                    </div>
+                    <div id="receiptHistory" class="border rounded-4 overflow-hidden"></div>
+                </div>
+                <div class="border rounded-4 p-3" style="background:#fbfdff;">
+                    <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
+                        <div><div class="fw-bold"><i class="bi bi-plus-circle me-1"></i>Add Split Payment</div><div class="small text-secondary">Use this again whenever another part-payment is realized.</div></div>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6"><label class="form-label">Amount Received (₹)</label><input id="rAmount" type="number" min="0.01" step="0.01" class="form-control"></div>
+                        <div class="col-md-6"><label class="form-label">Received Date</label><input id="rDate" type="date" class="form-control"></div>
+                        <div class="col-12"><label class="form-label">Payment / UTR Reference</label><input id="rReference" maxlength="120" class="form-control" placeholder="UTR / cheque / bank reference"></div>
+                        <div class="col-12"><label class="form-label">Remarks</label><textarea id="rRemarks" maxlength="250" rows="2" class="form-control" placeholder="Optional receipt note"></textarea></div>
+                    </div>
+                    <div id="receiptError" class="text-danger small fw-bold mt-3" style="display:none"></div>
+                    <div class="d-flex justify-content-end mt-3"><button type="button" id="btnSaveReceipt" class="btn btn-success rounded-pill px-4 fw-bold"><i class="bi bi-plus-lg me-1"></i>Add Split Payment</button></div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 px-4 pb-4"><button type="button" class="btn btn-light border rounded-pill px-4 fw-bold" data-bs-dismiss="modal">Close</button></div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script id="pmis-v75a-cashflow-script">
+/* PMIS_PAYMENT_MILESTONES_CASHFLOW_V75A */
+(function(){
+'use strict';
+
+window.toggleSidebar=function(){
+ const sidebar=document.getElementById('sidebar');
+ const overlay=document.getElementById('sidebarOverlay');
+ sidebar?.classList.toggle('active');
+ overlay?.classList.toggle('active');
+};
+window.goToHomeDashboard=function(){location.href='project_review.html';};
+window.pmisCashflowLogout=async function(){
+ try{await fetch('/api/auth/logout',{method:'POST',headers:headers(false)});}catch(_e){}
+ ['danprel_auth','danprel_access_token','danprel_role','danprel_username','danprel_employee_id','danprel_display_name'].forEach(k=>localStorage.removeItem(k));
+ location.href='login.html';
+};
+
+
+const GROUPS=[
+{id:'kickoff',name:'Kickoff',children:[['kickoff_1','PO receipt & acknowledgement'],['kickoff_2','Knowledge transfer from tech sales to project team']]},
+{id:'design',name:'Design',children:[['design_1','Concept Design'],['design_2','Detailed Design'],['design_critical_approval','Critical Elements Approval'],['design_3','Pre-DAP'],['design_4','Final DAP schedule with MOM updation'],['design_5','Standard parts (mech & elect) release to purchase'],['design_6','Fabrication parts release to purchase']]},
+{id:'purchase',name:'Purchase',children:[['purchase_1','Standard parts receipt'],['purchase_2','Fabrication parts receipt']]},
+{id:'mech_assembly',name:'Machine Assembly',children:[['mech_assembly_1','Mechanical assembly'],['mech_assembly_2','Electrical integration']]},
+{id:'program',name:'Programming',children:[['prog_plc_offline','PLC-offline programming'],['prog_plc','PLC-online programming, IO checking and manual mode'],['prog_robot','Robot programming'],['prog_labview','LabVIEW programming']]},
+{id:'inhouse',name:'Inhouse Trials',children:[['inhouse_1','Automated testing (dry run)'],['inhouse_2','Machine trials with customer components']]},
+{id:'mq1_fat',name:'MQ1 / FAT',children:[['mq1_fat_1','Customer factory visit for MQ1'],['mq1_fat_2','MQ1 points updation'],['mq1_fat_3','Customer acceptance for dispatch']]},
+{id:'dispatch_parent',name:'Machine Dispatch',children:[['dispatch_1','Machine packaging and dispatch'],['dispatch_2','Transportation & machine delivery at customer site']]},
+{id:'inc_parent',name:'Installation & Commissioning',children:[['inc_1','Machine unloading, positioning & power on'],['inc_2','MQ2 / SAT'],['inc_3','Training to customer'],['inc_4','Sign off and handover']]}
+];
+const groupIndex=Object.fromEntries(GROUPS.map((g,i)=>[g.id,i]));
+let projects=[],rows=[],filtered=[];
+let activeReceipt=null;
+let charts={};
+
+const $=id=>document.getElementById(id);
+const num=v=>Number.isFinite(Number(v))?Number(v):0;
+const clamp=v=>Math.max(0,Math.min(100,num(v)));
+const norm=v=>String(v??'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+const esc=v=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+const isoToday=()=>{const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')};
+
+function headers(json=true){
+ const h={
+  'x-pmis-role':localStorage.getItem('danprel_role')||'',
+  'x-pmis-username':localStorage.getItem('danprel_username')||'',
+  'x-pmis-employee-id':localStorage.getItem('danprel_employee_id')||'',
+  'x-pmis-display-name':localStorage.getItem('danprel_display_name')||''
+ };
+ const token=localStorage.getItem('danprel_access_token')||'';
+ if(token)h.Authorization='Bearer '+token;
+ if(json)h['Content-Type']='application/json';
+ return h;
+}
+function role(){return String(localStorage.getItem('danprel_role')||'').toLowerCase()}
+function isAdmin(){return role().includes('admin')}
+function identities(){return [localStorage.getItem('danprel_display_name'),localStorage.getItem('danprel_employee_id'),localStorage.getItem('danprel_username')].map(norm).filter(Boolean)}
+function canAccess(p){
+ if(isAdmin())return true;
+ const assignment=norm(p?.project_manager);
+ return !!assignment&&identities().some(id=>assignment.includes(id)||id.includes(assignment));
+}
+function money(v){
+ const n=num(v);return '₹'+new Intl.NumberFormat('en-IN',{maximumFractionDigits:0}).format(Math.round(n));
+}
+function fmtDate(v){if(!v)return '-';const m=String(v).slice(0,10).match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?`${m[3]}/${m[2]}/${m[1]}`:String(v)}
+function addDays(v,days){if(!v)return '';const p=String(v).slice(0,10).split('-').map(Number);if(p.length!==3||p.some(Number.isNaN))return '';const d=new Date(p[0],p[1]-1,p[2]);d.setDate(d.getDate()+Math.max(0,Math.trunc(num(days))));return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')}
+function maxIso(values){const a=values.filter(v=>/^\d{4}-\d{2}-\d{2}$/.test(String(v||'').slice(0,10))).map(v=>String(v).slice(0,10)).sort();return a.length?a[a.length-1]:''}
+function customDefs(p){const a=p?.detailed_phases?.__custom_substages_v74q;return Array.isArray(a)?a:[]}
+function stageLabel(p,id){
+ if(id==='po_date')return 'PO Date / Advance Payment';
+ for(const g of GROUPS){if(g.id===id)return g.name;const child=g.children.find(x=>x[0]===id);if(child)return child[1]}
+ const c=customDefs(p).find(x=>String(x?.id)===String(id));return c?.name?String(c.name)+' [Custom]':id||'-';
+}
+function childrenFor(p,parentId){
+ const fixed=(GROUPS.find(g=>g.id===parentId)?.children||[]).map(x=>x[0]);
+ const custom=customDefs(p).filter(x=>String(x.parent)===parentId).map(x=>String(x.id));
+ return [...fixed,...custom];
+}
+function stagePlanEnd(p,id){
+ if(id==='po_date')return String(p?.po_date||'').slice(0,10);
+ const direct=String(p?.detailed_phases?.[id]?.plan_end||'').slice(0,10);
+ if(direct)return direct;
+ if(groupIndex[id]!==undefined){return maxIso(childrenFor(p,id).map(cid=>p?.detailed_phases?.[cid]?.plan_end))}
+ return '';
+}
+function stageComplete(p,id){
+ if(id==='po_date')return !!p?.po_date;
+ const d=p?.detailed_phases?.[id]||{};
+ if(d.is_excluded===true)return false;
+ if(clamp(d.progress)>=100||!!d.actual_end)return true;
+ if(groupIndex[id]!==undefined){
+  const idx=groupIndex[id];const phase=Array.isArray(p?.phases)?p.phases[idx]:null;
+  if(phase&&clamp(phase.progress)>=100)return true;
+  const kids=childrenFor(p,id).filter(cid=>p?.detailed_phases?.[cid]?.is_excluded!==true);
+  return kids.length>0&&kids.every(cid=>{const x=p?.detailed_phases?.[cid]||{};return clamp(x.progress)>=100||!!x.actual_end});
+ }
+ return false;
+}
+function technicalComplete(p){
+ let active=0,complete=0;
+ GROUPS.forEach((g,idx)=>{
+  if(p?.detailed_phases?.[g.id]?.is_excluded===true)return;
+  active++;
+  const phase=Array.isArray(p?.phases)?p.phases[idx]:null;
+  if(phase&&clamp(phase.progress)>=100){complete++;return}
+  if(stageComplete(p,g.id))complete++;
+ });
+ return active>0&&complete===active;
+}
+function receipts(term){return Array.isArray(term?.actual_receipts)?term.actual_receipts:[]}
+function received(term){return receipts(term).reduce((s,r)=>s+Math.max(0,num(r?.amount)),0)}
+function expected(p,term){return Math.max(0,num(p?.po_value)*num(term?.percentage)/100)}
+function commercialComplete(p){
+ const terms=Array.isArray(p?.payment_milestones)?p.payment_milestones:[];
+ if(terms.length<4||!(num(p?.po_value)>0))return false;
+ if(Math.abs(terms.reduce((s,t)=>s+num(t?.percentage),0)-100)>.01)return false;
+ return terms.every(t=>expected(p,t)>0&&received(t)+.5>=expected(p,t));
+}
+function plannedDate(p,term){return addDays(stagePlanEnd(p,String(term?.linked_stage_id||'')),term?.credit_days)}
+function milestoneStatus(p,term){
+ const exp=expected(p,term),got=received(term);if(exp>0&&got+.5>=exp)return 'Realized';if(got>0)return 'Partially Received';
+ const pd=plannedDate(p,term);if(!pd)return 'Plan Date Pending';if(pd<isoToday())return 'Overdue';if(stageComplete(p,String(term?.linked_stage_id||''))||pd===isoToday())return 'Due';return 'Not Due';
+}
+function fyOf(date){if(!date)return '';const p=String(date).slice(0,10).split('-').map(Number);if(p.length!==3||p.some(Number.isNaN))return '';const y=p[0],m=p[1],start=m>=4?y:y-1;return `FY ${start}-${String(start+1).slice(-2)}`}
+function latestReceiptDate(term){return maxIso(receipts(term).map(r=>r?.received_date))}
+function buildRows(){
+ rows=[];projects.forEach(p=>{
+  const terms=Array.isArray(p?.payment_milestones)?p.payment_milestones:[];
+  if(terms.length!==4)return;
+  terms.slice(0,4).forEach((term,index)=>{
+   const exp=expected(p,term),got=received(term),pd=plannedDate(p,term);
+   rows.push({project:p,term,index,expected:exp,received:got,balance:Math.max(0,exp-got),planned:pd,actual:latestReceiptDate(term),status:milestoneStatus(p,term),eligible:stageComplete(p,String(term?.linked_stage_id||''))});
+  });
+ });
+}
+function fillSelect(id,values,label){const el=$(id);const current=el.value;el.innerHTML=`<option value="">${label}</option>`+[...new Set(values.filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b))).map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');if([...el.options].some(o=>o.value===current))el.value=current}
+function populateFilters(){
+ fillSelect('fProject',projects.map(p=>String(p._id||'')),'All Projects');
+ const fp=$('fProject');fp.innerHTML='<option value="">All Projects</option>'+projects.slice().sort((a,b)=>String(a.code||a.name).localeCompare(String(b.code||b.name))).map(p=>`<option value="${esc(p._id)}">${esc((p.code||p.tracking_code||'Project')+' — '+(p.name||''))}</option>`).join('');
+ fillSelect('fCustomer',projects.map(p=>p.customer_name),'All Customers');fillSelect('fManager',projects.map(p=>p.project_manager),'All Expeditors');
+ const fys=[];rows.forEach(r=>{if(r.planned)fys.push(fyOf(r.planned));receipts(r.term).forEach(x=>{if(x?.received_date)fys.push(fyOf(x.received_date))})});fillSelect('fFy',fys,'All FY');
+}
+function dateInRange(date,from,to){if(!date)return false;const d=String(date).slice(0,10);return (!from||d>=from)&&(!to||d<=to)}
+function applyFilters(){
+ const project=$('fProject').value,customer=$('fCustomer').value,manager=$('fManager').value,status=$('fStatus').value,fy=$('fFy').value,basis=$('fDateBasis').value,from=$('fFrom').value,to=$('fTo').value;
+ filtered=rows.filter(r=>{
+  if(project&&String(r.project._id)!==project)return false;if(customer&&String(r.project.customer_name||'')!==customer)return false;if(manager&&String(r.project.project_manager||'')!==manager)return false;if(status&&r.status!==status)return false;
+  if(fy){const plannedFy=fyOf(r.planned);const actualFys=receipts(r.term).map(x=>fyOf(x?.received_date));if(basis==='planned'&&plannedFy!==fy)return false;if(basis==='actual'&&!actualFys.includes(fy))return false;if(basis==='either'&&plannedFy!==fy&&!actualFys.includes(fy))return false}
+  if(from||to){const pOk=dateInRange(r.planned,from,to);const aOk=receipts(r.term).some(x=>dateInRange(x?.received_date,from,to));if(basis==='planned'&&!pOk)return false;if(basis==='actual'&&!aOk)return false;if(basis==='either'&&!pOk&&!aOk)return false}
+  return true;
+ });
+ renderAll();
+}
+function statusClass(s){return s==='Realized'?'s-paid':s==='Partially Received'?'s-partial':s==='Overdue'?'s-overdue':s==='Due'?'s-due':s==='Plan Date Pending'?'s-plan':'s-notdue'}
+function renderKpis(){
+ const uniq=new Map();filtered.forEach(r=>uniq.set(String(r.project._id),r.project));const po=[...uniq.values()].reduce((s,p)=>s+num(p.po_value),0);const planned=filtered.reduce((s,r)=>s+r.expected,0);const actual=filtered.reduce((s,r)=>s+r.received,0);const outstanding=Math.max(0,planned-actual);
+ $('kPo').textContent=money(po);$('kPlanned').textContent=money(planned);$('kActual').textContent=money(actual);$('kOutstanding').textContent=money(outstanding);$('kCollection').textContent=planned>0?(actual/planned*100).toFixed(1)+'%':'0%';
+}
+function renderTable(){
+ $('rowCount').textContent=filtered.length+' milestone'+(filtered.length===1?'':'s');if(!filtered.length){$('tableArea').className='empty';$('tableArea').innerHTML='<i class="bi bi-inbox fs-2 d-block mb-2"></i>No payment milestones match the selected filters.';return}
+ $('tableArea').className='table-responsive';$('tableArea').innerHTML=`<table class="table table-hover"><thead><tr><th>Project</th><th>Customer</th><th>Milestone</th><th>Linked Stage</th><th>%</th><th>Credit Days</th><th>Planned Amount</th><th>Stage Plan Date</th><th>Planned Realization</th><th>Actual Received</th><th>Last Receipt</th><th>Outstanding</th><th>Status</th><th>Action</th></tr></thead><tbody>${filtered.map(r=>{
+  const term=r.term,p=r.project,locked=!r.eligible||r.balance<=.5;const title=!r.eligible?'Linked stage is not 100% complete yet.':r.balance<=.5?'Milestone is fully realized.':'Open receipt history / add split payment';
+  return `<tr><td><strong>${esc(p.code||p.tracking_code||'Project')}</strong><div class="small text-secondary">${esc(p.name||'')}</div></td><td>${esc(p.customer_name||'-')}</td><td><strong>M${r.index+1}</strong><div class="small text-secondary">${esc(term.remarks||'')}</div></td><td class="stage-text">${esc(stageLabel(p,term.linked_stage_id))}</td><td>${num(term.percentage).toFixed(2).replace(/\.00$/,'')}%</td><td>${Math.trunc(num(term.credit_days))}</td><td class="money">${money(r.expected)}</td><td>${fmtDate(stagePlanEnd(p,term.linked_stage_id))}</td><td>${fmtDate(r.planned)}</td><td class="money">${money(r.received)}</td><td>${fmtDate(r.actual)}</td><td class="money">${money(r.balance)}</td><td><span class="badge-soft ${statusClass(r.status)}">${esc(r.status)}</span></td><td><button class="btn-record" data-record="${esc(p._id)}:${r.index}" title="${esc(title)}" ${locked?'disabled':''}><i class="bi bi-cash-coin me-1"></i>Receipts</button></td></tr>`
+ }).join('')}</tbody></table>`;
+ $('tableArea').querySelectorAll('[data-record]').forEach(btn=>btn.addEventListener('click',()=>openReceipt(btn.dataset.record)));
+}
+function monthKey(date){return date?String(date).slice(0,7):''}
+function monthLabel(key){if(!/^\d{4}-\d{2}$/.test(key))return key;const [y,m]=key.split('-').map(Number);return new Date(y,m-1,1).toLocaleDateString('en-IN',{month:'short',year:'2-digit'})}
+function monthRange(keys){const valid=keys.filter(k=>/^\d{4}-\d{2}$/.test(k)).sort();if(!valid.length)return[];let [y,m]=valid[0].split('-').map(Number),[ey,em]=valid[valid.length-1].split('-').map(Number),out=[];for(let guard=0;guard<120;guard++){const k=`${y}-${String(m).padStart(2,'0')}`;out.push(k);if(y===ey&&m===em)break;m++;if(m===13){m=1;y++}}return out}
+function destroyChart(name){if(charts[name]){charts[name].destroy();charts[name]=null}}
+function renderCharts(){
+ if(typeof Chart!=='function')return;
+ const plannedMap={},actualMap={};filtered.forEach(r=>{if(r.planned){const k=monthKey(r.planned);plannedMap[k]=(plannedMap[k]||0)+r.expected}receipts(r.term).forEach(x=>{if(!x?.received_date)return;const k=monthKey(x.received_date);actualMap[k]=(actualMap[k]||0)+Math.max(0,num(x.amount))})});
+ const months=monthRange([...Object.keys(plannedMap),...Object.keys(actualMap)]);const labels=months.map(monthLabel);const planned=months.map(k=>plannedMap[k]||0),actual=months.map(k=>actualMap[k]||0);
+ destroyChart('cash');charts.cash=new Chart($('cashflowChart'),{type:'bar',data:{labels,datasets:[{label:'Planned',data:planned},{label:'Actual',data:actual}]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'bottom'},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${money(c.raw)}`}}},scales:{y:{beginAtZero:true,ticks:{callback:v=>new Intl.NumberFormat('en-IN',{notation:'compact'}).format(v)}}}}});
+ let cp=0,ca=0;destroyChart('cum');charts.cum=new Chart($('cumulativeChart'),{type:'line',data:{labels,datasets:[{label:'Cumulative Planned',data:planned.map(v=>cp+=v),tension:.25},{label:'Cumulative Actual',data:actual.map(v=>ca+=v),tension:.25}]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'bottom'},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${money(c.raw)}`}}},scales:{y:{beginAtZero:true,ticks:{callback:v=>new Intl.NumberFormat('en-IN',{notation:'compact'}).format(v)}}}}});
+ const order=['Realized','Partially Received','Due','Overdue','Not Due','Plan Date Pending'];const counts=order.map(s=>filtered.filter(r=>r.status===s).length);destroyChart('status');charts.status=new Chart($('statusChart'),{type:'doughnut',data:{labels:order,datasets:[{data:counts}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}});
+ const outMap={};filtered.forEach(r=>{const k=String(r.project.code||r.project.tracking_code||r.project.name||'Project');outMap[k]=(outMap[k]||0)+r.balance});const top=Object.entries(outMap).sort((a,b)=>b[1]-a[1]).slice(0,8);destroyChart('out');charts.out=new Chart($('outstandingChart'),{type:'bar',data:{labels:top.map(x=>x[0]),datasets:[{label:'Outstanding',data:top.map(x=>x[1])}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>money(c.raw)}}},scales:{x:{beginAtZero:true,ticks:{callback:v=>new Intl.NumberFormat('en-IN',{notation:'compact'}).format(v)}}}}});
+}
+function renderAll(){renderKpis();renderTable();renderCharts()}
+function findProjectAndTerm(token){const [id,indexRaw]=String(token||'').split(':');const p=projects.find(x=>String(x._id)===id);const index=Number(indexRaw);const term=p&&Array.isArray(p.payment_milestones)?p.payment_milestones[index]:null;return p&&term?{p,term,index}:null}
+function renderReceiptHistory(term){
+ const list=receipts(term);const box=$('receiptHistory');const badge=$('receiptSplitCount');
+ if(badge)badge.textContent=list.length+' receipt'+(list.length===1?'':'s');
+ if(!box)return;
+ if(!list.length){box.innerHTML='<div class="p-3 text-secondary small">No receipts recorded yet. Add the first payment below.</div>';return}
+ box.innerHTML=`<div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th>#</th><th>Date</th><th>Amount</th><th>Reference</th><th>Remarks</th><th>Recorded By</th></tr></thead><tbody>${list.map((r,i)=>`<tr><td><strong>${i+1}</strong></td><td>${fmtDate(r?.received_date)}</td><td class="money">${money(r?.amount)}</td><td>${esc(r?.reference||'-')}</td><td>${esc(r?.remarks||'-')}</td><td>${esc(r?.recorded_by||'-')}</td></tr>`).join('')}</tbody></table></div>`;
+}
+function openReceipt(token){
+ const found=findProjectAndTerm(token);if(!found)return;const {p,term,index}=found;if(!stageComplete(p,String(term.linked_stage_id||''))){alert('The linked project stage is not 100% complete yet. Actual payment input remains locked.');return}const exp=expected(p,term),got=received(term),balance=Math.max(0,exp-got);
+ activeReceipt={projectId:String(p._id),index};$('receiptContext').innerHTML=`<strong>${esc(p.code||p.name)} — Milestone M${index+1}</strong><br>${esc(stageLabel(p,term.linked_stage_id))}<br><span class="text-secondary">Milestone: ${money(exp)} &nbsp;•&nbsp; Received: ${money(got)} &nbsp;•&nbsp; Balance: ${money(balance)}</span>`;renderReceiptHistory(term);$('rAmount').value=balance>0.5?balance.toFixed(2):'';$('rAmount').max=balance.toFixed(2);$('rDate').value=isoToday();$('rReference').value='';$('rRemarks').value='';$('receiptError').style.display='none';const btn=$('btnSaveReceipt');if(btn){btn.disabled=balance<=.5;btn.innerHTML=balance<=.5?'<i class="bi bi-check2-circle me-1"></i>Milestone Fully Realized':'<i class="bi bi-plus-lg me-1"></i>Add Split Payment';}bootstrap.Modal.getOrCreateInstance($('receiptModal')).show();
+}
+function setReceiptError(msg){$('receiptError').textContent=msg;$('receiptError').style.display='block'}
+async function patchProject(id,payload){const res=await fetch('/api/projects/'+encodeURIComponent(id),{method:'PATCH',headers:headers(true),cache:'no-store',body:JSON.stringify(payload)});const data=await res.json().catch(()=>({}));if(!res.ok)throw new Error(data.error||data.message||('Project update failed (HTTP '+res.status+')'));return data}
+async function saveReceipt(){
+ if(!activeReceipt)return;const p=projects.find(x=>String(x._id)===activeReceipt.projectId);const index=activeReceipt.index;const term=p?.payment_milestones?.[index];if(!p||!term)return;const exp=expected(p,term),got=received(term),balance=Math.max(0,exp-got),amount=num($('rAmount').value),date=$('rDate').value,reference=$('rReference').value.trim(),remarks=$('rRemarks').value.trim();
+ if(!(amount>0))return setReceiptError('Enter an amount greater than 0.');if(amount>balance+.5)return setReceiptError('Receipt cannot exceed the outstanding milestone balance of '+money(balance)+'.');if(!date)return setReceiptError('Received Date is required.');if(!reference)return setReceiptError('Payment / UTR Reference is required.');if(!stageComplete(p,String(term.linked_stage_id||'')))return setReceiptError('The linked stage is no longer complete. Receipt entry is locked.');
+ const next=p.payment_milestones.map((x,i)=>({...x,actual_receipts:receipts(x).map(r=>({...r}))}));next[index].actual_receipts.push({id:'rcpt_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),amount:Number(amount.toFixed(2)),received_date:date,reference:reference.slice(0,120),remarks:remarks.slice(0,250),recorded_at:new Date().toISOString(),recorded_by:localStorage.getItem('danprel_display_name')||localStorage.getItem('danprel_employee_id')||localStorage.getItem('danprel_username')||'PMIS User'});
+ const btn=$('btnSaveReceipt');btn.disabled=true;try{
+  let updated=await patchProject(p._id,{payment_milestones:next,payment_terms_version:'V75C',payment_terms_updated_at:new Date().toISOString()});
+  Object.assign(p,updated&&updated._id?updated:{payment_milestones:next});
+  if(technicalComplete(p)&&commercialComplete(p)&&String(p.status||'').toLowerCase()!=='closed'){
+   updated=await patchProject(p._id,{status:'Closed',current_phase:'Project Completed / Closed'});Object.assign(p,updated&&updated._id?updated:{status:'Closed',current_phase:'Project Completed / Closed'});
+  }
+  buildRows();populateFilters();applyFilters();
+  const refreshed=p?.payment_milestones?.[index];const newGot=received(refreshed),newBalance=Math.max(0,expected(p,refreshed)-newGot);$('receiptContext').innerHTML=`<strong>${esc(p.code||p.name)} — Milestone M${index+1}</strong><br>${esc(stageLabel(p,refreshed.linked_stage_id))}<br><span class="text-secondary">Milestone: ${money(expected(p,refreshed))} &nbsp;•&nbsp; Received: ${money(newGot)} &nbsp;•&nbsp; Balance: ${money(newBalance)}</span>`;renderReceiptHistory(refreshed);$('rAmount').value=newBalance>0.5?newBalance.toFixed(2):'';$('rAmount').max=newBalance.toFixed(2);$('rDate').value=isoToday();$('rReference').value='';$('rRemarks').value='';$('receiptError').style.display='none';btn.disabled=newBalance<=.5;btn.innerHTML=newBalance<=.5?'<i class="bi bi-check2-circle me-1"></i>Milestone Fully Realized':'<i class="bi bi-plus-lg me-1"></i>Add Split Payment';
+ }catch(error){setReceiptError(error.message||'Unable to save receipt.');btn.disabled=false;}
+}
+async function load(){
+ $('tableArea').className='loading';$('tableArea').innerHTML='<span class="spinner-border spinner-border-sm me-2"></span>Loading payment data…';
+ try{
+  const res=await fetch('/api/projects?t='+Date.now(),{headers:headers(false),cache:'no-store'});const data=await res.json().catch(()=>[]);if(!res.ok)throw new Error(data.error||data.message||('Unable to load projects (HTTP '+res.status+')'));if(!Array.isArray(data))throw new Error('Projects API returned an invalid response.');projects=data.filter(canAccess);buildRows();populateFilters();applyFilters();$('scopeLabel').textContent=(isAdmin()?'Admin — ':'Associated projects — ')+projects.length+' project'+(projects.length===1?'':'s');
+ }catch(error){$('tableArea').className='empty';$('tableArea').innerHTML='<i class="bi bi-exclamation-triangle fs-2 d-block mb-2 text-danger"></i>'+esc(error.message||'Unable to load cashflow data.');}
+}
+function clearFilters(){['fProject','fCustomer','fManager','fStatus','fFy'].forEach(id=>$(id).value='');$('fDateBasis').value='planned';$('fFrom').value='';$('fTo').value='';applyFilters()}
+function init(){
+ document.body.classList.toggle('pmis-admin',isAdmin());
+ const name=localStorage.getItem('danprel_display_name')||localStorage.getItem('danprel_username')||localStorage.getItem('danprel_employee_id')||'';if(!name&&!localStorage.getItem('danprel_role')){location.href='login.html';return}$('userLabel').textContent=name;
+ ['fProject','fCustomer','fManager','fStatus','fFy','fDateBasis','fFrom','fTo'].forEach(id=>$(id).addEventListener('change',applyFilters));$('btnClear').addEventListener('click',clearFilters);$('btnRefresh').addEventListener('click',load);$('btnSaveReceipt').addEventListener('click',saveReceipt);load();
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+})();
+</script>
+</body>
+</html>
