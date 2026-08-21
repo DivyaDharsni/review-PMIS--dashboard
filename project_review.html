@@ -2171,19 +2171,7 @@
             <div class="sb-icon" style="background: rgba(37,99,235,0.18);"><i class="bi bi-calendar-week-fill" style="color:#60a5fa;"></i></div>
             Project Calendar
         </button>
-        <!-- PMIS_CASHFLOW_STATIC_MENU_V75D2 -->
-        <a href="cashflow.html" class="sidebar-btn">
-            <div class="sb-icon" style="background: rgba(20,184,166,0.18);">
-                <i class="bi bi-graph-up-arrow" style="color:#2dd4bf;"></i>
-            </div>
-            Cashflow / Payments
-        </a>
-
-        
-
-        
-
-        <div class="sidebar-section-title" style="margin-top: 20px;">Reports</div>
+<div class="sidebar-section-title" style="margin-top: 20px;">Reports</div>
         <button class="sidebar-btn" onclick="openActionPointExport()">
             <div class="sb-icon" style="background: rgba(20,184,166,0.18);"><i class="bi bi-file-earmark-arrow-down-fill" style="color:#14b8a6;"></i></div>
             Export Action Points
@@ -19190,11 +19178,12 @@ async function sendReport(payload,button,originalHtml) {
 <script id="pmis-payment-milestones-cashflow-v75a">
 /* PMIS_PAYMENT_MILESTONES_CASHFLOW_V75A */
 /* PMIS_FLEX_MILESTONES_SPLIT_PAYMENTS_V75C */
+/* PMIS_OPTIONAL_PAYMENT_TERMS_COMPLETION_GATE_V75E */
 (function () {
     'use strict';
 
-    if (window.__PMIS_FLEX_MILESTONES_SPLIT_PAYMENTS_V75C__) return;
-    window.__PMIS_FLEX_MILESTONES_SPLIT_PAYMENTS_V75C__ = true;
+    if (window.__PMIS_OPTIONAL_PAYMENT_TERMS_COMPLETION_GATE_V75E__) return;
+    window.__PMIS_OPTIONAL_PAYMENT_TERMS_COMPLETION_GATE_V75E__ = true;
 
     const FIXED_STAGE_GROUPS = [
         { id:'kickoff', name:'Kickoff', children:[
@@ -19280,7 +19269,7 @@ async function sendReport(payload,button,originalHtml) {
             id: 'payment_m' + sequence,
             sequence,
             linked_stage_id: index === 0 ? 'po_date' : '',
-            percentage: 25,
+            percentage: 0,
             credit_days: 0,
             remarks: '',
             actual_receipts: []
@@ -19306,8 +19295,86 @@ async function sendReport(payload,button,originalHtml) {
         const rows = Array.isArray(project?.payment_milestones)
             ? project.payment_milestones
             : [];
-        if (rows.length < 4) return defaultTerms();
-        return rows.map(normalizeTerm);
+
+        if (!rows.length) return defaultTerms();
+
+        const normalized = rows.map(normalizeTerm);
+        const defaults = defaultTerms();
+
+        while (normalized.length < 4) {
+            const index = normalized.length;
+            normalized.push(normalizeTerm(defaults[index] || {
+                id:'payment_m' + (index + 1),
+                linked_stage_id:'',
+                percentage:0,
+                credit_days:0,
+                remarks:'',
+                actual_receipts:[]
+            },index));
+        }
+
+        return normalized;
+    }
+
+    function termHasMeaningfulData(term,index) {
+        const row = term && typeof term === 'object' ? term : {};
+        const hasReceipts =
+            Array.isArray(row.actual_receipts) &&
+            row.actual_receipts.length > 0;
+
+        const stage = String(row.linked_stage_id || '').trim();
+        const stageWasChosen =
+            !!stage &&
+            !(index === 0 && stage === 'po_date');
+
+        return (
+            hasReceipts ||
+            num(row.percentage) > 0 ||
+            num(row.credit_days) > 0 ||
+            !!String(row.remarks || '').trim() ||
+            stageWasChosen
+        );
+    }
+
+    function commercialConfigurationState(rows) {
+        const source = Array.isArray(rows) ? rows : [];
+        const meaningful = source
+            .map((row,index) => ({ row,index }))
+            .filter(item => termHasMeaningfulData(item.row,item.index));
+
+        if (!meaningful.length) {
+            return {
+                status:'not_configured',
+                meaningful:[],
+                configured:[],
+                total:0
+            };
+        }
+
+        const configured = meaningful.filter(item => {
+            const pct = num(item.row?.percentage);
+            return (
+                !!String(item.row?.linked_stage_id || '').trim() &&
+                pct > 0 &&
+                pct <= 100
+            );
+        });
+
+        const total = configured.reduce(
+            (sum,item) => sum + num(item.row?.percentage),
+            0
+        );
+
+        const valid =
+            configured.length === meaningful.length &&
+            Math.abs(total - 100) <= 0.001;
+
+        return {
+            status: valid ? 'configured' : 'draft',
+            meaningful,
+            configured,
+            total
+        };
     }
 
     function customDefinitions(project) {
@@ -19359,13 +19426,13 @@ async function sendReport(payload,button,originalHtml) {
                     <div style="padding:14px 16px;background:#0B2B4A;color:white;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
                         <div>
                             <div style="font-size:.66rem;font-weight:900;letter-spacing:.08em;opacity:.72;">COMMERCIAL PLAN</div>
-                            <div style="font-size:1rem;font-weight:900;">Payment Terms — 4 Default Milestones + Add if Needed</div>
+                            <div style="font-size:1rem;font-weight:900;">Payment Terms — Optional · 4 Default Rows + Add if Needed</div>
                         </div>
                         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
                             <button type="button" id="pmisAddPaymentMilestoneV75C" style="border:1px solid rgba(255,255,255,.34);background:rgba(255,255,255,.12);color:white;border-radius:999px;padding:7px 12px;font-size:.76rem;font-weight:900;">
                                 + Add Payment Milestone
                             </button>
-                            <div id="pmisPaymentTermsSumV75A" style="font-size:.78rem;font-weight:900;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.13);">Total: 100%</div>
+                            <div id="pmisPaymentTermsSumV75A" style="font-size:.78rem;font-weight:900;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.13);">Optional — Not configured</div>
                         </div>
                     </div>
                     <div style="padding:14px 14px 8px;">
@@ -19385,7 +19452,7 @@ async function sendReport(payload,button,originalHtml) {
                             </table>
                         </div>
                         <div style="font-size:.72rem;color:#64748b;line-height:1.45;padding:2px 4px 8px;">
-                            Four milestones are created by default. Use <b>+ Add Payment Milestone</b> for M5, M6 and beyond when a project has additional commercial stages. Planned realization = linked stage planned end date + credit days. All milestone percentages together must total exactly 100%.
+                            Payment terms are <b>optional</b> and never block project creation or editing. Leave all payment percentages at 0% to save without a commercial plan. If payment terms are configured, the active milestone percentages should total 100% for final commercial completion. Use <b>+ Add Payment Milestone</b> for M5, M6 and beyond. Planned realization = linked stage planned end date + credit days.
                         </div>
                     </div>
                 </div>`;
@@ -19488,8 +19555,15 @@ async function sendReport(payload,button,originalHtml) {
         const body = document.getElementById('pmisPaymentTermsBodyV75A');
         if (!body) return;
 
-        const hasConfiguredTerms = Array.isArray(project?.payment_milestones) && project.payment_milestones.length >= 4;
-        const legacyClosed = !!project && /^(closed|completed)$/i.test(String(project.status || '').trim()) && !hasConfiguredTerms;
+        const storedTerms = Array.isArray(project?.payment_milestones)
+            ? project.payment_milestones
+            : [];
+        const hasConfiguredTerms =
+            commercialConfigurationState(storedTerms).status !== 'not_configured';
+        const legacyClosed =
+            !!project &&
+            /^(closed|completed)$/i.test(String(project.status || '').trim()) &&
+            !hasConfiguredTerms;
         if (section) section.dataset.legacySkipV75a = legacyClosed ? '1' : '0';
 
         if (legacyClosed) {
@@ -19506,40 +19580,66 @@ async function sendReport(payload,button,originalHtml) {
 
     function collectTerms() {
         const section = document.getElementById('pmisPaymentTermsV75A');
-        if (section?.dataset?.legacySkipV75a === '1') return { rows:null, legacySkip:true };
-        const next = readTermsFromDom();
-        if (next.length < 4) return { error:'At least four payment milestones are required.' };
+        if (section?.dataset?.legacySkipV75a === '1') {
+            return {
+                rows:null,
+                legacySkip:true,
+                status:'legacy_closed'
+            };
+        }
 
-        if (next.some(row => !row.linked_stage_id)) {
-            return { error:'Select a linked stage / sub-stage for every payment milestone.' };
-        }
-        if (next.some(row => !(row.percentage > 0 && row.percentage <= 100))) {
-            return { error:'Each payment milestone must have a percentage greater than 0 and not more than 100.' };
-        }
-        if (next.some(row => row.credit_days < 0 || row.credit_days > 3650)) {
-            return { error:'Credit days must be between 0 and 3650.' };
-        }
-        const total = next.reduce((sum,row) => sum + row.percentage,0);
-        if (Math.abs(total - 100) > 0.001) {
-            return { error:'Payment milestone percentages must total exactly 100%. Current total: ' + total.toFixed(2) + '%' };
-        }
-        const poValue = num(document.getElementById('pPoValue')?.value);
-        if (!(poValue > 0)) {
-            return { error:'Enter a valid PO Value greater than 0 before saving payment terms.' };
-        }
+        const next = readTermsFromDom();
+        const state = commercialConfigurationState(next);
+
+        /*
+         * V75E:
+         * Payment terms are intentionally OPTIONAL.
+         * Project creation/editing must never be blocked because the commercial
+         * plan is blank or still being drafted.
+         *
+         * Completely untouched placeholder rows are not persisted.
+         * Once the user starts entering commercial data, keep the full row array
+         * so milestone numbering (M1/M2/M3...) remains stable.
+         */
+        const rows =
+            state.status === 'not_configured'
+                ? []
+                : next;
+
         paymentFormTerms = next;
-        return { rows:next };
+
+        return {
+            rows,
+            status:state.status,
+            total:state.total
+        };
     }
 
     function updatePercentBadge() {
         const badge = document.getElementById('pmisPaymentTermsSumV75A');
         if (!badge) return;
-        const total = Array.from(document.querySelectorAll('#pmisPaymentTermsBodyV75A [data-v75a="percentage"]'))
-            .reduce((sum,input) => sum + num(input.value),0);
-        badge.textContent = 'Total: ' + total.toFixed(total % 1 ? 2 : 0) + '%';
-        badge.style.background = Math.abs(total - 100) <= 0.001
-            ? 'rgba(16,185,129,.25)'
-            : 'rgba(245,158,11,.28)';
+
+        const rows = readTermsFromDom();
+        const state = commercialConfigurationState(rows);
+
+        if (state.status === 'not_configured') {
+            badge.textContent = 'Optional — Not configured';
+            badge.style.background = 'rgba(148,163,184,.28)';
+            return;
+        }
+
+        if (state.status === 'configured') {
+            badge.textContent = 'Configured: 100%';
+            badge.style.background = 'rgba(16,185,129,.25)';
+            return;
+        }
+
+        badge.textContent =
+            'Draft: ' +
+            state.total.toFixed(state.total % 1 ? 2 : 0) +
+            '%';
+
+        badge.style.background = 'rgba(245,158,11,.28)';
     }
 
     function totalReceived(term) {
@@ -19548,14 +19648,35 @@ async function sendReport(payload,button,originalHtml) {
     }
 
     window.pmisV75ACommercialComplete = function (project) {
-        const terms = Array.isArray(project?.payment_milestones) ? project.payment_milestones : [];
+        const terms = Array.isArray(project?.payment_milestones)
+            ? project.payment_milestones
+            : [];
+
+        const state = commercialConfigurationState(terms);
+
+        /*
+         * No payment terms configured = no commercial gate.
+         * Technical completion can close the project normally.
+         *
+         * Draft/partial terms = commercial gate is active but incomplete.
+         * Valid configured terms = every configured milestone must be 100%
+         * realized before final project closure.
+         */
+        if (state.status === 'not_configured') return true;
+        if (state.status !== 'configured') return false;
+
         const poValue = num(project?.po_value);
-        if (terms.length < 4 || !(poValue > 0)) return false;
-        const totalPct = terms.reduce((sum,row) => sum + num(row?.percentage),0);
-        if (Math.abs(totalPct - 100) > 0.01) return false;
-        return terms.every(term => {
-            const expected = poValue * num(term?.percentage) / 100;
-            return expected > 0 && totalReceived(term) + 0.5 >= expected;
+        if (!(poValue > 0)) return false;
+
+        return state.configured.every(item => {
+            const term = item.row;
+            const expected =
+                poValue * num(term?.percentage) / 100;
+
+            return (
+                expected > 0 &&
+                totalReceived(term) + 0.5 >= expected
+            );
         });
     };
 
@@ -19613,9 +19734,13 @@ async function sendReport(payload,button,originalHtml) {
                         const payload = JSON.parse(init.body);
                         if (Array.isArray(paymentRows)) {
                             payload.payment_milestones = paymentRows;
-                            payload.payment_terms_version = 'V75C';
-                            payload.payment_terms_updated_at = new Date().toISOString();
-                            payload.payment_terms_updated_by = identityName();
+                            payload.payment_terms_version = 'V75E';
+                            payload.payment_terms_status =
+                                collected.status || 'not_configured';
+                            payload.payment_terms_updated_at =
+                                new Date().toISOString();
+                            payload.payment_terms_updated_by =
+                                identityName();
                         }
                         init = { ...init, body:JSON.stringify(payload) };
                         injected = true;
@@ -19645,9 +19770,1043 @@ async function sendReport(payload,button,originalHtml) {
     }
 
     window.addEventListener('pageshow', ensureCashflowMenu);
-    console.log('[PMIS V75C] Flexible payment milestones + Cashflow menu active.');
+    console.log('[PMIS V75E] Optional payment terms + commercial completion gate active.');
 })();
 
+</script>
+<style id="pmis-vertical-dashboard-v75f-style">
+/* PMIS_VERTICAL_DASHBOARD_V75F */
+#pmisVerticalSplitV75F.pmis-v75f-split {
+    margin-top: 5px;
+    min-width: 118px;
+    display: grid;
+    gap: 2px;
+}
+#pmisVerticalSplitV75F .pmis-v75f-split-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 0.62rem;
+    line-height: 1.15;
+    color: #64748b;
+    white-space: nowrap;
+}
+#pmisVerticalSplitV75F .pmis-v75f-split-row strong {
+    color: #0b2b4a;
+    font-size: 0.68rem;
+    font-weight: 900;
+}
+.pmis-v75f-vertical-filter select {
+    font-weight: 800;
+}
+@media (max-width: 991px) {
+    .pmis-v75f-vertical-filter {
+        min-width: 100%;
+    }
+    .pmis-v75f-vertical-filter select {
+        width: 100%;
+        min-width: 0 !important;
+    }
+}
+</style>
+<script id="pmis-vertical-dashboard-v75f">
+/* PMIS_VERTICAL_DASHBOARD_V75F */
+(function () {
+    'use strict';
+
+    if (window.__PMIS_VERTICAL_DASHBOARD_V75F__) return;
+    window.__PMIS_VERTICAL_DASHBOARD_V75F__ = true;
+
+    const VERTICALS = [
+        { value: '100', label: 'Automation', short: 'Automation' },
+        { value: '200', label: 'Engineering Services', short: 'Engg Services' },
+        { value: '300', label: 'Manufacturing', short: 'Manufacturing' }
+    ];
+
+    function esc(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function trackingPrefix(value) {
+        const code = String(value || '').trim();
+        if (code.startsWith('100')) return '100';
+        if (code.startsWith('200')) return '200';
+        if (code.startsWith('300')) return '300';
+        return '';
+    }
+
+    function selectedVertical() {
+        return document.getElementById('verticalSelectorV75F')?.value || 'All';
+    }
+
+    function ensureSingleCashflowMenu() {
+        const sidebar = document.getElementById('sidebar');
+        if (!sidebar) return;
+
+        const links = Array.from(
+            sidebar.querySelectorAll('a[href="cashflow.html"], a[href="./cashflow.html"]')
+        );
+
+        if (links.length <= 1) return;
+
+        // Keep the first Cashflow link (the one directly below Project Dashboard)
+        // and remove only duplicates.
+        links.slice(1).forEach(link => link.remove());
+    }
+
+    function ensureVerticalFilter() {
+        if (document.getElementById('verticalSelectorV75F')) return true;
+
+        const manager = document.getElementById('managerSelector');
+        const pill = manager?.closest('.unified-filter-pill');
+        const managerGroup = manager?.closest('.filter-group');
+
+        if (!pill || !managerGroup) return false;
+
+        const divider = document.createElement('div');
+        divider.className = 'filt-divider pmis-v75f-vertical-divider';
+
+        const group = document.createElement('div');
+        group.className = 'filter-group pmis-v75f-vertical-filter';
+        group.innerHTML = `
+            <i class="bi bi-diagram-3-fill"></i>
+            <span class="filter-label">Vertical</span>
+            <select
+                id="verticalSelectorV75F"
+                class="date-input-field"
+                style="min-width:190px;"
+                title="Filter projects by tracking-code vertical"
+            >
+                <option value="All">All Verticals</option>
+                <option value="100">Automation (100)</option>
+                <option value="200">Engineering Services (200)</option>
+                <option value="300">Manufacturing (300)</option>
+            </select>
+        `;
+
+        managerGroup.insertAdjacentElement('afterend', divider);
+        divider.insertAdjacentElement('afterend', group);
+
+        group.querySelector('select')?.addEventListener('change', function () {
+            if (typeof filterTable === 'function') filterTable();
+        });
+
+        return true;
+    }
+
+    function ensureVerticalSplit() {
+        if (document.getElementById('pmisVerticalSplitV75F')) return true;
+
+        const total = document.getElementById('statTotal');
+        const valueWrap = total?.parentElement;
+        if (!total || !valueWrap) return false;
+
+        const split = document.createElement('div');
+        split.id = 'pmisVerticalSplitV75F';
+        split.className = 'pmis-v75f-split';
+        split.innerHTML = VERTICALS.map(v => `
+            <div class="pmis-v75f-split-row" data-vertical="${esc(v.value)}">
+                <span>${esc(v.short)}</span>
+                <strong id="pmisVerticalCount${esc(v.value)}V75F">0</strong>
+            </div>
+        `).join('');
+
+        valueWrap.appendChild(split);
+        return true;
+    }
+
+    function updateSplitFromNativeVisibleRows() {
+        const counts = { '100': 0, '200': 0, '300': 0 };
+
+        const rows = Array.from(
+            document.querySelectorAll('#projectTableBody tr')
+        );
+
+        rows.forEach(row => {
+            // At this point native filterTable has already applied PM/date/search/project filters,
+            // but V75F has not yet applied the vertical filter to the row.
+            if (row.style.display === 'none') return;
+
+            const trackingCode =
+                row.cells && row.cells[1]
+                    ? String(row.cells[1].textContent || '').trim()
+                    : '';
+
+            const prefix = trackingPrefix(trackingCode);
+            if (prefix) counts[prefix] += 1;
+        });
+
+        VERTICALS.forEach(v => {
+            const el = document.getElementById(`pmisVerticalCount${v.value}V75F`);
+            if (el) el.textContent = String(counts[v.value] || 0);
+        });
+    }
+
+    function applyVerticalToRows() {
+        const vertical = selectedVertical();
+        const rows = Array.from(
+            document.querySelectorAll('#projectTableBody tr')
+        );
+
+        let visibleIndex = 1;
+
+        rows.forEach(row => {
+            // Preserve rows already hidden by native PMIS filters.
+            if (row.style.display === 'none') return;
+
+            const trackingCode =
+                row.cells && row.cells[1]
+                    ? String(row.cells[1].textContent || '').trim()
+                    : '';
+
+            const matches =
+                vertical === 'All' ||
+                trackingPrefix(trackingCode) === vertical;
+
+            if (!matches) {
+                row.style.display = 'none';
+                return;
+            }
+
+            if (row.cells && row.cells[0]) {
+                row.cells[0].textContent = String(visibleIndex++);
+            }
+        });
+    }
+
+    function installFilterWrapper() {
+        if (window.__PMIS_VERTICAL_FILTER_WRAPPED_V75F__) return true;
+        if (typeof filterTable !== 'function') return false;
+
+        const nativeFilterTableV75F = filterTable;
+
+        filterTable = function () {
+            const vertical = selectedVertical();
+
+            let originalProjects = null;
+            let filteredProjects = null;
+
+            try {
+                // Native PMIS KPI logic reads the global `projects` array.
+                // Temporarily narrow that array so every existing KPI follows
+                // the vertical selection without rewriting native calculations.
+                if (
+                    vertical !== 'All' &&
+                    typeof projects !== 'undefined' &&
+                    Array.isArray(projects)
+                ) {
+                    originalProjects = projects;
+                    filteredProjects = originalProjects.filter(project =>
+                        trackingPrefix(project?.tracking_code) === vertical
+                    );
+                    projects = filteredProjects;
+                }
+
+                nativeFilterTableV75F.apply(this, arguments);
+            }
+            finally {
+                if (originalProjects) {
+                    projects = originalProjects;
+                }
+            }
+
+            // Native row filtering is DOM based, so calculate the 3-way split
+            // before applying the extra vertical visibility condition.
+            updateSplitFromNativeVisibleRows();
+            applyVerticalToRows();
+        };
+
+        window.filterTable = filterTable;
+        window.__PMIS_VERTICAL_FILTER_WRAPPED_V75F__ = true;
+
+        return true;
+    }
+
+    function installClearWrapper() {
+        if (window.__PMIS_VERTICAL_CLEAR_WRAPPED_V75F__) return true;
+        if (typeof window.clearMainProjectFiltersV40 !== 'function') return false;
+
+        const nativeClear = window.clearMainProjectFiltersV40;
+
+        window.clearMainProjectFiltersV40 = function () {
+            const vertical = document.getElementById('verticalSelectorV75F');
+            if (vertical) vertical.value = 'All';
+            return nativeClear.apply(this, arguments);
+        };
+
+        window.__PMIS_VERTICAL_CLEAR_WRAPPED_V75F__ = true;
+        return true;
+    }
+
+    function refresh() {
+        ensureSingleCashflowMenu();
+        const filterReady = ensureVerticalFilter();
+        const splitReady = ensureVerticalSplit();
+        const wrapped = installFilterWrapper();
+        installClearWrapper();
+
+        if (filterReady && splitReady && wrapped) {
+            try {
+                filterTable();
+            } catch (error) {
+                console.warn('[PMIS V75F] Initial vertical refresh skipped:', error);
+            }
+            return true;
+        }
+
+        return false;
+    }
+
+    let attempts = 0;
+    const timer = setInterval(function () {
+        attempts += 1;
+        if (refresh() || attempts >= 80) {
+            clearInterval(timer);
+        }
+    }, 150);
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', refresh, { once: true });
+    } else {
+        refresh();
+    }
+
+    // Sidebar can be re-rendered by role/UI scripts. Keep it deduplicated.
+    const observer = new MutationObserver(function () {
+        ensureSingleCashflowMenu();
+    });
+
+    observer.observe(document.documentElement, {
+        childList: true,
+        subtree: true
+    });
+})();
+</script>
+<script id="pmis-vertical-filter-sync-v75f2">
+/* PMIS_VERTICAL_FILTER_SYNC_V75F2 */
+(function () {
+    'use strict';
+
+    if (window.__PMIS_VERTICAL_FILTER_SYNC_V75F2__) return;
+    window.__PMIS_VERTICAL_FILTER_SYNC_V75F2__ = true;
+
+    const VERTICALS = [
+        { value: '100', label: 'Automation', short: 'Automation' },
+        { value: '200', label: 'Engineering Services', short: 'Engg Services' },
+        { value: '300', label: 'Manufacturing', short: 'Manufacturing' }
+    ];
+
+    function trackingPrefix(value) {
+        const code = String(value || '').trim();
+        if (code.startsWith('100')) return '100';
+        if (code.startsWith('200')) return '200';
+        if (code.startsWith('300')) return '300';
+        return '';
+    }
+
+    function selectedVertical() {
+        return document.getElementById('verticalSelectorV75F')?.value || 'All';
+    }
+
+    function ensureVerticalFilterLabels() {
+        const select = document.getElementById('verticalSelectorV75F');
+        if (!select) return false;
+
+        const labels = {
+            All: 'All Verticals',
+            '100': 'Automation',
+            '200': 'Engineering Services',
+            '300': 'Manufacturing'
+        };
+
+        Array.from(select.options).forEach(option => {
+            if (Object.prototype.hasOwnProperty.call(labels, option.value)) {
+                option.textContent = labels[option.value];
+            }
+        });
+
+        return true;
+    }
+
+    function ensureSplit() {
+        const split = document.getElementById('pmisVerticalSplitV75F');
+        if (!split) return false;
+
+        const labelMap = {
+            '100': 'Automation',
+            '200': 'Engg Services',
+            '300': 'Manufacturing'
+        };
+
+        split.querySelectorAll('.pmis-v75f-split-row').forEach(row => {
+            const key = row.getAttribute('data-vertical');
+            const label = row.querySelector('span');
+            if (label && labelMap[key]) label.textContent = labelMap[key];
+        });
+
+        return true;
+    }
+
+    function updateSplitFromNativeRows() {
+        const counts = { '100': 0, '200': 0, '300': 0 };
+
+        document.querySelectorAll('#projectTableBody tr').forEach(row => {
+            if (row.style.display === 'none') return;
+
+            const trackingCode =
+                row.cells && row.cells[1]
+                    ? String(row.cells[1].textContent || '').trim()
+                    : '';
+
+            const prefix = trackingPrefix(trackingCode);
+            if (prefix) counts[prefix] += 1;
+        });
+
+        Object.keys(counts).forEach(key => {
+            const el = document.getElementById(`pmisVerticalCount${key}V75F`);
+            if (el) el.textContent = String(counts[key]);
+        });
+    }
+
+    function applyVerticalToRows(vertical) {
+        let visibleIndex = 1;
+
+        document.querySelectorAll('#projectTableBody tr').forEach(row => {
+            if (row.style.display === 'none') return;
+
+            const trackingCode =
+                row.cells && row.cells[1]
+                    ? String(row.cells[1].textContent || '').trim()
+                    : '';
+
+            const matches =
+                vertical === 'All' ||
+                trackingPrefix(trackingCode) === vertical;
+
+            if (!matches) {
+                row.style.display = 'none';
+                return;
+            }
+
+            if (row.cells && row.cells[0]) {
+                row.cells[0].textContent = String(visibleIndex++);
+            }
+        });
+    }
+
+    function installSyncWrapper() {
+        if (window.__PMIS_VERTICAL_FILTER_SYNC_WRAPPED_V75F2__) return true;
+        if (typeof filterTable !== 'function') return false;
+
+        const previousFilter = filterTable;
+
+        filterTable = function () {
+            const vertical = selectedVertical();
+            let originalProjects = null;
+
+            try {
+                if (
+                    typeof projects !== 'undefined' &&
+                    Array.isArray(projects)
+                ) {
+                    originalProjects = projects;
+                }
+
+                // PASS 1:
+                // Run the complete native/current filter chain with ALL projects.
+                // This gives the true base set after PM, date, search, project,
+                // role/status and any other existing filters.
+                if (originalProjects) projects = originalProjects;
+                previousFilter.apply(this, arguments);
+
+                // Capture the 3-way split BEFORE applying Vertical.
+                // Therefore selecting Automation does not zero the other two counts.
+                updateSplitFromNativeRows();
+
+                if (vertical !== 'All' && originalProjects) {
+                    // PASS 2:
+                    // Re-run the exact same existing KPI logic using only the chosen
+                    // vertical so all dashboard cards stay synchronized.
+                    projects = originalProjects.filter(project =>
+                        trackingPrefix(project?.tracking_code) === vertical
+                    );
+
+                    previousFilter.apply(this, arguments);
+                }
+
+                // Native row filtering is intentionally vertical-agnostic.
+                // Apply Vertical last to the project list.
+                applyVerticalToRows(vertical);
+            }
+            finally {
+                if (originalProjects) {
+                    projects = originalProjects;
+                }
+            }
+        };
+
+        window.filterTable = filterTable;
+        window.__PMIS_VERTICAL_FILTER_SYNC_WRAPPED_V75F2__ = true;
+        return true;
+    }
+
+    function installClearWrapper() {
+        if (window.__PMIS_VERTICAL_CLEAR_SYNC_WRAPPED_V75F2__) return true;
+        if (typeof window.clearMainProjectFiltersV40 !== 'function') return false;
+
+        const previousClear = window.clearMainProjectFiltersV40;
+
+        window.clearMainProjectFiltersV40 = function () {
+            const vertical = document.getElementById('verticalSelectorV75F');
+            if (vertical) vertical.value = 'All';
+            return previousClear.apply(this, arguments);
+        };
+
+        window.__PMIS_VERTICAL_CLEAR_SYNC_WRAPPED_V75F2__ = true;
+        return true;
+    }
+
+    function init() {
+        const labelsReady = ensureVerticalFilterLabels();
+        const splitReady = ensureSplit();
+        const filterReady = installSyncWrapper();
+        installClearWrapper();
+
+        if (labelsReady && splitReady && filterReady) {
+            try {
+                filterTable();
+            } catch (error) {
+                console.warn('[PMIS V75F2] Initial vertical sync skipped:', error);
+            }
+            return true;
+        }
+
+        return false;
+    }
+
+    let attempts = 0;
+    const timer = setInterval(function () {
+        attempts += 1;
+        if (init() || attempts >= 80) clearInterval(timer);
+    }, 150);
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init, { once: true });
+    } else {
+        init();
+    }
+})();
+</script>
+<script id="pmis-vertical-split-count-fix-v75f3">
+/* PMIS_VERTICAL_SPLIT_COUNT_FIX_V75F3 */
+(function () {
+    'use strict';
+
+    if (window.__PMIS_VERTICAL_SPLIT_COUNT_FIX_V75F3__) return;
+    window.__PMIS_VERTICAL_SPLIT_COUNT_FIX_V75F3__ = true;
+
+    function prefixOf(value) {
+        const code = String(value || '').trim();
+        if (code.startsWith('100')) return '100';
+        if (code.startsWith('200')) return '200';
+        if (code.startsWith('300')) return '300';
+        return '';
+    }
+
+    function projectId(project) {
+        return String(
+            project?._id ||
+            project?.id ||
+            ''
+        ).trim();
+    }
+
+    function projectByRow(row) {
+        if (
+            typeof projects === 'undefined' ||
+            !Array.isArray(projects) ||
+            !row
+        ) {
+            return null;
+        }
+
+        const rowId = String(
+            row.dataset?.projId ||
+            row.getAttribute('data-proj-id') ||
+            ''
+        ).trim();
+
+        if (rowId) {
+            const exact = projects.find(project =>
+                projectId(project) === rowId
+            );
+            if (exact) return exact;
+        }
+
+        // Fallback using visible tracking code only if row id is unavailable.
+        const trackingCell =
+            row.cells && row.cells.length > 1
+                ? String(row.cells[1].textContent || '').trim()
+                : '';
+
+        if (trackingCell) {
+            return projects.find(project =>
+                String(project?.tracking_code || '').trim() === trackingCell
+            ) || null;
+        }
+
+        return null;
+    }
+
+    function visibleBaseRows() {
+        return Array.from(
+            document.querySelectorAll('#projectTableBody tr')
+        ).filter(row => row.style.display !== 'none');
+    }
+
+    function updateSplitCounts() {
+        const counts = { '100': 0, '200': 0, '300': 0 };
+
+        visibleBaseRows().forEach(row => {
+            const project = projectByRow(row);
+            if (!project) return;
+
+            const prefix = prefixOf(project.tracking_code);
+            if (prefix) counts[prefix] += 1;
+        });
+
+        ['100','200','300'].forEach(key => {
+            const el =
+                document.getElementById(
+                    `pmisVerticalCount${key}V75F`
+                );
+            if (el) el.textContent = String(counts[key]);
+        });
+
+        return counts;
+    }
+
+    function selectedVertical() {
+        return document.getElementById('verticalSelectorV75F')?.value || 'All';
+    }
+
+    function applyVerticalToRows() {
+        const selected = selectedVertical();
+        let index = 1;
+
+        document.querySelectorAll('#projectTableBody tr')
+            .forEach(row => {
+                // Rows already hidden by the native PM/date/search/project/status filters stay hidden.
+                if (row.style.display === 'none') return;
+
+                const project = projectByRow(row);
+                if (!project) return;
+
+                const match =
+                    selected === 'All' ||
+                    prefixOf(project.tracking_code) === selected;
+
+                if (!match) {
+                    row.style.display = 'none';
+                    return;
+                }
+
+                if (row.cells && row.cells[0]) {
+                    row.cells[0].textContent = String(index++);
+                }
+            });
+    }
+
+    function forceCleanLabels() {
+        const select = document.getElementById('verticalSelectorV75F');
+        if (!select) return;
+
+        const labels = {
+            All: 'All Verticals',
+            '100': 'Automation',
+            '200': 'Engineering Services',
+            '300': 'Manufacturing'
+        };
+
+        Array.from(select.options).forEach(option => {
+            if (Object.prototype.hasOwnProperty.call(labels, option.value)) {
+                option.textContent = labels[option.value];
+            }
+        });
+    }
+
+    function installWrapper() {
+        if (window.__PMIS_VERTICAL_SPLIT_COUNT_WRAPPED_V75F3__) return true;
+        if (typeof filterTable !== 'function') return false;
+
+        const previousFilter = filterTable;
+
+        filterTable = function () {
+            const selected = selectedVertical();
+            let originalProjects = null;
+
+            try {
+                if (
+                    typeof projects !== 'undefined' &&
+                    Array.isArray(projects)
+                ) {
+                    originalProjects = projects;
+                }
+
+                // PASS 1: run all existing PMIS filters WITHOUT the vertical restriction.
+                if (originalProjects) projects = originalProjects;
+                previousFilter.apply(this, arguments);
+
+                // The split represents this complete filtered base set.
+                updateSplitCounts();
+
+                // PASS 2: existing KPI cards follow the selected vertical.
+                if (selected !== 'All' && originalProjects) {
+                    projects = originalProjects.filter(project =>
+                        prefixOf(project?.tracking_code) === selected
+                    );
+                    previousFilter.apply(this, arguments);
+                }
+
+                // Project list also follows Vertical.
+                applyVerticalToRows();
+
+                // PASS 2 can re-render/alter rows. Restore the split from the
+                // unfiltered base shortly after the current render cycle.
+                setTimeout(function () {
+                    if (!originalProjects) return;
+
+                    const currentSelected = selectedVertical();
+
+                    try {
+                        projects = originalProjects;
+                        previousFilter.call(window);
+
+                        updateSplitCounts();
+
+                        if (currentSelected !== 'All') {
+                            projects = originalProjects.filter(project =>
+                                prefixOf(project?.tracking_code) === currentSelected
+                            );
+                            previousFilter.call(window);
+                        }
+
+                        applyVerticalToRows();
+                    }
+                    finally {
+                        projects = originalProjects;
+                    }
+                }, 0);
+            }
+            finally {
+                if (originalProjects) projects = originalProjects;
+            }
+        };
+
+        window.filterTable = filterTable;
+        window.__PMIS_VERTICAL_SPLIT_COUNT_WRAPPED_V75F3__ = true;
+        return true;
+    }
+
+    function observeRows() {
+        if (window.__PMIS_VERTICAL_SPLIT_OBSERVER_V75F3__) return;
+
+        const body = document.getElementById('projectTableBody');
+        if (!body) return;
+
+        let scheduled = false;
+
+        const observer = new MutationObserver(function () {
+            if (scheduled) return;
+            scheduled = true;
+
+            requestAnimationFrame(function () {
+                scheduled = false;
+
+                // Only refresh split when All Verticals is active.
+                // For a selected vertical, filterTable performs the base-count pass.
+                if (selectedVertical() === 'All') {
+                    updateSplitCounts();
+                }
+            });
+        });
+
+        observer.observe(body, {
+            childList: true,
+            subtree: true,
+            characterData: true
+        });
+
+        window.__PMIS_VERTICAL_SPLIT_OBSERVER_V75F3__ = observer;
+    }
+
+    function init() {
+        forceCleanLabels();
+
+        const wrapped = installWrapper();
+        observeRows();
+
+        if (
+            wrapped &&
+            document.getElementById('pmisVerticalSplitV75F') &&
+            document.getElementById('projectTableBody')
+        ) {
+            try {
+                filterTable();
+            } catch (error) {
+                console.warn('[PMIS V75F3] Initial vertical split refresh skipped:', error);
+            }
+            return true;
+        }
+
+        return false;
+    }
+
+    let attempts = 0;
+    const timer = setInterval(function () {
+        attempts += 1;
+        if (init() || attempts >= 100) {
+            clearInterval(timer);
+        }
+    }, 150);
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init, { once: true });
+    } else {
+        init();
+    }
+})();
+</script>
+<style id="pmis-filter-pane-alignment-v75f4">
+/* PMIS_FILTER_PANE_ALIGNMENT_V75F4 */
+.unified-filter-pill {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start;
+    gap: 0 !important;
+    flex-wrap: wrap;
+}
+
+.unified-filter-pill .filter-group,
+.unified-filter-pill .pmis-v75f-vertical-filter {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    min-height: 56px;
+}
+
+.unified-filter-pill .filter-group > i,
+.unified-filter-pill .pmis-v75f-vertical-filter > i {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+}
+
+.unified-filter-pill .filter-label,
+.unified-filter-pill .date-label {
+    display: inline-flex !important;
+    align-items: center !important;
+    margin: 0 !important;
+    line-height: 1.15 !important;
+    white-space: nowrap;
+}
+
+.unified-filter-pill .date-input-field,
+.unified-filter-pill select,
+.unified-filter-pill input[type="date"] {
+    min-height: 44px !important;
+    height: 44px !important;
+    box-sizing: border-box;
+    align-self: center !important;
+}
+
+.unified-filter-pill .filt-divider,
+.unified-filter-pill .pmis-v75f-vertical-divider,
+.unified-filter-pill .pmis-v40-clear-divider {
+    align-self: stretch !important;
+    height: auto !important;
+    min-height: 36px;
+    margin: 10px 18px !important;
+}
+
+.unified-filter-pill .pmis-v40-clear-btn,
+.unified-filter-pill .pmis-v40-main-clear {
+    min-height: 44px !important;
+    height: 44px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    align-self: center !important;
+    white-space: nowrap;
+}
+
+.filter-bar-wrap {
+    overflow: visible !important;
+}
+
+@media (max-width: 1200px) {
+    .unified-filter-pill {
+        row-gap: 10px !important;
+    }
+    .unified-filter-pill .filt-divider,
+    .unified-filter-pill .pmis-v75f-vertical-divider,
+    .unified-filter-pill .pmis-v40-clear-divider {
+        margin: 8px 12px !important;
+    }
+}
+
+@media (max-width: 991px) {
+    .unified-filter-pill {
+        align-items: stretch !important;
+    }
+
+    .unified-filter-pill .filter-group,
+    .unified-filter-pill .pmis-v75f-vertical-filter {
+        min-height: auto;
+        width: auto;
+    }
+
+    .unified-filter-pill .pmis-v40-clear-btn,
+    .unified-filter-pill .pmis-v40-main-clear {
+        width: auto;
+    }
+}
+</style>
+<style id="pmis-main-filter-single-line-v75g3">
+/* PMIS_MAIN_FILTER_SINGLE_LINE_V75G3 */
+@media (min-width: 992px) {
+    .filter-bar-wrap {
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        scrollbar-width: thin;
+    }
+
+    .unified-filter-pill {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        width: max-content !important;
+        min-width: 100% !important;
+        row-gap: 0 !important;
+        white-space: nowrap !important;
+        padding-top: 10px !important;
+        padding-bottom: 10px !important;
+    }
+
+    .unified-filter-pill .filter-group,
+    .unified-filter-pill .pmis-v75f-vertical-filter {
+        flex: 0 0 auto !important;
+        min-height: 52px !important;
+        width: auto !important;
+    }
+
+    .unified-filter-pill .filt-divider,
+    .unified-filter-pill .pmis-v75f-vertical-divider,
+    .unified-filter-pill .pmis-v40-clear-divider {
+        flex: 0 0 1px !important;
+        min-height: 34px !important;
+        margin: 9px 13px !important;
+    }
+
+    #managerSelector {
+        min-width: 235px !important;
+        width: 235px !important;
+    }
+
+    #verticalSelectorV75F {
+        min-width: 205px !important;
+        width: 205px !important;
+    }
+
+    #dateFrom,
+    #dateTo {
+        min-width: 205px !important;
+        width: 205px !important;
+    }
+
+    .unified-filter-pill .pmis-v40-clear-btn,
+    .unified-filter-pill .pmis-v40-main-clear {
+        flex: 0 0 auto !important;
+        margin-right: 6px !important;
+    }
+}
+</style>
+<style id="pmis-hide-revision-summary-v75l-style">
+/* PMIS_HIDE_REVISION_SUMMARY_V75L */
+#pmisRevisionSummaryV74C,
+#pmisHubRevisionSummaryV74C,
+#pmisRevisionSummaryV75K,
+#pmisHubRevisionSummaryV75K,
+#pmisRevisionSummaryV75K2,
+#pmisHubRevisionSummaryV75K2,
+.pmis-v74c-revision-summary,
+.pmis-v75k-revision-summary,
+.pmis-v75k2-revision-summary {
+    display:none !important;
+}
+</style>
+<script id="pmis-hide-revision-summary-v75l">
+/* PMIS_HIDE_REVISION_SUMMARY_V75L */
+(function(){
+    'use strict';
+    if(window.__PMIS_HIDE_REVISION_SUMMARY_V75L__) return;
+    window.__PMIS_HIDE_REVISION_SUMMARY_V75L__=true;
+
+    const selectors=[
+        '#pmisRevisionSummaryV74C',
+        '#pmisHubRevisionSummaryV74C',
+        '#pmisRevisionSummaryV75K',
+        '#pmisHubRevisionSummaryV75K',
+        '#pmisRevisionSummaryV75K2',
+        '#pmisHubRevisionSummaryV75K2',
+        '.pmis-v74c-revision-summary',
+        '.pmis-v75k-revision-summary',
+        '.pmis-v75k2-revision-summary'
+    ];
+
+    let queued=false;
+
+    function removeSummary(){
+        document.querySelectorAll(selectors.join(','))
+            .forEach(el=>el.remove());
+    }
+
+    function schedule(){
+        if(queued) return;
+        queued=true;
+        requestAnimationFrame(()=>{
+            queued=false;
+            removeSummary();
+        });
+    }
+
+    function start(){
+        removeSummary();
+
+        new MutationObserver(schedule).observe(
+            document.body,
+            {childList:true,subtree:true}
+        );
+
+        document.getElementById('revisionModal')
+            ?.addEventListener('shown.bs.modal',removeSummary);
+    }
+
+    if(document.readyState==='loading'){
+        document.addEventListener('DOMContentLoaded',start,{once:true});
+    }else{
+        start();
+    }
+})();
 </script>
 </body>
 

@@ -2150,16 +2150,14 @@
                         <div class="col-6 text-start">
                             <label class="section-lbl mb-2 ms-2 ps-1"
                                 style="color: #475569; font-weight: 800; font-size: 0.85rem;">Start Date</label>
-                            <input type="text" id="mRescheduleStart"
-                                class="form-control fw-bold border-1 py-3 px-4 fp-date" onchange="calcReassignDays()"
+                            <input type="date" id="mRescheduleStart" class="form-control fw-bold border-1 py-3 px-4 pmis-native-date-v75j" onchange="calcReassignDays()"
                                 placeholder="Select Start"
                                 style="border-radius: 100px; border-color: #e2e8f0; background: #fff; font-size: 0.9rem; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
                         </div>
                         <div class="col-6 text-start">
                             <label class="section-lbl mb-2 ms-2 ps-1"
                                 style="color: #475569; font-weight: 800; font-size: 0.85rem;">End Date</label>
-                            <input type="text" id="mRescheduleEnd"
-                                class="form-control fw-bold border-1 py-3 px-4 fp-date" onchange="calcReassignDays()"
+                            <input type="date" id="mRescheduleEnd" class="form-control fw-bold border-1 py-3 px-4 pmis-native-date-v75j" onchange="calcReassignDays()"
                                 placeholder="Select End"
                                 style="border-radius: 100px; border-color: #e2e8f0; background: #fff; font-size: 0.9rem; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
                         </div>
@@ -2212,11 +2210,11 @@
                     <div class="row g-3">
                         <div class="col-6">
                             <label class="small fw-bold text-muted">Actual Start</label>
-                            <input type="text" class="form-control fp-date" id="mActualStart" placeholder="Select Date">
+                            <input type="date" class="form-control pmis-native-date-v75j" id="mActualStart" placeholder="Select Date">
                         </div>
                         <div class="col-6">
                             <label class="small fw-bold text-muted">Actual End</label>
-                            <input type="text" class="form-control fp-date" id="mActualEnd" placeholder="Select Date">
+                            <input type="date" class="form-control pmis-native-date-v75j" id="mActualEnd" placeholder="Select Date">
                         </div>
                         <div class="col-12">
                             <label class="small fw-bold text-muted">Progress (%)</label>
@@ -3049,11 +3047,11 @@
 
 
                 const planStartInput = !isPlanLocked && !isParent && !isExcluded ?
-                    `<div class="revision-stack"><div class="revision-row"><input type="text" class="inline-date fp-date ${hasRevisions ? 'old-date-strike' : ''}" data-phase-id="${ph.id}" data-field="plan_start" value="${data.plan_start || ''}" placeholder="Select Date" onkeydown="if(event.key==='Enter') syncProject(this)"></div>${originalRowSpacer}${nextStartDisplay}</div>` :
+                    `<div class="revision-stack"><div class="revision-row"><input type="date" class="inline-date pmis-native-date-v75j ${hasRevisions ? 'old-date-strike' : ''}" data-phase-id="${ph.id}" data-field="plan_start" value="${data.plan_start || ''}" ${minAttr} onchange="saveInlineField('${ph.id}', 'plan_start', this.value, this)" onkeydown="if(event.key==='Enter') syncProject(this)"></div>${originalRowSpacer}${nextStartDisplay}</div>` :
                     `<div class="revision-stack"><div class="revision-row"><div><div class="inline-date d-flex align-items-center justify-content-center assigned-date ${hasRevisions ? 'old-date-strike' : ''}" style="cursor:default; background: ${data.plan_start ? '#edf2f7' : '#fff'}; border-color: ${data.plan_start ? '#cbd5e1' : '#e2e8f0'};">${formatDate(data.plan_start)}</div></div></div>${originalRowSpacer}${nextStartDisplay}</div>`;
 
                 const planEndInput = !isPlanLocked && !isParent && !isExcluded ?
-                    `<div class="revision-stack"><div class="revision-row"><input type="text" class="inline-date fp-date ${hasRevisions ? 'old-date-strike' : ''}" data-phase-id="${ph.id}" data-field="plan_end" value="${data.plan_end || ''}" placeholder="Select Date" onkeydown="if(event.key==='Enter') syncProject(this)"></div>${originalRowSpacer}${nextEndDisplay}</div>` :
+                    `<div class="revision-stack"><div class="revision-row"><input type="date" class="inline-date pmis-native-date-v75j ${hasRevisions ? 'old-date-strike' : ''}" data-phase-id="${ph.id}" data-field="plan_end" value="${data.plan_end || ''}" ${minAttr} onchange="saveInlineField('${ph.id}', 'plan_end', this.value, this)" onkeydown="if(event.key==='Enter') syncProject(this)"></div>${originalRowSpacer}${nextEndDisplay}</div>` :
                     `<div class="revision-stack"><div class="revision-row"><div><div class="inline-date d-flex align-items-center justify-content-center assigned-date ${hasRevisions ? 'old-date-strike' : ''}" style="cursor:default; background: ${data.plan_end ? '#edf2f7' : '#fff'}; border-color: ${data.plan_end ? '#cbd5e1' : '#e2e8f0'};">${formatDate(data.plan_end)}</div></div></div>${originalRowSpacer}${nextEndDisplay}</div>`;
 
                 const respValue = data.responsibility || '';
@@ -3074,7 +3072,7 @@
 
                 const actualStartInput = isParent ?
                     `<div class="inline-date inline-date-actual d-flex align-items-center justify-content-center assigned-date" style="cursor:default; color:var(--teal-accent);">${formatDate(data.actual_start)}</div>` :
-                    `<input type="text" class="inline-date inline-date-actual fp-date" data-phase-id="${ph.id}" data-field="actual_start" value="${data.actual_start || ''}" onkeydown="if(event.key==='Enter') syncProject(this)" ${dis} placeholder="Select Date">`;
+                    `<input type="date" class="inline-date inline-date-actual pmis-native-date-v75j" data-phase-id="${ph.id}" data-field="actual_start" value="${data.actual_start || ''}" ${minAttr} onchange="saveInlineField('${ph.id}', 'actual_start', this.value, this)" onkeydown="if(event.key==='Enter') syncProject(this)" ${dis}>`;
 
                 const totalDays = calcDays(data.plan_start, data.plan_end);
 
@@ -3132,7 +3130,7 @@
 
                 const actualEndInput = isParent ?
                     `<div><div class="inline-date inline-date-actual d-flex align-items-center justify-content-center assigned-date" style="cursor:default; color:#0f766e;">${formatDate(data.actual_end)}</div></div>` :
-                    `<div><input type="text" class="inline-date inline-date-actual fp-date" data-phase-id="${ph.id}" data-field="actual_end" value="${data.actual_end || ''}" onkeydown="if(event.key==='Enter') syncProject(this)" placeholder="Select Date"></div>`;
+                    `<div><input type="date" class="inline-date inline-date-actual pmis-native-date-v75j" data-phase-id="${ph.id}" data-field="actual_end" value="${data.actual_end || ''}" ${minAttr} onchange="saveInlineField('${ph.id}', 'actual_end', this.value, this)" onkeydown="if(event.key==='Enter') syncProject(this)"></div>`;
 
                 // Delay calculation based on Estimated End vs Actual End
                 const delayInfo = calcDelayStatus(calculatedEndISO, data.actual_end);
@@ -3263,6 +3261,11 @@
         }
 
         function initFlatpickr() {
+            // PMIS_NATIVE_DATE_ROOT_FIX_V75J
+            // Project Plan dates use native browser date controls now.
+            // This avoids third-party floating popup lifecycle conflicts
+            // during table rerenders and repeated modal openings.
+            if (!document.querySelector('input.fp-date')) return;
             const localeEn = {
                 days: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
                 daysShort: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
@@ -3304,6 +3307,13 @@
                     }
 
                     const options = {
+                        // PMIS_NEXT_MONTH_DATE_SELECTION_FIX_V75H
+                        // Future months must always remain selectable.
+                        // This also enables the grey next-month cells shown
+                        // at the end of the current calendar month.
+                        selectOtherMonths: true,
+                        moveToOtherMonthsOnSelect: true,
+                        disableNavWhenOutOfRange: false,
                         locale: localeEn,
                         autoClose: true,
                         buttons: ['clear'], // Add Clear button
@@ -3349,7 +3359,21 @@
                     // Note: Removed options.minDate to allow full month/year navigation
                     if (initialDate) options.selectedDates = [initialDate];
 
+                    // PMIS_CALENDAR_UI_FIX_V75H1
+                    // Avoid stacked/ghost calendars when initFlatpickr()
+                    // runs repeatedly for the same modal inputs.
+                    if (
+                        el.__pmisAirDatepickerV75H1 &&
+                        typeof el.__pmisAirDatepickerV75H1.destroy === 'function'
+                    ) {
+                        try {
+                            el.__pmisAirDatepickerV75H1.destroy();
+                        }
+                        catch (_) {}
+                    }
+
                     const dp = new AirDatepicker(el, options);
+                    el.__pmisAirDatepickerV75H1 = dp;
 
                     el.addEventListener('blur', () => {
                         // Ignore ghost blur events triggered when the element is detached from DOM during re-renders
@@ -3496,7 +3520,16 @@
         function saveInlineField(phaseId, field, value, element) {
             if (!project.detailed_phases[phaseId]) project.detailed_phases[phaseId] = {};
             const data = project.detailed_phases[phaseId];
-            if (data.locked) return;
+            // PMIS_RESPONSIBILITY_UNLOCK_FIX_V75L
+            // The Responsibility dropdown is already disabled when the
+            // overall plan is locked or the stage is excluded. Do not let
+            // a legacy row-level locked flag silently cancel this selection.
+            if (data.locked && field !== 'responsibility') return;
+
+            if (field === 'responsibility') {
+                value = String(value || '').trim();
+                if (!['', 'Danprel', 'Customer', 'Both'].includes(value)) return;
+            }
 
             if (field === 'progress') {
                 let parsed = parseInt(value, 10);
@@ -12507,6 +12540,2014 @@ console.log('[PMIS V74G] jsPDF + AutoTable libraries already present for vector 
     console.log('[PMIS V74Q] Project-specific custom sub-stages enabled.');
 })();
 </script>
+<style id="pmis-project-plan-commercial-milestones-v75g4-style">
+/* PMIS_PROJECT_PLAN_COMMERCIAL_MILESTONES_V75G4 */
+.pmis-v75g-warning {
+    margin: 0 0 12px 0;
+    border: 1px solid #f3d28b;
+    background: #fffaf0;
+    color: #7c5200;
+    border-radius: 14px;
+    padding: 10px 14px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    font-size: .72rem;
+    line-height: 1.45;
+}
+.pmis-v75g-warning i {
+    margin-top: 1px;
+}
+.pmis-v75g-dollar {
+    margin-left: 8px;
+    width: 28px;
+    height: 28px;
+    border: 1px solid #c7d8ea;
+    border-radius: 999px;
+    background: #ffffff;
+    color: #0b2b4a;
+    font-weight: 900;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    cursor: pointer;
+    flex: 0 0 auto;
+    box-shadow: 0 2px 8px rgba(11,43,74,.08);
+}
+.pmis-v75g-dollar:hover {
+    border-color: #14b8a6;
+    color: #0f766e;
+    transform: translateY(-1px);
+}
+.pmis-v75g-dollar small {
+    font-size: .52rem;
+    line-height: 1;
+}
+.pmis-v75g-dollar-parent {
+    background: #eefbf9;
+    border-color: #99e5dc;
+}
+.pmis-v75g-commercial-row > td {
+    padding: 0 !important;
+    border-top: 0 !important;
+    background: #fff !important;
+}
+.pmis-v75g-commercial-shell {
+    border-top: 1px solid #dbe5ef;
+    border-bottom: 1px solid #dbe5ef;
+    background: #f8fafc;
+}
+.pmis-v75g-commercial-title {
+    min-height: 42px;
+    padding: 7px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: #edf2f7;
+    border-bottom: 1px solid #dbe5ef;
+    color: #0b2b4a;
+    font-size: .72rem;
+}
+.pmis-v75g-commercial-title > div:first-child {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.pmis-v75g-milestone-badge {
+    display: inline-flex;
+    min-width: 30px;
+    height: 30px;
+    padding: 0 8px;
+    border-radius: 999px;
+    align-items: center;
+    justify-content: center;
+    background: #0b2b4a;
+    color: #fff;
+    font-weight: 900;
+    font-size: .68rem;
+}
+.pmis-v75g-term-remark {
+    color: #64748b;
+    font-size: .66rem;
+    font-weight: 600;
+}
+.pmis-v75g-balance {
+    color: #64748b;
+    white-space: nowrap;
+}
+.pmis-v75g-balance strong {
+    color: #0b2b4a;
+}
+.pmis-v75g-commercial-grid {
+    display: grid;
+    grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+}
+.pmis-v75g-side {
+    min-width: 0;
+}
+.pmis-v75g-side-plan {
+    background: #eaf3ff;
+    border-right: 2px solid #d0deed;
+}
+.pmis-v75g-side-actual {
+    background: #e3fbf6;
+}
+.pmis-v75g-side-label {
+    height: 34px;
+    padding: 0 14px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: .64rem;
+    font-weight: 900;
+    letter-spacing: .06em;
+}
+.pmis-v75g-side-plan .pmis-v75g-side-label {
+    color: #174f86;
+}
+.pmis-v75g-side-actual .pmis-v75g-side-label {
+    color: #0f766e;
+}
+.pmis-v75g-metric-grid {
+    display: grid;
+    grid-template-columns: repeat(4,minmax(0,1fr));
+    border-top: 1px solid rgba(148,163,184,.26);
+}
+.pmis-v75g-metric,
+.pmis-v75g-action-box {
+    min-height: 88px;
+    padding: 10px 12px;
+    border-right: 1px solid rgba(148,163,184,.24);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+}
+.pmis-v75g-metric:last-child,
+.pmis-v75g-action-box:last-child {
+    border-right: 0;
+}
+.pmis-v75g-metric-label {
+    color: #64748b;
+    font-size: .60rem;
+    font-weight: 900;
+    letter-spacing: .045em;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+}
+.pmis-v75g-metric-value {
+    color: #0b2b4a;
+    font-size: .80rem;
+    font-weight: 900;
+    overflow-wrap: anywhere;
+}
+.pmis-v75g-metric-sub {
+    color: #64748b;
+    font-size: .58rem;
+    line-height: 1.3;
+    margin-top: 4px;
+}
+.pmis-v75g-pending {
+    color: #9a6700;
+    font-style: italic;
+}
+.pmis-v75g-action-box {
+    gap: 6px;
+    align-items: stretch;
+}
+.pmis-v75g-add-payment,
+.pmis-v75g-history-btn {
+    border-radius: 999px;
+    min-height: 32px;
+    padding: 6px 10px;
+    font-size: .62rem;
+    font-weight: 900;
+    border: 1px solid transparent;
+}
+.pmis-v75g-add-payment {
+    background: #0f766e;
+    color: #fff;
+}
+.pmis-v75g-add-payment:disabled {
+    background: #cbd5e1;
+    color: #64748b;
+    cursor: not-allowed;
+}
+.pmis-v75g-history-btn {
+    background: #fff;
+    border-color: #b8d9d4;
+    color: #0f766e;
+}
+.pmis-v75g-flash .pmis-v75g-commercial-shell {
+    animation: pmisV75GFlash 2.4s ease;
+}
+@keyframes pmisV75GFlash {
+    0%,100% { box-shadow: none; }
+    20%,60% { box-shadow: inset 0 0 0 3px rgba(20,184,166,.55); }
+}
+.pmis-v75g-modal {
+    border: 0;
+    border-radius: 24px;
+    overflow: hidden;
+}
+.pmis-v75g-modal-head {
+    background: #0b2b4a;
+    color: #fff;
+    border: 0;
+    padding: 18px 22px;
+}
+.pmis-v75g-modal-kicker {
+    font-size: .60rem;
+    font-weight: 900;
+    letter-spacing: .09em;
+    opacity: .68;
+}
+.pmis-v75g-receipt-context {
+    padding: 14px;
+    border-radius: 16px;
+    background: #f1f5f9;
+    color: #0b2b4a;
+    font-size: .76rem;
+}
+.pmis-v75g-history {
+    border: 1px solid #dbe5ef;
+    border-radius: 16px;
+    overflow: hidden;
+}
+.pmis-v75g-entry {
+    padding: 16px;
+    border: 1px solid #bde7df;
+    background: #f0fdfa;
+    border-radius: 18px;
+}
+.pmis-v75g-lock-note {
+    color: #9a6700;
+    font-weight: 700;
+}
+.pmis-v75g-realized-note {
+    color: #047857;
+    font-weight: 700;
+}
+@media (max-width: 1100px) {
+    .pmis-v75g-commercial-grid {
+        grid-template-columns: 1fr;
+    }
+    .pmis-v75g-side-plan {
+        border-right: 0;
+        border-bottom: 2px solid #d0deed;
+    }
+}
+@media (max-width: 760px) {
+    .pmis-v75g-metric-grid {
+        grid-template-columns: repeat(2,minmax(0,1fr));
+    }
+    .pmis-v75g-commercial-title {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
+
+.pmis-v75g-title-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.pmis-v75g-delete-receipt {
+    min-height: 28px;
+    border-radius: 999px;
+    border: 1px solid #fecdd3;
+    background: #fff1f2;
+    color: #be123c;
+    padding: 4px 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    font-size: .60rem;
+    font-weight: 900;
+    white-space: nowrap;
+}
+.pmis-v75g-delete-receipt:hover {
+    background: #ffe4e6;
+    border-color: #fda4af;
+}
+
+
+.pmis-v75g-impact-inline {
+    position: fixed;
+    z-index: 10050;
+    max-width: 345px;
+    border: 1px solid #efc15f;
+    background: #fff8df;
+    color: #6f4b00;
+    border-radius: 9px;
+    box-shadow: 0 8px 22px rgba(15,23,42,.14);
+    padding: 7px 10px;
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    font-size: .62rem;
+    line-height: 1.35;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(-3px);
+    transition: opacity .15s ease, transform .15s ease;
+}
+.pmis-v75g-impact-inline.pmis-v75g-impact-inline-show {
+    opacity: 1;
+    transform: translateY(0);
+}
+.pmis-v75g-impact-inline > i {
+    color: #b7791f;
+    margin-top: 1px;
+    flex: 0 0 auto;
+}
+.pmis-v75g-net-value-note {
+    margin-top: 6px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: #9a5f00;
+    font-size: .67rem;
+    font-weight: 800;
+}
+
+</style>
+<script id="pmis-project-plan-commercial-milestones-v75g4">
+/* PMIS_PROJECT_PLAN_COMMERCIAL_MILESTONES_V75G4 */
+(function () {
+    'use strict';
+
+    if (window.__PMIS_PROJECT_PLAN_COMMERCIAL_MILESTONES_V75G4__) return;
+    window.__PMIS_PROJECT_PLAN_COMMERCIAL_MILESTONES_V75G4__ = true;
+
+    let activeReceiptV75G = null;
+    let renderQueuedV75G = false;
+    let queryJumpDoneV75G = false;
+    const collapsedCommercialV75G = new Set();
+
+    function esc(value) {
+        return String(value ?? '')
+            .replace(/&/g,'&amp;')
+            .replace(/</g,'&lt;')
+            .replace(/>/g,'&gt;')
+            .replace(/"/g,'&quot;')
+            .replace(/'/g,'&#039;');
+    }
+
+    function num(value) {
+        const n = Number(value);
+        return Number.isFinite(n) ? n : 0;
+    }
+
+    function clamp(value) {
+        return Math.max(0, Math.min(100, num(value)));
+    }
+
+    function money(value) {
+        return '₹' + new Intl.NumberFormat(
+            'en-IN',
+            { maximumFractionDigits: 0 }
+        ).format(Math.round(num(value)));
+    }
+
+    function dateObj(value) {
+        if (!value) return null;
+        const raw = String(value).slice(0,10);
+        const parts = raw.split('-').map(Number);
+        if (parts.length !== 3 || parts.some(Number.isNaN)) return null;
+        const d = new Date(parts[0], parts[1] - 1, parts[2]);
+        return Number.isNaN(d.getTime()) ? null : d;
+    }
+
+    function isoDate(value) {
+        const d = dateObj(value);
+        if (!d) return '';
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2,'0');
+        const day = String(d.getDate()).padStart(2,'0');
+        return `${y}-${m}-${day}`;
+    }
+
+    function fmtDate(value) {
+        const iso = isoDate(value);
+        if (!iso) return '-';
+        const [y,m,d] = iso.split('-');
+        return `${d}/${m}/${y}`;
+    }
+
+    function addDays(value,days) {
+        const d = dateObj(value);
+        if (!d) return '';
+        d.setDate(d.getDate() + Math.max(0, Math.trunc(num(days))));
+        return isoDate(
+            `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+        );
+    }
+
+    function maxIso(values) {
+        return values
+            .map(isoDate)
+            .filter(Boolean)
+            .sort()
+            .pop() || '';
+    }
+
+    function identityName() {
+        return (
+            localStorage.getItem('danprel_display_name') ||
+            localStorage.getItem('danprel_employee_id') ||
+            localStorage.getItem('danprel_username') ||
+            'PMIS User'
+        );
+    }
+
+    function phaseDefs() {
+        try {
+            return Array.isArray(defaultPhases) ? defaultPhases : [];
+        } catch (_) {
+            return [];
+        }
+    }
+
+    function phaseDef(id) {
+        return phaseDefs().find(item => String(item?.id || '') === String(id || '')) || null;
+    }
+
+    function childrenFor(parentId) {
+        return phaseDefs()
+            .filter(item =>
+                String(item?.parent || '') === String(parentId || '') &&
+                project?.detailed_phases?.[item.id]?.is_excluded !== true
+            )
+            .map(item => item.id);
+    }
+
+    function latestApprovedEndForPhase(stageId) {
+        if (stageId === 'po_date') {
+            return isoDate(project?.po_date);
+        }
+
+        const data = project?.detailed_phases?.[stageId] || {};
+        const revisions = Array.isArray(data.revisions)
+            ? data.revisions.filter(item => item && item.end)
+            : [];
+
+        if (revisions.length) {
+            const latest = revisions[revisions.length - 1];
+            const revised = isoDate(latest.end);
+            if (revised) return revised;
+        }
+
+        const direct = isoDate(data.plan_end);
+        if (direct) return direct;
+
+        const def = phaseDef(stageId);
+        if (def?.type === 'parent') {
+            return maxIso(
+                childrenFor(stageId).map(childId =>
+                    latestApprovedEndForPhase(childId)
+                )
+            );
+        }
+
+        return '';
+    }
+
+    function actualEndForPhase(stageId) {
+        if (stageId === 'po_date') {
+            return isoDate(project?.po_date);
+        }
+
+        const data = project?.detailed_phases?.[stageId] || {};
+        const direct = isoDate(data.actual_end);
+        if (direct) return direct;
+
+        const def = phaseDef(stageId);
+        if (def?.type === 'parent') {
+            return maxIso(
+                childrenFor(stageId).map(childId =>
+                    actualEndForPhase(childId)
+                )
+            );
+        }
+
+        return '';
+    }
+
+    function stageComplete(stageId) {
+        if (stageId === 'po_date') return !!isoDate(project?.po_date);
+
+        const data = project?.detailed_phases?.[stageId] || {};
+        if (data.is_excluded === true) return false;
+        if (clamp(data.progress) >= 100 || !!isoDate(data.actual_end)) {
+            return true;
+        }
+
+        const def = phaseDef(stageId);
+        if (def?.type === 'parent') {
+            const children = childrenFor(stageId);
+            if (!children.length) return false;
+            return children.every(childId => {
+                const child = project?.detailed_phases?.[childId] || {};
+                return (
+                    child.is_excluded !== true &&
+                    (
+                        clamp(child.progress) >= 100 ||
+                        !!isoDate(child.actual_end)
+                    )
+                );
+            });
+        }
+
+        return false;
+    }
+
+    function parentIdFor(stageId) {
+        if (stageId === 'po_date') return 'kickoff';
+        const def = phaseDef(stageId);
+        return def?.type === 'sub'
+            ? String(def.parent || '')
+            : '';
+    }
+
+    function stageName(stageId) {
+        if (stageId === 'po_date') return 'PO Date / Advance Payment';
+        const def = phaseDef(stageId);
+        return def?.name || stageId || 'Payment Stage';
+    }
+
+    function paymentTerms() {
+        return Array.isArray(project?.payment_milestones)
+            ? project.payment_milestones
+            : [];
+    }
+
+    function visibleTerms() {
+        return paymentTerms()
+            .map((term,index) => ({ term,index }))
+            .filter(item => {
+                const stage = String(item.term?.linked_stage_id || '').trim();
+                return stage && num(item.term?.percentage) > 0;
+            });
+    }
+
+    function receipts(term) {
+        return Array.isArray(term?.actual_receipts)
+            ? term.actual_receipts
+            : [];
+    }
+
+    function totalReceived(term) {
+        return receipts(term).reduce(
+            (sum,row) => sum + Math.max(0,num(row?.amount)),
+            0
+        );
+    }
+
+    function expectedAmount(term) {
+        return Math.max(
+            0,
+            num(project?.po_value) * num(term?.percentage) / 100
+        );
+    }
+
+    function plannedRealization(term) {
+        return addDays(
+            latestApprovedEndForPhase(
+                String(term?.linked_stage_id || '')
+            ),
+            term?.credit_days
+        );
+    }
+
+    function latestReceiptDate(term) {
+        return maxIso(
+            receipts(term).map(item => item?.received_date)
+        );
+    }
+
+    function actualForecastDate(term) {
+        const stageId = String(term?.linked_stage_id || '');
+        return addDays(
+            actualEndForPhase(stageId),
+            term?.credit_days
+        );
+    }
+
+    function actualPercentOfPo(term) {
+        const po = num(project?.po_value);
+        if (!(po > 0)) return 0;
+        return totalReceived(term) / po * 100;
+    }
+
+    function milestoneRealization(term) {
+        const expected = expectedAmount(term);
+        if (!(expected > 0)) return 0;
+        return Math.min(
+            100,
+            totalReceived(term) / expected * 100
+        );
+    }
+
+    function configuredCommercialState() {
+        const source = paymentTerms();
+
+        const meaningful = source
+            .map((row,index) => ({ row,index }))
+            .filter(item => {
+                const row = item.row || {};
+                const stage = String(row.linked_stage_id || '').trim();
+                const hasReceipts = receipts(row).length > 0;
+                const stageWasChosen =
+                    !!stage &&
+                    !(item.index === 0 && stage === 'po_date');
+
+                return (
+                    hasReceipts ||
+                    num(row.percentage) > 0 ||
+                    num(row.credit_days) > 0 ||
+                    !!String(row.remarks || '').trim() ||
+                    stageWasChosen
+                );
+            });
+
+        if (!meaningful.length) {
+            return {
+                status:'not_configured',
+                configured:[],
+                total:0
+            };
+        }
+
+        const configured = meaningful.filter(item => {
+            const pct = num(item.row?.percentage);
+            return (
+                !!String(item.row?.linked_stage_id || '').trim() &&
+                pct > 0 &&
+                pct <= 100
+            );
+        });
+
+        const total = configured.reduce(
+            (sum,item) => sum + num(item.row?.percentage),
+            0
+        );
+
+        return {
+            status:
+                configured.length === meaningful.length &&
+                Math.abs(total - 100) <= 0.01
+                    ? 'configured'
+                    : 'draft',
+            configured,
+            total
+        };
+    }
+
+    function commercialComplete() {
+        const state = configuredCommercialState();
+
+        if (state.status === 'not_configured') return true;
+        if (state.status !== 'configured') return false;
+        if (!(num(project?.po_value) > 0)) return false;
+
+        return state.configured.every(item => {
+            const expected = expectedAmount(item.row);
+            return (
+                expected > 0 &&
+                totalReceived(item.row) + 0.5 >= expected
+            );
+        });
+    }
+
+    function technicalComplete() {
+        const parents = phaseDefs().filter(item => item?.type === 'parent');
+        const active = parents.filter(parent =>
+            project?.detailed_phases?.[parent.id]?.is_excluded !== true
+        );
+
+        return (
+            active.length > 0 &&
+            active.every(parent => stageComplete(parent.id))
+        );
+    }
+
+    async function patchProject(payload) {
+        const res = await fetch(
+            '/api/projects/' + encodeURIComponent(projectId),
+            {
+                method:'PATCH',
+                headers:{
+                    'Content-Type':'application/json',
+                    'Cache-Control':'no-cache'
+                },
+                cache:'no-store',
+                body:JSON.stringify(payload)
+            }
+        );
+
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+            throw new Error(
+                data.error ||
+                data.message ||
+                ('Project update failed (HTTP ' + res.status + ')')
+            );
+        }
+
+        return data;
+    }
+
+    function rowForStage(stageId) {
+        const anchorId =
+            stageId === 'po_date'
+                ? 'kickoff'
+                : stageId;
+
+        const def = phaseDef(anchorId);
+
+        if (def?.type === 'parent') {
+            return document.getElementById('tr_' + anchorId);
+        }
+
+        const matchingControl = Array.from(
+            document.querySelectorAll('[data-phase-id]')
+        ).find(element =>
+            String(element.dataset.phaseId || '') === String(anchorId)
+        );
+
+        return matchingControl?.closest('tr') || null;
+    }
+
+    function firstLabelHost(row) {
+        if (!row) return null;
+        return (
+            row.querySelector('td:first-child .revision-row') ||
+            row.cells?.[0] ||
+            null
+        );
+    }
+
+    function ensureWarning() {
+        // V75G3: no permanent warning banner.
+        // If an older render left one behind, remove it.
+        document
+            .getElementById('pmisCommercialPlanWarningV75G')
+            ?.remove();
+    }
+
+    function showPlanCashflowImpactWarningV75G(indexes,anchorElement = null) {
+        if (!indexes || !indexes.length) return;
+
+        document
+            .getElementById('pmisPlanCashflowImpactV75G')
+            ?.remove();
+
+        const notice = document.createElement('div');
+        notice.id = 'pmisPlanCashflowImpactV75G';
+        notice.className = 'pmis-v75g-impact-inline';
+
+        notice.innerHTML = `
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <div>
+                <strong>Warning:</strong>
+                this payment-linked plan change may affect planned cashflow.
+            </div>
+        `;
+
+        document.body.appendChild(notice);
+
+        const anchor =
+            anchorElement instanceof Element
+                ? anchorElement
+                : null;
+
+        function positionNotice() {
+            if (!notice.isConnected) return;
+
+            let rect = null;
+
+            if (anchor && anchor.isConnected) {
+                rect = anchor.getBoundingClientRect();
+            }
+
+            if (!rect) {
+                const stageId =
+                    String(
+                        paymentTerms()[indexes[0]]
+                            ?.linked_stage_id || ''
+                    );
+                rect =
+                    rowForStage(stageId)
+                        ?.getBoundingClientRect() || null;
+            }
+
+            if (!rect) {
+                notice.style.left = '18px';
+                notice.style.top = '18px';
+                return;
+            }
+
+            const gap = 7;
+            let left = rect.left;
+            let top = rect.bottom + gap;
+
+            if (
+                left + notice.offsetWidth >
+                window.innerWidth - 8
+            ) {
+                left =
+                    Math.max(
+                        8,
+                        window.innerWidth -
+                        notice.offsetWidth -
+                        8
+                    );
+            }
+
+            if (
+                top + notice.offsetHeight >
+                window.innerHeight - 8
+            ) {
+                top =
+                    Math.max(
+                        8,
+                        rect.top -
+                        notice.offsetHeight -
+                        gap
+                    );
+            }
+
+            notice.style.left = Math.max(8,left) + 'px';
+            notice.style.top = Math.max(8,top) + 'px';
+        }
+
+        requestAnimationFrame(() => {
+            positionNotice();
+            notice.classList.add(
+                'pmis-v75g-impact-inline-show'
+            );
+        });
+
+        const reposition = () => positionNotice();
+
+        window.addEventListener(
+            'resize',
+            reposition,
+            { passive:true }
+        );
+
+        window.addEventListener(
+            'scroll',
+            reposition,
+            true
+        );
+
+        setTimeout(() => {
+            notice.classList.remove(
+                'pmis-v75g-impact-inline-show'
+            );
+
+            window.removeEventListener(
+                'resize',
+                reposition
+            );
+
+            window.removeEventListener(
+                'scroll',
+                reposition,
+                true
+            );
+
+            setTimeout(() => notice.remove(),160);
+        },3200);
+    }
+
+    function metric(label,value,sub = '') {
+        return `
+            <div class="pmis-v75g-metric">
+                <div class="pmis-v75g-metric-label">${esc(label)}</div>
+                <div class="pmis-v75g-metric-value">${value}</div>
+                ${sub ? `<div class="pmis-v75g-metric-sub">${sub}</div>` : ''}
+            </div>
+        `;
+    }
+
+    function commercialRowHtml(term,index) {
+        const expected = expectedAmount(term);
+        const received = totalReceived(term);
+        const balance = Math.max(0, expected - received);
+        const plannedDate = plannedRealization(term);
+        const receiptDate = latestReceiptDate(term);
+        const actualForecast = actualForecastDate(term);
+        const actualPctPo = actualPercentOfPo(term);
+        const milestonePct = milestoneRealization(term);
+        const stageId = String(term?.linked_stage_id || '');
+        const eligible = stageComplete(stageId);
+        const fullyRealized = expected > 0 && received + 0.5 >= expected;
+        const splitCount = receipts(term).length;
+
+        const plannedDateHtml = plannedDate
+            ? `<span>${esc(fmtDate(plannedDate))}</span>`
+            : `<span class="pmis-v75g-pending">Plan date not set</span>`;
+
+        let actualDateHtml = '-';
+        let actualDateSub = '';
+
+        if (receiptDate) {
+            actualDateHtml = esc(fmtDate(receiptDate));
+            actualDateSub =
+                splitCount > 1
+                    ? `Latest of ${splitCount} split receipts`
+                    : 'Actual receipt date';
+        }
+        else if (actualForecast) {
+            actualDateHtml = esc(fmtDate(actualForecast));
+            actualDateSub = 'Forecast: Actual End + Credit Days';
+        }
+        else {
+            actualDateHtml = '<span class="pmis-v75g-pending">Not realized</span>';
+            actualDateSub = 'Awaiting stage actual / receipt';
+        }
+
+        const actionText = fullyRealized
+            ? 'Fully Realized'
+            : '+ Add Split Payment';
+
+        const collapsedV75G =
+            collapsedCommercialV75G.has(index);
+
+        return `
+            <div class="pmis-v75g-commercial-shell">
+                <div class="pmis-v75g-commercial-title">
+                    <div>
+                        <span class="pmis-v75g-milestone-badge">M${index + 1}</span>
+                        <strong>${esc(stageName(stageId))}</strong>
+                        ${term?.remarks ? `<span class="pmis-v75g-term-remark">${esc(term.remarks)}</span>` : ''}
+                    </div>
+                    <div class="pmis-v75g-title-actions">
+                        <div class="pmis-v75g-balance">
+                            Outstanding: <strong>${esc(money(balance))}</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pmis-v75g-commercial-grid" ${collapsedV75G ? 'style="display:none;"' : ''}>
+                    <div class="pmis-v75g-side pmis-v75g-side-plan">
+                        <div class="pmis-v75g-side-label">
+                            <i class="bi bi-calendar2-check"></i>
+                            PLANNED CASHFLOW
+                        </div>
+                        <div class="pmis-v75g-metric-grid plan">
+                            ${metric('Credit %', esc(num(term?.percentage).toFixed(2).replace(/\.00$/,'')) + '%')}
+                            ${metric('Credit Days', esc(Math.trunc(num(term?.credit_days))))}
+                            ${metric(
+                                'Expected Inflow',
+                                esc(money(expected)),
+                                plannedDate
+                                    ? 'PO Value × Payment %'
+                                    : 'Amount available even before plan dates'
+                            )}
+                            ${metric(
+                                'Expected Date',
+                                plannedDateHtml,
+                                plannedDate
+                                    ? 'Latest approved Plan End + Credit Days'
+                                    : 'Will calculate once the linked plan date exists'
+                            )}
+                        </div>
+                    </div>
+
+                    <div class="pmis-v75g-side pmis-v75g-side-actual">
+                        <div class="pmis-v75g-side-label">
+                            <i class="bi bi-cash-coin"></i>
+                            ACTUAL CASHFLOW
+                        </div>
+                        <div class="pmis-v75g-metric-grid actual">
+                            ${metric(
+                                'Actual Inflow',
+                                esc(money(received)),
+                                `Milestone realized ${milestonePct.toFixed(1)}%`
+                            )}
+                            ${metric(
+                                'Actual / Realization Date',
+                                actualDateHtml,
+                                actualDateSub
+                            )}
+                            ${metric(
+                                'Actual % of PO',
+                                esc(actualPctPo.toFixed(2).replace(/\.00$/,'')) + '%',
+                                splitCount
+                                    ? `${splitCount} receipt${splitCount === 1 ? '' : 's'} recorded`
+                                    : 'No receipt recorded'
+                            )}
+                            <div class="pmis-v75g-action-box">
+                                <button
+                                    type="button"
+                                    class="pmis-v75g-add-payment"
+                                    data-v75g-payment-index="${index}"
+                                    ${fullyRealized ? 'disabled' : ''}
+                                >
+                                    <i class="bi ${fullyRealized ? 'bi-check2-circle' : 'bi-plus-circle'}"></i>
+                                    ${esc(actionText)}
+                                </button>
+                                ${
+                                    splitCount
+                                        ? `<button type="button" class="pmis-v75g-history-btn" data-v75g-history-index="${index}">
+                                               <i class="bi bi-receipt"></i> View ${splitCount} receipt${splitCount === 1 ? '' : 's'}
+                                           </button>`
+                                        : ''
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function buildCommercialRow(term,index,anchorRow,parentId) {
+        const tr = document.createElement('tr');
+        tr.className = 'pmis-v75g-commercial-row';
+
+        if (parentId) {
+            tr.classList.add('sub-of-' + parentId);
+            if (anchorRow.classList.contains('d-none')) {
+                tr.classList.add('d-none');
+            }
+        }
+
+        tr.dataset.v75gPaymentIndex = String(index);
+        tr.dataset.v75gStageId = String(term?.linked_stage_id || '');
+
+        const td = document.createElement('td');
+        td.colSpan = Math.max(1, anchorRow?.cells?.length || 12);
+        td.innerHTML = commercialRowHtml(term,index);
+
+        tr.appendChild(td);
+
+        tr.querySelector('[data-v75g-payment-index]')?.addEventListener(
+            'click',
+            event => {
+                event.stopPropagation();
+                openReceiptEditor(
+                    Number(event.currentTarget.dataset.v75gPaymentIndex)
+                );
+            }
+        );
+
+        tr.querySelector('[data-v75g-history-index]')?.addEventListener(
+            'click',
+            event => {
+                event.stopPropagation();
+                openReceiptEditor(
+                    Number(event.currentTarget.dataset.v75gHistoryIndex),
+                    true
+                );
+            }
+        );
+
+        return tr;
+    }
+
+    function togglePaymentFromRupee(index) {
+        const term = paymentTerms()[index];
+        if (!term) return;
+
+        const currentRow =
+            document.querySelector(
+                `.pmis-v75g-commercial-row[data-v75g-payment-index="${index}"]`
+            );
+
+        const currentlyVisible =
+            !!currentRow &&
+            !currentRow.classList.contains('d-none') &&
+            !collapsedCommercialV75G.has(index) &&
+            currentRow.querySelector('.pmis-v75g-commercial-grid')?.style.display !== 'none';
+
+        if (currentlyVisible) {
+            collapsedCommercialV75G.add(index);
+            scheduleEnhance();
+            return;
+        }
+
+        collapsedCommercialV75G.delete(index);
+
+        const stageId = String(term.linked_stage_id || '');
+        expandForStage(stageId);
+
+        setTimeout(() => {
+            enhanceTable();
+
+            const row =
+                document.querySelector(
+                    `.pmis-v75g-commercial-row[data-v75g-payment-index="${index}"]`
+                );
+
+            if (!row) return;
+
+            row.classList.remove('d-none');
+
+            row.scrollIntoView({
+                behavior:'smooth',
+                block:'center',
+                inline:'nearest'
+            });
+
+            row.classList.remove('pmis-v75g-flash');
+            void row.offsetWidth;
+            row.classList.add('pmis-v75g-flash');
+
+            setTimeout(
+                () => row.classList.remove('pmis-v75g-flash'),
+                2200
+            );
+        },160);
+    }
+
+    function addDollarButton(row,index,options = {}) {
+        if (!row) return;
+
+        const key =
+            options.parent
+                ? 'parent-' + String(options.parent)
+                : 'term-' + String(index);
+
+        if (row.querySelector(`[data-v75g-dollar-key="${key}"]`)) return;
+
+        const host = firstLabelHost(row);
+        if (!host) return;
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className =
+            'pmis-v75g-dollar ' +
+            (options.parent ? 'pmis-v75g-dollar-parent' : '');
+        btn.dataset.v75gDollarKey = key;
+        btn.title = options.title || 'Jump to payment milestone';
+        btn.innerHTML =
+            `<span>₹</span>` +
+            (
+                options.count && options.count > 1
+                    ? `<small>${options.count}</small>`
+                    : ''
+            );
+
+        btn.addEventListener('click', event => {
+            event.preventDefault();
+            event.stopPropagation();
+            togglePaymentFromRupee(index);
+        });
+
+        host.appendChild(btn);
+    }
+
+    function decorateParentIndicators(items) {
+        const groups = new Map();
+
+        items.forEach(item => {
+            const stageId = String(item.term?.linked_stage_id || '');
+            const parentId = parentIdFor(stageId);
+
+            if (!parentId) return;
+
+            if (!groups.has(parentId)) groups.set(parentId,[]);
+            groups.get(parentId).push(item);
+        });
+
+        groups.forEach((entries,parentId) => {
+            const parentRow = document.getElementById('tr_' + parentId);
+            if (!parentRow || !entries.length) return;
+
+            addDollarButton(
+                parentRow,
+                entries[0].index,
+                {
+                    parent:parentId,
+                    count:entries.length,
+                    title:
+                        `${entries.length} payment milestone` +
+                        (entries.length === 1 ? '' : 's') +
+                        ' linked under this stage'
+                }
+            );
+        });
+    }
+
+    function enhanceTable() {
+        if (!project) return false;
+
+        ensureWarning();
+
+        document.querySelectorAll('.pmis-v75g-commercial-row')
+            .forEach(row => row.remove());
+
+        document.querySelectorAll('.pmis-v75g-dollar')
+            .forEach(button => button.remove());
+
+        const items = visibleTerms();
+        const insertAfter = new Map();
+
+        items.forEach(item => {
+            const stageId = String(item.term?.linked_stage_id || '');
+            const anchorRow = rowForStage(stageId);
+            if (!anchorRow) return;
+
+            const parentId = parentIdFor(stageId);
+
+            addDollarButton(
+                anchorRow,
+                item.index,
+                {
+                    title:
+                        `Payment milestone M${item.index + 1} — ` +
+                        stageName(stageId)
+                }
+            );
+
+            const commercialRow = buildCommercialRow(
+                item.term,
+                item.index,
+                anchorRow,
+                parentId
+            );
+
+            const previous = insertAfter.get(anchorRow) || anchorRow;
+            previous.insertAdjacentElement('afterend',commercialRow);
+            insertAfter.set(anchorRow,commercialRow);
+        });
+
+        decorateParentIndicators(items);
+        maybeJumpFromQuery();
+
+        return true;
+    }
+
+    function scheduleEnhance() {
+        if (renderQueuedV75G) return;
+        renderQueuedV75G = true;
+
+        requestAnimationFrame(() => {
+            renderQueuedV75G = false;
+            enhanceTable();
+        });
+    }
+
+    function expandForStage(stageId) {
+        const parentId = parentIdFor(stageId);
+        if (!parentId) return false;
+
+        const parentRow = document.getElementById('tr_' + parentId);
+        const expanded =
+            parentRow?.getAttribute('aria-expanded') === 'true';
+
+        if (!expanded && typeof toggleSubPhases === 'function') {
+            toggleSubPhases(parentId);
+            return true;
+        }
+
+        return false;
+    }
+
+    function jumpToPayment(index) {
+        const term = paymentTerms()[index];
+        if (!term) return;
+
+        collapsedCommercialV75G.delete(index);
+
+        const stageId = String(term.linked_stage_id || '');
+
+        expandForStage(stageId);
+
+        setTimeout(() => {
+            enhanceTable();
+
+            const row =
+                document.querySelector(
+                    `.pmis-v75g-commercial-row[data-v75g-payment-index="${index}"]`
+                );
+
+            if (!row) return;
+
+            row.classList.remove('d-none');
+
+            row.scrollIntoView({
+                behavior:'smooth',
+                block:'center',
+                inline:'nearest'
+            });
+
+            row.classList.remove('pmis-v75g-flash');
+            void row.offsetWidth;
+            row.classList.add('pmis-v75g-flash');
+
+            setTimeout(
+                () => row.classList.remove('pmis-v75g-flash'),
+                2600
+            );
+        },160);
+    }
+
+    function maybeJumpFromQuery() {
+        if (queryJumpDoneV75G) return;
+
+        const raw = new URLSearchParams(location.search).get('payment');
+        if (raw === null || raw === '') return;
+
+        const index = Number(raw);
+        if (!Number.isInteger(index) || index < 0) return;
+        if (!paymentTerms()[index]) return;
+
+        queryJumpDoneV75G = true;
+
+        setTimeout(() => jumpToPayment(index),220);
+    }
+
+    function ensureReceiptModal() {
+        if (document.getElementById('pmisReceiptModalV75G')) return;
+
+        document.body.insertAdjacentHTML(
+            'beforeend',
+            `
+            <div class="modal fade" id="pmisReceiptModalV75G" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+                    <div class="modal-content pmis-v75g-modal">
+                        <div class="modal-header pmis-v75g-modal-head">
+                            <div>
+                                <div class="pmis-v75g-modal-kicker">PROJECT PLAN · ACTUAL CASHFLOW</div>
+                                <h5 class="modal-title mb-0">Milestone Receipts / Split Payments</h5>
+                            </div>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body p-4">
+                            <div id="pmisReceiptContextV75G" class="pmis-v75g-receipt-context"></div>
+
+                            <div class="d-flex justify-content-between align-items-center mt-4 mb-2">
+                                <div>
+                                    <div class="fw-bold">Receipt History</div>
+                                    <div class="small text-secondary">Each split payment remains as a separate record.</div>
+                                </div>
+                                <span id="pmisReceiptCountV75G" class="badge rounded-pill text-bg-light border">0 receipts</span>
+                            </div>
+
+                            <div id="pmisReceiptHistoryV75G" class="pmis-v75g-history"></div>
+
+                            <div id="pmisReceiptEntryV75G" class="pmis-v75g-entry mt-4">
+                                <div class="d-flex justify-content-between gap-3 flex-wrap align-items-center mb-3">
+                                    <div>
+                                        <div class="fw-bold"><i class="bi bi-plus-circle me-1"></i>Add Split Payment</div>
+                                        <div class="small text-secondary">Use again whenever another part-payment is received.</div>
+                                    </div>
+                                    <span id="pmisReceiptBalanceV75G" class="badge rounded-pill bg-warning-subtle text-warning-emphasis border">Balance ₹0</span>
+                                </div>
+
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold">Amount Received</label>
+                                        <input type="number" id="pmisReceiptAmountV75G" class="form-control" min="0" step="0.01">
+                                        <div class="pmis-v75g-net-value-note">
+                                            <i class="bi bi-info-circle-fill"></i>
+                                            Enter the net value only. Exclude GST.
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold">Received Date</label>
+                                        <input type="date" id="pmisReceiptDateV75G" class="form-control">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold">Payment / UTR Reference</label>
+                                        <input type="text" id="pmisReceiptReferenceV75G" class="form-control" maxlength="120">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold">Remarks</label>
+                                        <input type="text" id="pmisReceiptRemarksV75G" class="form-control" maxlength="250">
+                                    </div>
+                                </div>
+
+                                <div id="pmisReceiptErrorV75G" class="text-danger small fw-bold mt-3" style="display:none;"></div>
+
+                                <div class="d-flex justify-content-end mt-3">
+                                    <button type="button" id="pmisReceiptSaveV75G" class="btn btn-success rounded-pill px-4 fw-bold">
+                                        <i class="bi bi-plus-lg me-1"></i>Add Split Payment
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            `
+        );
+
+        document
+            .getElementById('pmisReceiptSaveV75G')
+            ?.addEventListener('click',saveReceipt);
+    }
+
+    function receiptHistoryHtml(term) {
+        const rows = receipts(term);
+
+        if (!rows.length) {
+            return `
+                <div class="p-3 text-secondary small">
+                    No payment receipt has been recorded for this milestone.
+                </div>
+            `;
+        }
+
+        return `
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Received Date</th>
+                            <th>Amount</th>
+                            <th>Reference</th>
+                            <th>Remarks</th>
+                            <th>Recorded By</th>
+                            <th style="width:80px;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows.map((row,index) => `
+                            <tr>
+                                <td><strong>${index + 1}</strong></td>
+                                <td>${esc(fmtDate(row?.received_date))}</td>
+                                <td><strong>${esc(money(row?.amount))}</strong></td>
+                                <td>${esc(row?.reference || '-')}</td>
+                                <td>${esc(row?.remarks || '-')}</td>
+                                <td>${esc(row?.recorded_by || '-')}</td>
+                                <td>
+                                    <button
+                                        type="button"
+                                        class="pmis-v75g-delete-receipt"
+                                        data-v75g-delete-receipt="${index}"
+                                        title="Delete this receipt"
+                                    >
+                                        <i class="bi bi-trash3"></i> Delete
+                                    </button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    function renderReceiptModal(index,historyOnly = false) {
+        const term = paymentTerms()[index];
+        if (!term) return;
+
+        const expected = expectedAmount(term);
+        const received = totalReceived(term);
+        const balance = Math.max(0,expected - received);
+        const eligible = stageComplete(
+            String(term.linked_stage_id || '')
+        );
+        const fullyRealized =
+            expected > 0 &&
+            received + 0.5 >= expected;
+
+        const history = document.getElementById('pmisReceiptHistoryV75G');
+        const count = document.getElementById('pmisReceiptCountV75G');
+        const context = document.getElementById('pmisReceiptContextV75G');
+        const entry = document.getElementById('pmisReceiptEntryV75G');
+
+        if (history) {
+            history.innerHTML = receiptHistoryHtml(term);
+
+            history
+                .querySelectorAll('[data-v75g-delete-receipt]')
+                .forEach(button => {
+                    button.addEventListener('click', event => {
+                        event.preventDefault();
+                        event.stopPropagation();
+
+                        deleteReceipt(
+                            index,
+                            Number(
+                                event.currentTarget.dataset
+                                    .v75gDeleteReceipt
+                            )
+                        );
+                    });
+                });
+        }
+
+        if (count) {
+            count.textContent =
+                receipts(term).length +
+                ' receipt' +
+                (receipts(term).length === 1 ? '' : 's');
+        }
+
+        if (context) {
+            context.innerHTML = `
+                <div>
+                    <span class="pmis-v75g-milestone-badge">M${index + 1}</span>
+                    <strong>${esc(stageName(String(term.linked_stage_id || '')))}</strong>
+                </div>
+                <div class="mt-2 text-secondary">
+                    Milestone: <strong>${esc(money(expected))}</strong>
+                    &nbsp; · &nbsp;
+                    Received: <strong>${esc(money(received))}</strong>
+                    &nbsp; · &nbsp;
+                    Outstanding: <strong>${esc(money(balance))}</strong>
+                </div>
+            `;
+        }
+
+        if (entry) {
+            entry.style.display =
+                historyOnly || fullyRealized
+                    ? 'none'
+                    : '';
+        }
+
+        const balanceBadge = document.getElementById('pmisReceiptBalanceV75G');
+        if (balanceBadge) {
+            balanceBadge.textContent = 'Balance ' + money(balance);
+        }
+
+        const amount = document.getElementById('pmisReceiptAmountV75G');
+        if (amount) {
+            amount.value =
+                balance > 0.5
+                    ? balance.toFixed(2)
+                    : '';
+            amount.max = balance.toFixed(2);
+        }
+
+        const date = document.getElementById('pmisReceiptDateV75G');
+        if (date) {
+            const now = new Date();
+            date.value =
+                `${now.getFullYear()}-` +
+                `${String(now.getMonth() + 1).padStart(2,'0')}-` +
+                `${String(now.getDate()).padStart(2,'0')}`;
+        }
+
+        const reference = document.getElementById('pmisReceiptReferenceV75G');
+        if (reference) reference.value = '';
+
+        const remarks = document.getElementById('pmisReceiptRemarksV75G');
+        if (remarks) remarks.value = '';
+
+        const error = document.getElementById('pmisReceiptErrorV75G');
+        if (error) {
+            error.textContent = '';
+            error.style.display = 'none';
+        }
+
+        const save = document.getElementById('pmisReceiptSaveV75G');
+        if (save) {
+            save.disabled = false;
+            save.innerHTML =
+                '<i class="bi bi-plus-lg me-1"></i>Add Split Payment';
+        }
+
+        if (fullyRealized && context) {
+            context.insertAdjacentHTML(
+                'beforeend',
+                `<div class="pmis-v75g-realized-note mt-2">
+                    <i class="bi bi-check-circle-fill"></i>
+                    This milestone is fully realized.
+                </div>`
+            );
+        }
+    }
+
+    function openReceiptEditor(index,historyOnly = false) {
+        ensureReceiptModal();
+
+        const term = paymentTerms()[index];
+        if (!term) return;
+
+        activeReceiptV75G = { index };
+
+        renderReceiptModal(index,historyOnly);
+
+        bootstrap.Modal
+            .getOrCreateInstance(
+                document.getElementById('pmisReceiptModalV75G')
+            )
+            .show();
+    }
+
+    function setReceiptError(message) {
+        const error = document.getElementById('pmisReceiptErrorV75G');
+        if (!error) return;
+        error.textContent = message;
+        error.style.display = 'block';
+    }
+
+
+    async function deleteReceipt(milestoneIndex,receiptIndex) {
+        const term = paymentTerms()[milestoneIndex];
+        const row = receipts(term)[receiptIndex];
+
+        if (!term || !row) return;
+
+        const confirmation =
+            'Delete this payment receipt?\n\n' +
+            'Amount: ' + money(row.amount) + '\n' +
+            'Received Date: ' + fmtDate(row.received_date) + '\n' +
+            'Reference: ' + String(row.reference || '-') + '\n\n' +
+            'This will recalculate Actual Inflow, Outstanding, payment realization and cashflow.';
+
+        if (!window.confirm(confirmation)) return;
+
+        const history = document.getElementById('pmisReceiptHistoryV75G');
+        if (history) {
+            history.style.pointerEvents = 'none';
+            history.style.opacity = '.65';
+        }
+
+        try {
+            const next = paymentTerms().map(item => ({
+                ...item,
+                actual_receipts:receipts(item).map(receipt => ({ ...receipt }))
+            }));
+
+            if (
+                !next[milestoneIndex] ||
+                !Array.isArray(next[milestoneIndex].actual_receipts) ||
+                !next[milestoneIndex].actual_receipts[receiptIndex]
+            ) {
+                throw new Error('Receipt no longer exists. Refresh the page and try again.');
+            }
+
+            const deleted =
+                next[milestoneIndex].actual_receipts.splice(
+                    receiptIndex,
+                    1
+                )[0];
+
+            let updated = await patchProject({
+                payment_milestones:next,
+                payment_terms_version:'V75G1',
+                payment_terms_updated_at:new Date().toISOString(),
+                payment_terms_updated_by:identityName()
+            });
+
+            project = {
+                ...project,
+                ...(updated && updated._id
+                    ? updated
+                    : { payment_milestones:next })
+            };
+
+            if (
+                /^(closed|completed)$/i.test(
+                    String(project?.status || '').trim()
+                ) &&
+                !commercialComplete()
+            ) {
+                const reopenPayload = {
+                    status:'In Progress'
+                };
+
+                if (technicalComplete()) {
+                    reopenPayload.current_phase =
+                        'Technically Completed - Payment Pending';
+                }
+
+                updated = await patchProject(reopenPayload);
+
+                project = {
+                    ...project,
+                    ...(updated && updated._id
+                        ? updated
+                        : reopenPayload)
+                };
+            }
+
+            renderReceiptModal(milestoneIndex,false);
+            scheduleEnhance();
+
+            if (typeof showSuccessToast === 'function') {
+                showSuccessToast();
+            }
+        }
+        catch (error) {
+            setReceiptError(
+                error.message || 'Unable to delete payment receipt.'
+            );
+        }
+        finally {
+            if (history) {
+                history.style.pointerEvents = '';
+                history.style.opacity = '';
+            }
+        }
+    }
+
+    async function saveReceipt() {
+        if (!activeReceiptV75G) return;
+
+        const index = Number(activeReceiptV75G.index);
+        const term = paymentTerms()[index];
+
+        if (!term) return;
+
+        const expected = expectedAmount(term);
+        const received = totalReceived(term);
+        const balance = Math.max(0,expected - received);
+
+        const amount = num(
+            document.getElementById('pmisReceiptAmountV75G')?.value
+        );
+        const receivedDate = String(
+            document.getElementById('pmisReceiptDateV75G')?.value || ''
+        ).trim();
+        const reference = String(
+            document.getElementById('pmisReceiptReferenceV75G')?.value || ''
+        ).trim();
+        const remarks = String(
+            document.getElementById('pmisReceiptRemarksV75G')?.value || ''
+        ).trim();
+
+        if (!(amount > 0)) {
+            return setReceiptError('Enter an amount greater than 0.');
+        }
+
+        if (amount > balance + 0.5) {
+            return setReceiptError(
+                'Split payment cannot exceed the outstanding milestone balance of ' +
+                money(balance) +
+                '.'
+            );
+        }
+
+        if (!receivedDate) {
+            return setReceiptError('Received Date is required.');
+        }
+
+        if (!reference) {
+            return setReceiptError('Payment / UTR Reference is required.');
+        }
+
+        const save = document.getElementById('pmisReceiptSaveV75G');
+        if (save) {
+            save.disabled = true;
+            save.innerHTML =
+                '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+        }
+
+        try {
+            const next = paymentTerms().map(row => ({
+                ...row,
+                actual_receipts:receipts(row).map(receipt => ({ ...receipt }))
+            }));
+
+            next[index].actual_receipts.push({
+                id:
+                    'rcpt_' +
+                    Date.now() +
+                    '_' +
+                    Math.random().toString(36).slice(2,7),
+                amount:Number(amount.toFixed(2)),
+                received_date:receivedDate,
+                reference:reference.slice(0,120),
+                remarks:remarks.slice(0,250),
+                recorded_at:new Date().toISOString(),
+                recorded_by:identityName()
+            });
+
+            let updated = await patchProject({
+                payment_milestones:next,
+                payment_terms_version:'V75G1',
+                payment_terms_updated_at:new Date().toISOString(),
+                payment_terms_updated_by:identityName()
+            });
+
+            project = {
+                ...project,
+                ...(updated && updated._id
+                    ? updated
+                    : { payment_milestones:next })
+            };
+
+            if (
+                technicalComplete() &&
+                commercialComplete() &&
+                !/^(closed|completed)$/i.test(
+                    String(project?.status || '').trim()
+                )
+            ) {
+                updated = await patchProject({
+                    status:'Closed',
+                    current_phase:'Project Completed / Closed'
+                });
+
+                project = {
+                    ...project,
+                    ...(updated && updated._id
+                        ? updated
+                        : {
+                            status:'Closed',
+                            current_phase:'Project Completed / Closed'
+                        })
+                };
+            }
+
+            renderReceiptModal(index,false);
+            scheduleEnhance();
+
+            if (typeof showSuccessToast === 'function') {
+                showSuccessToast();
+            }
+        }
+        catch (error) {
+            setReceiptError(
+                error.message || 'Unable to save payment receipt.'
+            );
+        }
+        finally {
+            if (save) {
+                save.disabled = false;
+                save.innerHTML =
+                    '<i class="bi bi-plus-lg me-1"></i>Add Split Payment';
+            }
+        }
+    }
+
+    function linkedPaymentIndexes(stageId) {
+        return visibleTerms()
+            .filter(item =>
+                String(item.term?.linked_stage_id || '') === String(stageId || '')
+            )
+            .map(item => item.index);
+    }
+
+    function notifyPlanCashflowImpact(stageId,element = null) {
+        const indexes = linkedPaymentIndexes(stageId);
+        if (!indexes.length) return;
+
+        showPlanCashflowImpactWarningV75G(
+            indexes,
+            element
+        );
+
+        console.info(
+            '[PMIS V75G4] Payment-linked plan changed:',
+            indexes.map(index => 'M' + (index + 1)).join(', ')
+        );
+    }
+
+    function installFunctionWrappers() {
+        if (
+            typeof renderTable === 'function' &&
+            !window.__PMIS_V75G_RENDER_WRAPPED__
+        ) {
+            const previousRenderTableV75G = renderTable;
+
+            renderTable = function () {
+                const result =
+                    previousRenderTableV75G.apply(this,arguments);
+
+                scheduleEnhance();
+                return result;
+            };
+
+            window.__PMIS_V75G_RENDER_WRAPPED__ = true;
+        }
+
+        if (
+            typeof saveInlineField === 'function' &&
+            !window.__PMIS_V75G_INLINE_WRAPPED__
+        ) {
+            const previousSaveInlineFieldV75G = saveInlineField;
+
+            saveInlineField = function (
+                phaseId,
+                field,
+                value,
+                element
+            ) {
+                const result =
+                    previousSaveInlineFieldV75G.apply(this,arguments);
+
+                if (
+                    ['plan_start','plan_end','plan_duration'].includes(field)
+                ) {
+                    notifyPlanCashflowImpact(phaseId,element);
+                    scheduleEnhance();
+                }
+
+                return result;
+            };
+
+            window.__PMIS_V75G_INLINE_WRAPPED__ = true;
+        }
+
+        if (
+            typeof updatePlanFromDays === 'function' &&
+            !window.__PMIS_V75G_DAYS_WRAPPED__
+        ) {
+            const previousUpdatePlanFromDaysV75G =
+                updatePlanFromDays;
+
+            updatePlanFromDays = function (
+                phaseId,
+                days,
+                element
+            ) {
+                const result =
+                    previousUpdatePlanFromDaysV75G.apply(this,arguments);
+
+                notifyPlanCashflowImpact(phaseId,element);
+                scheduleEnhance();
+
+                return result;
+            };
+
+            window.__PMIS_V75G_DAYS_WRAPPED__ = true;
+        }
+    }
+
+    function init() {
+        ensureReceiptModal();
+        installFunctionWrappers();
+
+        if (project) {
+            scheduleEnhance();
+        }
+    }
+
+    let attempts = 0;
+    const timer = setInterval(() => {
+        attempts += 1;
+
+        installFunctionWrappers();
+
+        if (project && document.getElementById('phasesTbody')) {
+            scheduleEnhance();
+        }
+
+        if (
+            window.__PMIS_V75G_RENDER_WRAPPED__ &&
+            project &&
+            attempts >= 8
+        ) {
+            clearInterval(timer);
+        }
+        else if (attempts >= 100) {
+            clearInterval(timer);
+        }
+    },150);
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded',init,{ once:true });
+    }
+    else {
+        init();
+    }
+
+    console.log(
+        '[PMIS V75G4] Warning is non-blocking and anchored beside the edited payment-linked plan field.'
+    );
+})();
+</script>
+
+<style id="pmis-native-date-root-fix-v75j">
+/* PMIS_NATIVE_DATE_ROOT_FIX_V75J */
+.pmis-native-date-v75j {
+    position: relative !important;
+    padding-right: 10px !important;
+    color-scheme: light;
+}
+
+.pmis-native-date-v75j::-webkit-calendar-picker-indicator {
+    position: static !important;
+    width: 17px !important;
+    height: 17px !important;
+    margin-left: 5px !important;
+    padding: 0 !important;
+    opacity: .72 !important;
+    cursor: pointer !important;
+    z-index: auto !important;
+}
+
+.pmis-native-date-v75j::-webkit-calendar-picker-indicator:hover {
+    opacity: 1 !important;
+}
+
+#updateModal .pmis-native-date-v75j,
+#actualModal .pmis-native-date-v75j {
+    min-height: 48px;
+}
+</style>
+
 </body>
 
 </html>
