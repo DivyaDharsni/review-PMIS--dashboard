@@ -15287,6 +15287,27 @@ async function sendReport(payload,button,originalHtml) {
     if (window.__PMIS_V72C_VALUE_EYE__) return;
     window.__PMIS_V72C_VALUE_EYE__ = true;
 
+    // PMIS_LEAD_VIEW_FREEZE_CASHFLOW_ACCESS_FIX_V75P
+    // Lead View commercial values are masked by V52.
+    // Do not let the V72C eye observer compete for the same DOM nodes.
+    const pmisV75PAuthRole = String(
+        localStorage.getItem('danprel_auth_role') || ''
+    ).trim().toLowerCase();
+
+    const pmisV75PUsername = String(
+        localStorage.getItem('danprel_username') || ''
+    ).trim().toLowerCase();
+
+    const pmisV75PLeadView =
+        pmisV75PAuthRole === 'lead_view' ||
+        pmisV75PUsername === 'projects@danprel' ||
+        pmisV75PUsername === 'project@danprel';
+
+    if (pmisV75PLeadView) {
+        return;
+    }
+
+
     let visible = false;
     let observer = null;
 
@@ -19681,6 +19702,30 @@ async function sendReport(payload,button,originalHtml) {
     };
 
     function ensureCashflowMenu() {
+        // PMIS_LEAD_VIEW_FREEZE_CASHFLOW_ACCESS_FIX_V75P
+        const pmisV75PRole = String(
+            localStorage.getItem('danprel_auth_role') || ''
+        ).trim().toLowerCase();
+
+        const pmisV75PUser = String(
+            localStorage.getItem('danprel_username') || ''
+        ).trim().toLowerCase();
+
+        const pmisV75PIsLeadView =
+            pmisV75PRole === 'lead_view' ||
+            pmisV75PUser === 'projects@danprel' ||
+            pmisV75PUser === 'project@danprel';
+
+        if (pmisV75PIsLeadView) {
+            document
+                .querySelectorAll(
+                    'a[href="cashflow.html"], a[href="./cashflow.html"]'
+                )
+                .forEach(link => link.remove());
+
+            return;
+        }
+
         const sidebar = document.getElementById('sidebar');
         if (!sidebar || document.getElementById('pmisCashflowMenuV75A')) return;
         const dashboardLink = Array.from(sidebar.querySelectorAll('a.sidebar-btn')).find(a => String(a.getAttribute('href') || '').includes('project_review.html'));
@@ -20818,6 +20863,32 @@ async function sendReport(payload,button,originalHtml) {
 
     let queuedV75M = false;
 
+    // PMIS_LEAD_VIEW_FREEZE_CASHFLOW_ACCESS_FIX_V75P
+    function isLeadViewV75P() {
+        const role = String(
+            localStorage.getItem('danprel_auth_role') || ''
+        ).trim().toLowerCase();
+
+        const user = String(
+            localStorage.getItem('danprel_username') || ''
+        ).trim().toLowerCase();
+
+        return (
+            role === 'lead_view' ||
+            user === 'projects@danprel' ||
+            user === 'project@danprel'
+        );
+    }
+
+    function removeCashflowForLeadViewV75P() {
+        document
+            .querySelectorAll(
+                'a[href="cashflow.html"], a[href="./cashflow.html"]'
+            )
+            .forEach(link => link.remove());
+    }
+
+
     function hrefPathV75M(link) {
         return String(
             link?.getAttribute('href') || ''
@@ -20871,6 +20942,11 @@ async function sendReport(payload,button,originalHtml) {
     }
 
     function ensureCashflowV75M() {
+        if (isLeadViewV75P()) {
+            removeCashflowForLeadViewV75P();
+            return false;
+        }
+
         const sidebar =
             document.getElementById('sidebar');
 
@@ -20948,6 +21024,11 @@ async function sendReport(payload,button,originalHtml) {
     }
 
     function startV75M() {
+        if (isLeadViewV75P()) {
+            removeCashflowForLeadViewV75P();
+            return;
+        }
+
         ensureCashflowV75M();
 
         // Sidebar can be rebuilt after login/role checks.
@@ -21001,6 +21082,51 @@ async function sendReport(payload,button,originalHtml) {
     console.log(
         '[PMIS V75M] Cashflow sidebar persistence active.'
     );
+})();
+</script>
+
+<script id="pmis-lead-view-cashflow-cleanup-v75p">
+/* PMIS_LEAD_VIEW_FREEZE_CASHFLOW_ACCESS_FIX_V75P */
+(function () {
+    'use strict';
+
+    const role = String(
+        localStorage.getItem('danprel_auth_role') || ''
+    ).trim().toLowerCase();
+
+    const user = String(
+        localStorage.getItem('danprel_username') || ''
+    ).trim().toLowerCase();
+
+    const isLeadView =
+        role === 'lead_view' ||
+        user === 'projects@danprel' ||
+        user === 'project@danprel';
+
+    if (!isLeadView) return;
+
+    function cleanLeadView() {
+        document
+            .querySelectorAll(
+                'a[href="cashflow.html"], a[href="./cashflow.html"]'
+            )
+            .forEach(link => link.remove());
+
+        document
+            .getElementById('pmisV72cTotalValueEye')
+            ?.remove();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener(
+            'DOMContentLoaded',
+            cleanLeadView,
+            { once: true }
+        );
+    }
+    else {
+        cleanLeadView();
+    }
 })();
 </script>
 </body>

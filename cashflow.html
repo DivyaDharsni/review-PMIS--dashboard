@@ -1,6 +1,30 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script id="pmis-lead-view-cashflow-direct-access-guard-v75p">
+/* PMIS_LEAD_VIEW_FREEZE_CASHFLOW_ACCESS_FIX_V75P */
+(function () {
+    'use strict';
+
+    const role = String(
+        localStorage.getItem('danprel_auth_role') || ''
+    ).trim().toLowerCase();
+
+    const user = String(
+        localStorage.getItem('danprel_username') || ''
+    ).trim().toLowerCase();
+
+    const isLeadView =
+        role === 'lead_view' ||
+        user === 'projects@danprel' ||
+        user === 'project@danprel';
+
+    if (!isLeadView) return;
+
+    document.documentElement.style.display = 'none';
+    window.location.replace('project_review.html');
+})();
+</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PMIS - Cashflow / Payments</title>
