@@ -98,6 +98,7 @@
 <!-- PMIS_PAYMENT_MILESTONES_CASHFLOW_V75A -->
 <!-- PMIS_CASHFLOW_NATIVE_UI_ALIGNMENT_V75B -->
 <!-- PMIS_FLEX_MILESTONES_SPLIT_PAYMENTS_V75C -->
+<!-- PMIS_OPTIONAL_PAYMENT_TERMS_COMPLETION_GATE_V75E -->
 <div class="sidebar" id="sidebar">
     <div class="sidebar-header">
         <div class="d-flex align-items-center gap-3">
@@ -143,7 +144,7 @@
 
 <main class="cashflow-main">
     <div class="title-row">
-        <div><h1>Cashflow / Payment Status</h1><p>Planned realization from project milestones versus actual customer receipts.</p></div>
+        <div><h1>Cashflow / Payment Status</h1><p>Optional project payment milestones: planned realization versus actual customer receipts.</p></div>
         <div id="scopeLabel" class="badge rounded-pill text-bg-light border px-3 py-2 text-secondary">Loading project scope…</div>
     </div>
 
@@ -330,11 +331,24 @@ function technicalComplete(p){
 function receipts(term){return Array.isArray(term?.actual_receipts)?term.actual_receipts:[]}
 function received(term){return receipts(term).reduce((s,r)=>s+Math.max(0,num(r?.amount)),0)}
 function expected(p,term){return Math.max(0,num(p?.po_value)*num(term?.percentage)/100)}
-function commercialComplete(p){
+function termMeaningful(term,index){
+ const t=term&&typeof term==='object'?term:{},stage=String(t.linked_stage_id||'').trim();
+ const stageChosen=!!stage&&!(index===0&&stage==='po_date');
+ return receipts(t).length>0||num(t.percentage)>0||num(t.credit_days)>0||!!String(t.remarks||'').trim()||stageChosen;
+}
+function commercialState(p){
  const terms=Array.isArray(p?.payment_milestones)?p.payment_milestones:[];
- if(terms.length<4||!(num(p?.po_value)>0))return false;
- if(Math.abs(terms.reduce((s,t)=>s+num(t?.percentage),0)-100)>.01)return false;
- return terms.every(t=>expected(p,t)>0&&received(t)+.5>=expected(p,t));
+ const meaningful=terms.map((term,index)=>({term,index})).filter(x=>termMeaningful(x.term,x.index));
+ if(!meaningful.length)return{status:'not_configured',configured:[],total:0};
+ const configured=meaningful.filter(x=>{const pct=num(x.term?.percentage);return !!String(x.term?.linked_stage_id||'').trim()&&pct>0&&pct<=100});
+ const total=configured.reduce((s,x)=>s+num(x.term?.percentage),0);
+ return{status:configured.length===meaningful.length&&Math.abs(total-100)<=.01?'configured':'draft',configured,total};
+}
+function commercialComplete(p){
+ const state=commercialState(p);
+ if(state.status==='not_configured')return true;
+ if(state.status!=='configured'||!(num(p?.po_value)>0))return false;
+ return state.configured.every(x=>expected(p,x.term)>0&&received(x.term)+.5>=expected(p,x.term));
 }
 function plannedDate(p,term){return addDays(stagePlanEnd(p,String(term?.linked_stage_id||'')),term?.credit_days)}
 function milestoneStatus(p,term){
@@ -346,10 +360,11 @@ function latestReceiptDate(term){return maxIso(receipts(term).map(r=>r?.received
 function buildRows(){
  rows=[];projects.forEach(p=>{
   const terms=Array.isArray(p?.payment_milestones)?p.payment_milestones:[];
-  if(terms.length!==4)return;
-  terms.slice(0,4).forEach((term,index)=>{
+  terms.forEach((term,index)=>{
+   const stage=String(term?.linked_stage_id||'').trim(),pct=num(term?.percentage);
+   if(!stage||!(pct>0))return;
    const exp=expected(p,term),got=received(term),pd=plannedDate(p,term);
-   rows.push({project:p,term,index,expected:exp,received:got,balance:Math.max(0,exp-got),planned:pd,actual:latestReceiptDate(term),status:milestoneStatus(p,term),eligible:stageComplete(p,String(term?.linked_stage_id||''))});
+   rows.push({project:p,term,index,expected:exp,received:got,balance:Math.max(0,exp-got),planned:pd,actual:latestReceiptDate(term),status:milestoneStatus(p,term),eligible:stageComplete(p,stage)});
   });
  });
 }
@@ -417,7 +432,7 @@ async function saveReceipt(){
  if(!(amount>0))return setReceiptError('Enter an amount greater than 0.');if(amount>balance+.5)return setReceiptError('Receipt cannot exceed the outstanding milestone balance of '+money(balance)+'.');if(!date)return setReceiptError('Received Date is required.');if(!reference)return setReceiptError('Payment / UTR Reference is required.');if(!stageComplete(p,String(term.linked_stage_id||'')))return setReceiptError('The linked stage is no longer complete. Receipt entry is locked.');
  const next=p.payment_milestones.map((x,i)=>({...x,actual_receipts:receipts(x).map(r=>({...r}))}));next[index].actual_receipts.push({id:'rcpt_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),amount:Number(amount.toFixed(2)),received_date:date,reference:reference.slice(0,120),remarks:remarks.slice(0,250),recorded_at:new Date().toISOString(),recorded_by:localStorage.getItem('danprel_display_name')||localStorage.getItem('danprel_employee_id')||localStorage.getItem('danprel_username')||'PMIS User'});
  const btn=$('btnSaveReceipt');btn.disabled=true;try{
-  let updated=await patchProject(p._id,{payment_milestones:next,payment_terms_version:'V75C',payment_terms_updated_at:new Date().toISOString()});
+  let updated=await patchProject(p._id,{payment_milestones:next,payment_terms_version:'V75E',payment_terms_updated_at:new Date().toISOString()});
   Object.assign(p,updated&&updated._id?updated:{payment_milestones:next});
   if(technicalComplete(p)&&commercialComplete(p)&&String(p.status||'').toLowerCase()!=='closed'){
    updated=await patchProject(p._id,{status:'Closed',current_phase:'Project Completed / Closed'});Object.assign(p,updated&&updated._id?updated:{status:'Closed',current_phase:'Project Completed / Closed'});
@@ -441,5 +456,989 @@ function init(){
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
 </script>
+<style id="pmis-cashflow-analytics-only-v75g-style">
+/* PMIS_CASHFLOW_ANALYTICS_ONLY_LATEST_PLAN_V75G */
+#tableArea a.btn-record {
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+</style>
+<script id="pmis-cashflow-analytics-only-v75g">
+/* PMIS_CASHFLOW_ANALYTICS_ONLY_LATEST_PLAN_V75G */
+(function () {
+    'use strict';
+
+    if (window.__PMIS_CASHFLOW_ANALYTICS_ONLY_LATEST_PLAN_V75G__) return;
+    window.__PMIS_CASHFLOW_ANALYTICS_ONLY_LATEST_PLAN_V75G__ = true;
+
+    function isoV75G(value) {
+        if (!value) return '';
+        const raw = String(value).slice(0,10);
+        return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : '';
+    }
+
+    function maxIsoV75G(values) {
+        return values
+            .map(isoV75G)
+            .filter(Boolean)
+            .sort()
+            .pop() || '';
+    }
+
+    function latestApprovedEndV75G(p,id) {
+        if (id === 'po_date') {
+            return isoV75G(p?.po_date);
+        }
+
+        const data = p?.detailed_phases?.[id] || {};
+        const revisions = Array.isArray(data.revisions)
+            ? data.revisions.filter(item => item && item.end)
+            : [];
+
+        if (revisions.length) {
+            const revised =
+                isoV75G(revisions[revisions.length - 1].end);
+            if (revised) return revised;
+        }
+
+        const direct = isoV75G(data.plan_end);
+        if (direct) return direct;
+
+        if (
+            typeof groupIndex !== 'undefined' &&
+            groupIndex[id] !== undefined &&
+            typeof childrenFor === 'function'
+        ) {
+            return maxIsoV75G(
+                childrenFor(p,id).map(childId =>
+                    latestApprovedEndV75G(p,childId)
+                )
+            );
+        }
+
+        return '';
+    }
+
+    if (
+        typeof stagePlanEnd === 'function' &&
+        !window.__PMIS_V75G_STAGE_PLAN_END_WRAPPED__
+    ) {
+        stagePlanEnd = function (p,id) {
+            return latestApprovedEndV75G(p,id);
+        };
+
+        window.__PMIS_V75G_STAGE_PLAN_END_WRAPPED__ = true;
+    }
+
+    function convertReceiptButtonsToPlanLinks() {
+        document
+            .querySelectorAll('#tableArea [data-record]')
+            .forEach(button => {
+                const token = String(
+                    button.getAttribute('data-record') || ''
+                );
+
+                const separator = token.lastIndexOf(':');
+                if (separator <= 0) return;
+
+                const projectId = token.slice(0,separator);
+                const index = token.slice(separator + 1);
+
+                const link = document.createElement('a');
+                link.className = button.className;
+                link.href =
+                    'project_phases.html?id=' +
+                    encodeURIComponent(projectId) +
+                    '&payment=' +
+                    encodeURIComponent(index);
+                link.title =
+                    'Open the linked stage in Project Plan';
+                link.innerHTML =
+                    '<i class="bi bi-box-arrow-up-right me-1"></i>Open Plan';
+
+                button.replaceWith(link);
+            });
+    }
+
+    if (
+        typeof renderTable === 'function' &&
+        !window.__PMIS_V75G_CASHFLOW_TABLE_WRAPPED__
+    ) {
+        const previousRenderTableV75G = renderTable;
+
+        renderTable = function () {
+            const result =
+                previousRenderTableV75G.apply(this,arguments);
+
+            convertReceiptButtonsToPlanLinks();
+            return result;
+        };
+
+        window.__PMIS_V75G_CASHFLOW_TABLE_WRAPPED__ = true;
+    }
+
+    function updateCopy() {
+        const heading = Array.from(
+            document.querySelectorAll('h1')
+        ).find(item =>
+            /cashflow|payment status/i.test(item.textContent || '')
+        );
+
+        const sub = heading?.nextElementSibling;
+
+        if (sub && sub.tagName === 'P') {
+            sub.textContent =
+                'Analytics view: planned realization from the latest approved project plan versus actual receipts recorded inside Project Plan.';
+        }
+
+        const tableHead = Array.from(
+            document.querySelectorAll('.table-head h3')
+        ).find(item =>
+            /payment milestone register/i.test(item.textContent || '')
+        );
+
+        if (tableHead) {
+            tableHead.textContent =
+                'Payment Milestone Register · Analytics';
+        }
+    }
+
+    function init() {
+        updateCopy();
+
+        if (typeof buildRows === 'function') {
+            try {
+                buildRows();
+                if (typeof populateFilters === 'function') populateFilters();
+                if (typeof applyFilters === 'function') applyFilters();
+            }
+            catch (error) {
+                console.warn(
+                    '[PMIS V75G] Cashflow refresh skipped:',
+                    error
+                );
+            }
+        }
+
+        convertReceiptButtonsToPlanLinks();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded',init,{ once:true });
+    }
+    else {
+        init();
+    }
+
+    console.log(
+        '[PMIS V75G] Cashflow page is analytics-only and uses latest approved plan dates.'
+    );
+})();
+</script>
+<style id="pmis-cashflow-project-register-v75g4-style">
+/* PMIS_CASHFLOW_PROJECT_REGISTER_V75G4 */
+.pmis-v75g4-project-list {
+    display: grid;
+    gap: 10px;
+}
+.pmis-v75g4-project-card {
+    background: #fff;
+    border: 1px solid #dbe5ef;
+    border-radius: 14px;
+    overflow: hidden;
+}
+.pmis-v75g4-project-head {
+    width: 100%;
+    border: 0;
+    background: #fff;
+    color: #0b2b4a;
+    padding: 13px 15px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    text-align: left;
+}
+.pmis-v75g4-project-head:hover {
+    background: #f8fbfe;
+}
+.pmis-v75g4-project-title {
+    font-size: .78rem;
+    font-weight: 900;
+}
+.pmis-v75g4-project-sub {
+    margin-top: 2px;
+    color: #64748b;
+    font-size: .68rem;
+}
+.pmis-v75g4-project-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 0 0 auto;
+}
+.pmis-v75g4-count {
+    padding: 5px 9px;
+    border: 1px solid #d7e1eb;
+    border-radius: 999px;
+    background: #f8fafc;
+    color: #475569;
+    font-size: .64rem;
+    font-weight: 800;
+}
+.pmis-v75g4-chevron {
+    transition: transform .18s ease;
+}
+.pmis-v75g4-project-card.is-open .pmis-v75g4-chevron {
+    transform: rotate(180deg);
+}
+.pmis-v75g4-project-detail {
+    display: none;
+    border-top: 1px solid #dbe5ef;
+}
+.pmis-v75g4-project-card.is-open .pmis-v75g4-project-detail {
+    display: block;
+}
+.pmis-v75g4-project-detail table {
+    margin: 0 !important;
+}
+.pmis-v75g4-project-detail th {
+    white-space: nowrap;
+}
+.pmis-v75g4-project-detail .btn-record {
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+</style>
+<script id="pmis-cashflow-project-register-v75g4">
+/* PMIS_CASHFLOW_PROJECT_REGISTER_V75G4 */
+(function () {
+    'use strict';
+
+    if (window.__PMIS_CASHFLOW_PROJECT_REGISTER_V75G4__) return;
+    window.__PMIS_CASHFLOW_PROJECT_REGISTER_V75G4__ = true;
+
+    const openProjectsV75G4 = new Set();
+
+    function projectKeyV75G4(project) {
+        return String(
+            project?._id ||
+            project?.tracking_code ||
+            project?.code ||
+            project?.name ||
+            'project'
+        );
+    }
+
+    function groupedV75G4() {
+        const groups = new Map();
+
+        (Array.isArray(filtered) ? filtered : [])
+            .forEach(row => {
+                const project = row?.project || {};
+                const key = projectKeyV75G4(project);
+
+                if (!groups.has(key)) {
+                    groups.set(key,{
+                        key,
+                        project,
+                        rows:[]
+                    });
+                }
+
+                groups.get(key).rows.push(row);
+            });
+
+        return [...groups.values()]
+            .sort((a,b) =>
+                String(
+                    a.project?.tracking_code ||
+                    a.project?.code ||
+                    a.project?.name ||
+                    ''
+                ).localeCompare(
+                    String(
+                        b.project?.tracking_code ||
+                        b.project?.code ||
+                        b.project?.name ||
+                        ''
+                    )
+                )
+            );
+    }
+
+    function milestoneRowsV75G4(group) {
+        return group.rows.map(r => {
+            const p = r.project;
+            const term = r.term;
+
+            const href =
+                'project_phases.html?id=' +
+                encodeURIComponent(p._id) +
+                '&payment=' +
+                encodeURIComponent(r.index);
+
+            return `
+                <tr>
+                    <td>
+                        <strong>M${r.index + 1}</strong>
+                        <div class="small text-secondary">
+                            ${esc(term.remarks || '')}
+                        </div>
+                    </td>
+                    <td class="stage-text">
+                        ${esc(
+                            stageLabel(
+                                p,
+                                term.linked_stage_id
+                            )
+                        )}
+                    </td>
+                    <td>
+                        ${num(term.percentage)
+                            .toFixed(2)
+                            .replace(/\.00$/,'')}%
+                    </td>
+                    <td>${Math.trunc(num(term.credit_days))}</td>
+                    <td class="money">${money(r.expected)}</td>
+                    <td>${fmtDate(stagePlanEnd(p,term.linked_stage_id))}</td>
+                    <td>${fmtDate(r.planned)}</td>
+                    <td class="money">${money(r.received)}</td>
+                    <td>${fmtDate(r.actual)}</td>
+                    <td class="money">${money(r.balance)}</td>
+                    <td>
+                        <span class="badge-soft ${statusClass(r.status)}">
+                            ${esc(r.status)}
+                        </span>
+                    </td>
+                    <td>
+                        <a
+                            class="btn-record"
+                            href="${esc(href)}"
+                            title="Open payment milestone in Project Plan"
+                        >
+                            <i class="bi bi-box-arrow-up-right me-1"></i>
+                            Open Plan
+                        </a>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function renderProjectRegisterV75G4() {
+        const area = document.getElementById('tableArea');
+        const count = document.getElementById('rowCount');
+
+        if (!area) return;
+
+        const groups = groupedV75G4();
+
+        if (count) {
+            count.textContent =
+                groups.length +
+                ' project' +
+                (groups.length === 1 ? '' : 's');
+        }
+
+        if (!groups.length) {
+            area.className = 'empty';
+            area.innerHTML =
+                '<i class="bi bi-inbox fs-2 d-block mb-2"></i>' +
+                'No payment projects match the selected filters.';
+            return;
+        }
+
+        const valid = new Set(
+            groups.map(group => group.key)
+        );
+
+        [...openProjectsV75G4].forEach(key => {
+            if (!valid.has(key)) {
+                openProjectsV75G4.delete(key);
+            }
+        });
+
+        area.className = '';
+
+        area.innerHTML = `
+            <div class="pmis-v75g4-project-list">
+                ${groups.map(group => {
+                    const p = group.project;
+                    const open =
+                        openProjectsV75G4.has(group.key);
+
+                    return `
+                        <div
+                            class="pmis-v75g4-project-card ${open ? 'is-open' : ''}"
+                            data-v75g4-card="${esc(group.key)}"
+                        >
+                            <button
+                                type="button"
+                                class="pmis-v75g4-project-head"
+                                data-v75g4-toggle="${esc(group.key)}"
+                            >
+                                <div>
+                                    <div class="pmis-v75g4-project-title">
+                                        ${esc(
+                                            p.tracking_code ||
+                                            p.code ||
+                                            p.name ||
+                                            'Project'
+                                        )}
+                                    </div>
+                                    <div class="pmis-v75g4-project-sub">
+                                        ${esc(p.name || '')}
+                                        ${
+                                            p.customer_name
+                                                ? ' · ' +
+                                                  esc(p.customer_name)
+                                                : ''
+                                        }
+                                    </div>
+                                </div>
+
+                                <div class="pmis-v75g4-project-right">
+                                    <span class="pmis-v75g4-count">
+                                        ${group.rows.length}
+                                        milestone${group.rows.length === 1 ? '' : 's'}
+                                    </span>
+                                    <i class="bi bi-chevron-down pmis-v75g4-chevron"></i>
+                                </div>
+                            </button>
+
+                            <div class="pmis-v75g4-project-detail">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Milestone</th>
+                                                <th>Linked Stage</th>
+                                                <th>%</th>
+                                                <th>Credit Days</th>
+                                                <th>Planned Amount</th>
+                                                <th>Stage Plan Date</th>
+                                                <th>Planned Realization</th>
+                                                <th>Actual Received</th>
+                                                <th>Last Receipt</th>
+                                                <th>Outstanding</th>
+                                                <th>Status</th>
+                                                <th>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${milestoneRowsV75G4(group)}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `;
+
+        area
+            .querySelectorAll('[data-v75g4-toggle]')
+            .forEach(button => {
+                button.addEventListener('click',() => {
+                    const key =
+                        String(
+                            button.dataset.v75g4Toggle || ''
+                        );
+
+                    if (openProjectsV75G4.has(key)) {
+                        openProjectsV75G4.delete(key);
+                    }
+                    else {
+                        openProjectsV75G4.add(key);
+                    }
+
+                    button
+                        .closest('.pmis-v75g4-project-card')
+                        ?.classList.toggle(
+                            'is-open',
+                            openProjectsV75G4.has(key)
+                        );
+                });
+            });
+    }
+
+    function installV75G4() {
+        if (
+            typeof filtered === 'undefined' ||
+            typeof esc !== 'function' ||
+            typeof stageLabel !== 'function'
+        ) {
+            return false;
+        }
+
+        renderTable = renderProjectRegisterV75G4;
+        window.renderTable = renderProjectRegisterV75G4;
+
+        // Force the current filtered data into the grouped register.
+        renderProjectRegisterV75G4();
+
+        return true;
+    }
+
+    let tries = 0;
+
+    const timer = setInterval(() => {
+        tries += 1;
+
+        if (installV75G4() || tries >= 120) {
+            clearInterval(timer);
+        }
+    },100);
+
+    if (document.readyState === 'loading') {
+        document.addEventListener(
+            'DOMContentLoaded',
+            () => setTimeout(installV75G4,0),
+            { once:true }
+        );
+    }
+    else {
+        setTimeout(installV75G4,0);
+    }
+
+    // If another earlier module re-renders the flat register later,
+    // re-apply the final grouped register.
+    const observer = new MutationObserver(() => {
+        const area = document.getElementById('tableArea');
+
+        if (
+            !area ||
+            area.querySelector('.pmis-v75g4-project-list')
+        ) {
+            return;
+        }
+
+        queueMicrotask(() => {
+            try {
+                if (
+                    typeof filtered !== 'undefined' &&
+                    Array.isArray(filtered)
+                ) {
+                    renderProjectRegisterV75G4();
+                }
+            }
+            catch (_) {}
+        });
+    });
+
+    const startObserver = () => {
+        const area = document.getElementById('tableArea');
+        if (!area) return false;
+
+        observer.observe(
+            area,
+            {
+                childList:true,
+                subtree:false
+            }
+        );
+
+        return true;
+    };
+
+    let obsTries = 0;
+    const obsTimer = setInterval(() => {
+        obsTries += 1;
+
+        if (startObserver() || obsTries >= 120) {
+            clearInterval(obsTimer);
+        }
+    },100);
+
+    console.log(
+        '[PMIS V75G4] Final project-grouped payment milestone register installed.'
+    );
+})();
+</script>
+<style id="pmis-v75n-project-register-style">
+/* PMIS_V75N_PROJECT_REGISTER_ACCORDION */
+.pmis-v75n-register-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.pmis-v75n-register-group {
+    border: 1px solid #dbe5ef;
+    border-radius: 18px;
+    background: #ffffff;
+    overflow: hidden;
+}
+.pmis-v75n-register-group summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 14px 18px;
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    align-items: center;
+    background: #f8fbff;
+}
+.pmis-v75n-register-group summary::-webkit-details-marker {
+    display: none;
+}
+.pmis-v75n-register-left {
+    min-width: 0;
+}
+.pmis-v75n-register-title {
+    color: #0b2b4a;
+    font-size: 1rem;
+    font-weight: 900;
+    line-height: 1.2;
+}
+.pmis-v75n-register-sub {
+    color: #64748b;
+    font-size: .78rem;
+    margin-top: 4px;
+}
+.pmis-v75n-register-right {
+    color: #0b2b4a;
+    font-size: .78rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+.pmis-v75n-register-table {
+    padding: 0 0 6px 0;
+}
+.pmis-v75n-register-table .table,
+.pmis-v75n-register-table table {
+    margin-bottom: 0 !important;
+}
+</style>
+<script id="pmis-v75n-project-register-accordion">
+/* PMIS_V75N_PROJECT_REGISTER_ACCORDION */
+(function () {
+    'use strict';
+
+    if (window.__PMIS_V75N_PROJECT_REGISTER_ACCORDION__) return;
+    window.__PMIS_V75N_PROJECT_REGISTER_ACCORDION__ = true;
+
+    function linesV75N(cell) {
+        return String(
+            cell?.innerText || ''
+        )
+            .split(/\n+/)
+            .map(item => item.trim())
+            .filter(Boolean);
+    }
+
+    function groupRowsV75N(rows) {
+        const groups = [];
+
+        rows.forEach(row => {
+            const cells =
+                Array.from(row.cells || []);
+
+            if (cells.length < 2) return;
+
+            const first =
+                linesV75N(cells[0]);
+
+            const second =
+                linesV75N(cells[1]);
+
+            const code =
+                first[0] || 'Unnamed Project';
+
+            const name =
+                first[1] || '';
+
+            const customer =
+                second[0] || '';
+
+            let group =
+                groups.find(item =>
+                    item.code === code &&
+                    item.name === name
+                );
+
+            if (!group) {
+                group = {
+                    code,
+                    name,
+                    customer,
+                    rows: []
+                };
+                groups.push(group);
+            }
+
+            group.rows.push(
+                row.outerHTML
+            );
+        });
+
+        return groups;
+    }
+
+    function transformRegisterV75N() {
+        const area =
+            document.getElementById(
+                'tableArea'
+            );
+
+        if (!area) return;
+
+        const table =
+            area.querySelector(
+                ':scope > table, table'
+            );
+
+        if (!table) return;
+
+        if (
+            table.closest(
+                '.pmis-v75n-register-list'
+            )
+        ) {
+            return;
+        }
+
+        const thead =
+            table.querySelector(
+                'thead'
+            );
+
+        const tbody =
+            table.querySelector(
+                'tbody'
+            );
+
+        if (!thead || !tbody) return;
+
+        const rows =
+            Array.from(
+                tbody.querySelectorAll('tr')
+            )
+                .filter(row =>
+                    row.cells &&
+                    row.cells.length >= 2
+                );
+
+        if (!rows.length) return;
+
+        const groups =
+            groupRowsV75N(rows);
+
+        if (!groups.length) return;
+
+        const wrapper =
+            document.createElement(
+                'div'
+            );
+
+        wrapper.className =
+            'pmis-v75n-register-list';
+
+        groups.forEach(
+            (group,index) => {
+                const details =
+                    document.createElement(
+                        'details'
+                    );
+
+                details.className =
+                    'pmis-v75n-register-group';
+
+                if (index === 0) {
+                    details.open = true;
+                }
+
+                details.innerHTML = `
+                    <summary>
+                        <div class="pmis-v75n-register-left">
+                            <div class="pmis-v75n-register-title">
+                                ${escapeHtmlV75N(group.code)}
+                            </div>
+                            <div class="pmis-v75n-register-sub">
+                                ${
+                                    [
+                                        group.name,
+                                        group.customer
+                                    ]
+                                        .filter(Boolean)
+                                        .map(escapeHtmlV75N)
+                                        .join(' · ') || 'Click to view milestone planned vs actual details'
+                                }
+                            </div>
+                        </div>
+                        <div class="pmis-v75n-register-right">
+                            ${group.rows.length} milestone${group.rows.length === 1 ? '' : 's'}
+                        </div>
+                    </summary>
+                    <div class="pmis-v75n-register-table table-responsive">
+                        <table class="${escapeAttrV75N(table.className)}">
+                            ${thead.outerHTML}
+                            <tbody>
+                                ${group.rows.join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+
+                wrapper.appendChild(
+                    details
+                );
+            }
+        );
+
+        const host =
+            table.parentElement &&
+            /table-responsive/i.test(
+                table.parentElement.className || ''
+            )
+                ? table.parentElement
+                : table;
+
+        host.replaceWith(
+            wrapper
+        );
+    }
+
+    function escapeHtmlV75N(value) {
+        return String(value ?? '')
+            .replace(/&/g,'&amp;')
+            .replace(/</g,'&lt;')
+            .replace(/>/g,'&gt;');
+    }
+
+    function escapeAttrV75N(value) {
+        return escapeHtmlV75N(value)
+            .replace(/"/g,'&quot;');
+    }
+
+    function startV75N() {
+        if (
+            typeof renderTable ===
+                'function' &&
+            !window.__PMIS_V75N_CASHFLOW_RENDER_WRAPPED__
+        ) {
+            const previousRender =
+                renderTable;
+
+            renderTable =
+                function () {
+                    const result =
+                        previousRender.apply(
+                            this,
+                            arguments
+                        );
+
+                    requestAnimationFrame(
+                        transformRegisterV75N
+                    );
+
+                    return result;
+                };
+
+            window.__PMIS_V75N_CASHFLOW_RENDER_WRAPPED__ =
+                true;
+        }
+
+        requestAnimationFrame(
+            transformRegisterV75N
+        );
+
+        const observer =
+            new MutationObserver(
+                () =>
+                    requestAnimationFrame(
+                        transformRegisterV75N
+                    )
+            );
+
+        const area =
+            document.getElementById(
+                'tableArea'
+            );
+
+        if (area) {
+            observer.observe(
+                area,
+                {
+                    childList: true,
+                    subtree: true
+                }
+            );
+        }
+    }
+
+    if (
+        document.readyState ===
+        'loading'
+    ) {
+        document.addEventListener(
+            'DOMContentLoaded',
+            startV75N,
+            { once: true }
+        );
+    }
+    else {
+        startV75N();
+    }
+
+    console.log(
+        '[PMIS V75N] Payment register grouped by project.'
+    );
+})();
+</script>
+<script id="pmis-v75n-r1-register-collapsed-default">
+/* PMIS_V75N_R1_REGISTER_COLLAPSED_DEFAULT */
+(function () {
+    'use strict';
+
+    if (window.__PMIS_V75N_R1_REGISTER_COLLAPSED_DEFAULT__) return;
+    window.__PMIS_V75N_R1_REGISTER_COLLAPSED_DEFAULT__ = true;
+
+    function collapseFreshGroupsV75NR1() {
+        document
+            .querySelectorAll('.pmis-v75n-register-group')
+            .forEach(group => {
+                if (group.dataset.v75nr1Initialized === '1') return;
+                group.dataset.v75nr1Initialized = '1';
+                group.removeAttribute('open');
+            });
+    }
+
+    function startV75NR1() {
+        collapseFreshGroupsV75NR1();
+
+        const area = document.getElementById('tableArea') || document.body;
+        const observer = new MutationObserver(() => {
+            requestAnimationFrame(collapseFreshGroupsV75NR1);
+        });
+
+        observer.observe(area, {
+            childList: true,
+            subtree: true
+        });
+
+        let attempts = 0;
+        const timer = setInterval(() => {
+            attempts += 1;
+            collapseFreshGroupsV75NR1();
+            if (attempts >= 20) clearInterval(timer);
+        }, 300);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', startV75NR1, { once: true });
+    } else {
+        startV75NR1();
+    }
+
+    console.log('[PMIS V75N R1] Payment register now loads collapsed by default.');
+})();
+</script>
+
 </body>
 </html>

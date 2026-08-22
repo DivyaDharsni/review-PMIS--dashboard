@@ -20808,6 +20808,201 @@ async function sendReport(payload,button,originalHtml) {
     }
 })();
 </script>
+<script id="pmis-cashflow-sidebar-persistence-v75m">
+/* PMIS_CASHFLOW_SIDEBAR_PERSISTENCE_V75M */
+(function () {
+    'use strict';
+
+    if (window.__PMIS_CASHFLOW_SIDEBAR_PERSISTENCE_V75M__) return;
+    window.__PMIS_CASHFLOW_SIDEBAR_PERSISTENCE_V75M__ = true;
+
+    let queuedV75M = false;
+
+    function hrefPathV75M(link) {
+        return String(
+            link?.getAttribute('href') || ''
+        )
+            .trim()
+            .replace(/^\.\//, '');
+    }
+
+    function dashboardLinkV75M(sidebar) {
+        return Array
+            .from(
+                sidebar.querySelectorAll(
+                    'a.sidebar-btn'
+                )
+            )
+            .find(link =>
+                hrefPathV75M(link)
+                    .split('?')[0]
+                    .split('#')[0] ===
+                'project_review.html'
+            ) || null;
+    }
+
+    function buildCashflowLinkV75M() {
+        const link =
+            document.createElement('a');
+
+        link.id =
+            'pmisCashflowMenuV75M';
+
+        link.href =
+            'cashflow.html';
+
+        link.className =
+            'sidebar-btn';
+
+        link.innerHTML = `
+            <div
+                class="sb-icon"
+                style="background:rgba(20,184,166,.18);"
+            >
+                <i
+                    class="bi bi-graph-up-arrow"
+                    style="color:#2dd4bf;"
+                ></i>
+            </div>
+            Cashflow / Payments
+        `;
+
+        return link;
+    }
+
+    function ensureCashflowV75M() {
+        const sidebar =
+            document.getElementById('sidebar');
+
+        if (!sidebar) return false;
+
+        const dashboard =
+            dashboardLinkV75M(sidebar);
+
+        const existing =
+            Array.from(
+                sidebar.querySelectorAll(
+                    'a.sidebar-btn'
+                )
+            )
+                .filter(link =>
+                    hrefPathV75M(link)
+                        .split('?')[0]
+                        .split('#')[0] ===
+                    'cashflow.html'
+                );
+
+        let cashflow =
+            existing[0] || null;
+
+        // Remove duplicates created by older versions.
+        existing
+            .slice(1)
+            .forEach(link =>
+                link.remove()
+            );
+
+        // Root fix:
+        // if another sidebar/role script rebuilt the sidebar
+        // and removed the dynamic Cashflow link, recreate it.
+        if (!cashflow) {
+            cashflow =
+                buildCashflowLinkV75M();
+        }
+
+        cashflow.style.display = '';
+        cashflow.hidden = false;
+        cashflow.removeAttribute(
+            'aria-hidden'
+        );
+
+        // Keep one stable location:
+        // Project Dashboard -> Cashflow / Payments -> Resource Hub.
+        if (dashboard) {
+            if (
+                dashboard.nextElementSibling !==
+                cashflow
+            ) {
+                dashboard.insertAdjacentElement(
+                    'afterend',
+                    cashflow
+                );
+            }
+        }
+        else if (!cashflow.isConnected) {
+            sidebar.prepend(cashflow);
+        }
+
+        return true;
+    }
+
+    function queueEnsureV75M() {
+        if (queuedV75M) return;
+
+        queuedV75M = true;
+
+        requestAnimationFrame(() => {
+            queuedV75M = false;
+            ensureCashflowV75M();
+        });
+    }
+
+    function startV75M() {
+        ensureCashflowV75M();
+
+        // Sidebar can be rebuilt after login/role checks.
+        // Watch those DOM changes and restore Cashflow if necessary.
+        const observer =
+            new MutationObserver(
+                queueEnsureV75M
+            );
+
+        observer.observe(
+            document.documentElement,
+            {
+                childList: true,
+                subtree: true
+            }
+        );
+
+        // Cover delayed role/UI initialization too.
+        let attempts = 0;
+
+        const timer =
+            setInterval(() => {
+                attempts += 1;
+                ensureCashflowV75M();
+
+                if (attempts >= 30) {
+                    clearInterval(timer);
+                }
+            }, 300);
+
+        window.addEventListener(
+            'pageshow',
+            ensureCashflowV75M
+        );
+    }
+
+    if (
+        document.readyState ===
+        'loading'
+    ) {
+        document.addEventListener(
+            'DOMContentLoaded',
+            startV75M,
+            { once: true }
+        );
+    }
+    else {
+        startV75M();
+    }
+
+    console.log(
+        '[PMIS V75M] Cashflow sidebar persistence active.'
+    );
+})();
+</script>
 </body>
 
 </html>

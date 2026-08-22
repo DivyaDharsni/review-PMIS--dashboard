@@ -13446,7 +13446,7 @@ console.log('[PMIS V74G] jsPDF + AutoTable libraries already present for vector 
         const balance = Math.max(0, expected - received);
         const plannedDate = plannedRealization(term);
         const receiptDate = latestReceiptDate(term);
-        const actualForecast = actualForecastDate(term);
+
         const actualPctPo = actualPercentOfPo(term);
         const milestonePct = milestoneRealization(term);
         const stageId = String(term?.linked_stage_id || '');
@@ -13468,13 +13468,12 @@ console.log('[PMIS V74G] jsPDF + AutoTable libraries already present for vector 
                     ? `Latest of ${splitCount} split receipts`
                     : 'Actual receipt date';
         }
-        else if (actualForecast) {
-            actualDateHtml = esc(fmtDate(actualForecast));
-            actualDateSub = 'Forecast: Actual End + Credit Days';
-        }
         else {
+            // PMIS_V75N2_ACTUAL_REALIZATION_RECEIPT_DATE_ONLY
+            // Actual realization is a receipt event, not a forecast.
+            // It must come only from the Received Date entered when money is received.
             actualDateHtml = '<span class="pmis-v75g-pending">Not realized</span>';
-            actualDateSub = 'Awaiting stage actual / receipt';
+            actualDateSub = 'Awaiting payment receipt';
         }
 
         const actionText = fullyRealized
@@ -14548,6 +14547,305 @@ console.log('[PMIS V74G] jsPDF + AutoTable libraries already present for vector 
 }
 </style>
 
+<style id="pmis-v75n-receipt-ui-alignment-style">
+/* PMIS_V75N_RECEIPT_UI_ALIGNMENT */
+.pmis-v75g-commercial-shell {
+    width: 100%;
+}
+.pmis-v75g-commercial-grid {
+    width: 100%;
+}
+#pmisReceiptEntryV75G .pmis-v75n-hidden-reference {
+    display: none !important;
+}
+#pmisReceiptHistoryV75G .pmis-v75n-hidden-reference-col {
+    display: none !important;
+}
+</style>
+<script id="pmis-v75n-receipt-ui-alignment">
+/* PMIS_V75N_RECEIPT_UI_ALIGNMENT */
+(function () {
+    'use strict';
+
+    if (window.__PMIS_V75N_RECEIPT_UI_ALIGNMENT__) return;
+    window.__PMIS_V75N_RECEIPT_UI_ALIGNMENT__ = true;
+
+    let queuedV75N = false;
+
+    function queueV75N() {
+        if (queuedV75N) return;
+        queuedV75N = true;
+        requestAnimationFrame(() => {
+            queuedV75N = false;
+            applyReceiptUiV75N();
+            syncCommercialAlignmentV75N();
+        });
+    }
+
+    function hideReferenceEntryV75N() {
+        const input =
+            document.getElementById(
+                'pmisReceiptReferenceV75G'
+            );
+
+        const field =
+            input?.closest('.col-md-6');
+
+        if (field) {
+            field.classList.add(
+                'pmis-v75n-hidden-reference'
+            );
+        }
+
+        const remarks =
+            document.getElementById(
+                'pmisReceiptRemarksV75G'
+            )?.closest('.col-md-6');
+
+        if (remarks) {
+            remarks.classList.remove(
+                'col-md-6'
+            );
+            remarks.classList.add(
+                'col-md-6'
+            );
+        }
+    }
+
+    function hideReferenceHistoryV75N() {
+        const table =
+            document.querySelector(
+                '#pmisReceiptHistoryV75G table'
+            );
+
+        if (!table) return;
+
+        const headers =
+            Array.from(
+                table.querySelectorAll(
+                    'thead th'
+                )
+            );
+
+        const index =
+            headers.findIndex(th =>
+                /reference/i.test(
+                    th.textContent || ''
+                )
+            );
+
+        if (index < 0) return;
+
+        table
+            .querySelectorAll('tr')
+            .forEach(row => {
+                const cell = row.children[index];
+                if (cell) {
+                    cell.classList.add(
+                        'pmis-v75n-hidden-reference-col'
+                    );
+                }
+            });
+    }
+
+    function autoFillReferenceV75N() {
+        const input =
+            document.getElementById(
+                'pmisReceiptReferenceV75G'
+            );
+
+        if (
+            input &&
+            !String(input.value || '').trim()
+        ) {
+            input.value =
+                'Handled by finance';
+        }
+    }
+
+    function samplePlanRowV75N() {
+        const rows =
+            Array.from(
+                document.querySelectorAll(
+                    '#phasesTbody tr'
+                )
+            )
+                .filter(row =>
+                    !row.classList.contains(
+                        'pmis-v75g-commercial-row'
+                    ) &&
+                    row.cells &&
+                    row.cells.length >= 12
+                );
+
+        return rows[0] || null;
+    }
+
+    function syncCommercialAlignmentV75N() {
+        const row = samplePlanRowV75N();
+        if (!row) return;
+
+        const cells =
+            Array.from(row.cells);
+
+        const planCells =
+            cells.slice(0,6);
+
+        const totalWidth =
+            cells.reduce(
+                (sum,cell) =>
+                    sum + cell.getBoundingClientRect().width,
+                0
+            );
+
+        const planWidth =
+            planCells.reduce(
+                (sum,cell) =>
+                    sum + cell.getBoundingClientRect().width,
+                0
+            );
+
+        if (
+            !(planWidth > 0) ||
+            !(totalWidth > planWidth)
+        ) {
+            return;
+        }
+
+        document
+            .querySelectorAll(
+                '.pmis-v75g-commercial-grid'
+            )
+            .forEach(grid => {
+                grid.style.gridTemplateColumns =
+                    `${Math.round(planWidth)}px minmax(0, calc(100% - ${Math.round(planWidth)}px))`;
+            });
+    }
+
+    function applyReceiptUiV75N() {
+        hideReferenceEntryV75N();
+        hideReferenceHistoryV75N();
+    }
+
+    function installHooksV75N() {
+        document.addEventListener(
+            'click',
+            event => {
+                if (
+                    event.target.closest(
+                        '#pmisReceiptSaveV75G'
+                    )
+                ) {
+                    autoFillReferenceV75N();
+                }
+            },
+            true
+        );
+
+        if (
+            typeof openReceiptEditor ===
+                'function' &&
+            !window.__PMIS_V75N_OPEN_EDITOR_WRAPPED__
+        ) {
+            const previousOpen =
+                openReceiptEditor;
+
+            openReceiptEditor =
+                function () {
+                    const result =
+                        previousOpen.apply(
+                            this,
+                            arguments
+                        );
+
+                    queueV75N();
+                    return result;
+                };
+
+            window.__PMIS_V75N_OPEN_EDITOR_WRAPPED__ =
+                true;
+        }
+
+        if (
+            typeof renderTable ===
+                'function' &&
+            !window.__PMIS_V75N_RENDER_WRAPPED__
+        ) {
+            const previousRender =
+                renderTable;
+
+            renderTable =
+                function () {
+                    const result =
+                        previousRender.apply(
+                            this,
+                            arguments
+                        );
+
+                    queueV75N();
+                    return result;
+                };
+
+            window.__PMIS_V75N_RENDER_WRAPPED__ =
+                true;
+        }
+    }
+
+    function startV75N() {
+        installHooksV75N();
+        applyReceiptUiV75N();
+        syncCommercialAlignmentV75N();
+
+        const observer =
+            new MutationObserver(
+                queueV75N
+            );
+
+        observer.observe(
+            document.body,
+            {
+                childList: true,
+                subtree: true
+            }
+        );
+
+        window.addEventListener(
+            'resize',
+            queueV75N
+        );
+
+        let attempts = 0;
+        const timer =
+            setInterval(() => {
+                attempts += 1;
+                applyReceiptUiV75N();
+                syncCommercialAlignmentV75N();
+
+                if (attempts >= 25) {
+                    clearInterval(timer);
+                }
+            }, 350);
+    }
+
+    if (
+        document.readyState ===
+        'loading'
+    ) {
+        document.addEventListener(
+            'DOMContentLoaded',
+            startV75N,
+            { once: true }
+        );
+    }
+    else {
+        startV75N();
+    }
+
+    console.log(
+        '[PMIS V75N] Receipt UI simplified and commercial alignment synced.'
+    );
+})();
+</script>
 </body>
 
 </html>
