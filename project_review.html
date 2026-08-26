@@ -2181,14 +2181,7 @@
             <div class="sb-icon" style="background: rgba(245,158,11,0.18);"><i class="bi bi-file-earmark-bar-graph-fill" style="color:#f59e0b;"></i></div>
             Project Master Report
         </button>
-
-        <div class="sidebar-section-title" style="margin-top: 10px;">Account</div>
-        <button class="sidebar-btn" onclick="performLogout()">
-            <div class="sb-icon"><i class="bi bi-box-arrow-right"></i></div>
-            Logout
-        </button>
-
-        <!-- Feedback Section -->
+<!-- Feedback Section -->
         <div class="sidebar-section-title" style="margin-top: 30px;">Share Feedback</div>
         <div class="px-3 pb-4">
             <textarea id="feedbackText" class="form-control mb-3" rows="4"
@@ -2218,6 +2211,13 @@
                     </button>
         </div>
         <!-- PMIS_FEEDBACK_MANAGEMENT_ALIGNMENT_V35_END -->
+        <!-- PMIS_LOGOUT_AFTER_FEEDBACK_V76D_START -->
+        <div class="sidebar-section-title" style="margin-top: 18px;">Account</div>
+        <button class="sidebar-btn" onclick="performLogout()">
+            <div class="sb-icon"><i class="bi bi-box-arrow-right"></i></div>
+            Logout
+        </button>
+        <!-- PMIS_LOGOUT_AFTER_FEEDBACK_V76D_END -->
     </div>
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -3187,6 +3187,7 @@
                                 <label class="master-report-check-item"><input class="form-check-input master-report-option" type="checkbox" value="overview"><span class="master-report-check-label">Project overview</span></label>
                                 <label class="master-report-check-item"><input class="form-check-input master-report-option" type="checkbox" value="commercial"><span class="master-report-check-label">PO &amp; commercial value</span></label>
                                 <label class="master-report-check-item"><input class="form-check-input master-report-option" type="checkbox" value="kpi"><span class="master-report-check-label">Project KPI summary</span></label>
+                                <label class="master-report-check-item"><input class="form-check-input master-report-option" type="checkbox" value="payments"><span class="master-report-check-label">Payment milestone register</span></label>
                                 <label class="master-report-check-item"><input class="form-check-input master-report-option" type="checkbox" value="gantt"><span class="master-report-check-label">Timeline / Gantt graph</span></label>
                                 <label class="master-report-check-item"><input class="form-check-input master-report-option" type="checkbox" value="phases"><span class="master-report-check-label">Detailed phase table</span></label>
                                 <label class="master-report-check-item"><input class="form-check-input master-report-option" type="checkbox" value="actionChart"><span class="master-report-check-label">Action-point status graph</span></label>
@@ -5474,6 +5475,7 @@ function formatExportPoValueForCurrentUser(project) {
 
         // PMIS_LESSONS_LEARNED_REGISTER_V32_OPTIONS
         const MASTER_REPORT_ALL_OPTIONS = [
+            'payments',
             'overview','commercial','kpi','phases','gantt',
             'actionChart','actions','lessons','people','emails','remarks','revisions'
         ];
@@ -6054,6 +6056,369 @@ function formatExportPoValueForCurrentUser(project) {
         }
 
         // PMIS_REPORT_NA_PDF_FIX_V20
+        /* PMIS_MASTER_PAYMENT_MILESTONE_REGISTER_V76B2 */
+
+        function masterReportPaymentNumberV76B2(value) {
+            const parsed = Number(
+                String(value ?? '')
+                    .replace(/,/g,'')
+                    .replace(/[^\d.\-]/g,'')
+            );
+
+            return Number.isFinite(parsed)
+                ? parsed
+                : 0;
+        }
+
+        function masterReportPaymentReceiptsV76B2(term) {
+            const candidates = [
+                term?.actual_receipts,
+                term?.actualReceipts,
+                term?.receipts,
+                term?.receipt_entries,
+                term?.receiptEntries
+            ];
+
+            return candidates.find(Array.isArray) || [];
+        }
+
+        function masterReportPaymentReceivedV76B2(term) {
+            return masterReportPaymentReceiptsV76B2(term)
+                .reduce(
+                    (sum,item) =>
+                        sum +
+                        Math.max(
+                            0,
+                            masterReportPaymentNumberV76B2(
+                                item?.amount ??
+                                item?.received_amount ??
+                                item?.receivedAmount
+                            )
+                        ),
+                    0
+                );
+        }
+
+        function masterReportPaymentLastReceiptV76B2(term) {
+            const values =
+                masterReportPaymentReceiptsV76B2(term)
+                    .map(item =>
+                        String(
+                            item?.received_date ??
+                            item?.receivedDate ??
+                            item?.date ??
+                            ''
+                        ).slice(0,10)
+                    )
+                    .filter(Boolean)
+                    .sort();
+
+            return values.length
+                ? values[values.length - 1]
+                : '';
+        }
+
+        function masterReportPaymentPhaseRowV76B2(project,stageId) {
+            try {
+                const rows = masterReportPhaseRows(project) || [];
+
+                return rows.find(row =>
+                    String(
+                        row?.key ??
+                        row?.id ??
+                        row?.phaseId ??
+                        ''
+                    ) === String(stageId || '')
+                ) || null;
+            }
+            catch (_) {
+                return null;
+            }
+        }
+
+        function masterReportPaymentStageDateV76B2(project,stageId) {
+            const id = String(stageId || '');
+
+            if (id === 'po_date') {
+                return String(project?.po_date || '').slice(0,10);
+            }
+
+            const detail = project?.detailed_phases?.[id] || {};
+
+            const revisions = Array.isArray(detail.revisions)
+                ? detail.revisions
+                : [];
+
+            for (let index = revisions.length - 1; index >= 0; index -= 1) {
+                const revision = revisions[index] || {};
+
+                const revised = String(
+                    revision.end ??
+                    revision.newEnd ??
+                    revision.new_end ??
+                    revision.plan_end ??
+                    ''
+                ).slice(0,10);
+
+                if (revised) return revised;
+            }
+
+            const direct = String(
+                detail.plan_end ??
+                detail.planEnd ??
+                ''
+            ).slice(0,10);
+
+            if (direct) return direct;
+
+            const row = masterReportPaymentPhaseRowV76B2(project,id);
+
+            return String(
+                row?.plan_end ??
+                row?.planEnd ??
+                ''
+            ).slice(0,10);
+        }
+
+        function masterReportPaymentAddDaysV76B2(date,days) {
+            if (!date) return '';
+
+            const parts = String(date)
+                .slice(0,10)
+                .split('-')
+                .map(Number);
+
+            if (
+                parts.length !== 3 ||
+                parts.some(Number.isNaN)
+            ) {
+                return '';
+            }
+
+            const d = new Date(
+                Date.UTC(
+                    parts[0],
+                    parts[1] - 1,
+                    parts[2]
+                )
+            );
+
+            d.setUTCDate(
+                d.getUTCDate() +
+                Math.trunc(
+                    masterReportPaymentNumberV76B2(days)
+                )
+            );
+
+            return d.toISOString().slice(0,10);
+        }
+
+        function masterReportPaymentStageNameV76B2(project,stageId) {
+            const id = String(stageId || '');
+
+            if (id === 'po_date') {
+                return 'PO receipt & acknowledgement';
+            }
+
+            const row = masterReportPaymentPhaseRowV76B2(project,id);
+
+            if (row?.name) {
+                return String(row.name);
+            }
+
+            try {
+                if (
+                    typeof pmisMasterPhaseNames !== 'undefined' &&
+                    pmisMasterPhaseNames?.[id]
+                ) {
+                    return String(pmisMasterPhaseNames[id]);
+                }
+            }
+            catch (_) {}
+
+            return id
+                ? id
+                    .replace(/_/g,' ')
+                    .replace(/\b\w/g,char => char.toUpperCase())
+                : '-';
+        }
+
+        function masterReportPaymentStageCompleteV76B2(project,stageId) {
+            const id = String(stageId || '');
+
+            if (id === 'po_date') {
+                return !!project?.po_date;
+            }
+
+            const detail = project?.detailed_phases?.[id] || {};
+
+            const progress = masterReportPaymentNumberV76B2(
+                detail.progress ??
+                detail.percentage ??
+                detail.completion_percent
+            );
+
+            if (
+                progress >= 100 ||
+                detail.actual_end ||
+                detail.actualEnd
+            ) {
+                return true;
+            }
+
+            const row = masterReportPaymentPhaseRowV76B2(project,id);
+
+            return (
+                masterReportPaymentNumberV76B2(row?.progress) >= 100 ||
+                !!row?.actual_end ||
+                !!row?.actualEnd
+            );
+        }
+
+        function masterReportPaymentStatusV76B2(
+            project,
+            term,
+            expected,
+            received,
+            planned
+        ) {
+            if (
+                expected > 0 &&
+                received + 0.5 >= expected
+            ) {
+                return 'Realized';
+            }
+
+            if (received > 0) {
+                return 'Partially Received';
+            }
+
+            if (!planned) {
+                return 'Plan Date Pending';
+            }
+
+            const today = new Date().toISOString().slice(0,10);
+
+            if (planned < today) {
+                return 'Overdue';
+            }
+
+            if (
+                masterReportPaymentStageCompleteV76B2(
+                    project,
+                    term?.linked_stage_id ??
+                    term?.linkedStageId
+                ) ||
+                planned === today
+            ) {
+                return 'Due';
+            }
+
+            return 'Not Due';
+        }
+
+        function masterReportPaymentRowsV76B2(project) {
+            const terms = Array.isArray(project?.payment_milestones)
+                ? project.payment_milestones
+                : (
+                    Array.isArray(project?.paymentMilestones)
+                        ? project.paymentMilestones
+                        : []
+                );
+
+            const poValue = Math.max(
+                0,
+                masterReportPaymentNumberV76B2(
+                    project?.po_value ??
+                    project?.poValue
+                )
+            );
+
+            return terms
+                .map((term,index) => {
+                    const stageId = String(
+                        term?.linked_stage_id ??
+                        term?.linkedStageId ??
+                        ''
+                    ).trim();
+
+                    const percentage = masterReportPaymentNumberV76B2(
+                        term?.percentage ??
+                        term?.percent
+                    );
+
+                    if (!stageId || !(percentage > 0)) {
+                        return null;
+                    }
+
+                    const expected = Math.max(
+                        0,
+                        poValue * percentage / 100
+                    );
+
+                    const received = masterReportPaymentReceivedV76B2(term);
+
+                    const outstanding = Math.max(
+                        0,
+                        expected - received
+                    );
+
+                    const stagePlan = masterReportPaymentStageDateV76B2(
+                        project,
+                        stageId
+                    );
+
+                    const planned = masterReportPaymentAddDaysV76B2(
+                        stagePlan,
+                        term?.credit_days ??
+                        term?.creditDays
+                    );
+
+                    const lastReceipt = masterReportPaymentLastReceiptV76B2(term);
+
+                    const status = masterReportPaymentStatusV76B2(
+                        project,
+                        term,
+                        expected,
+                        received,
+                        planned
+                    );
+
+                    return {
+                        milestone:
+                            'M' +
+                            (index + 1) +
+                            (
+                                term?.remarks
+                                    ? '\n' + String(term.remarks)
+                                    : ''
+                            ),
+
+                        stage: masterReportPaymentStageNameV76B2(
+                            project,
+                            stageId
+                        ),
+
+                        percentage,
+
+                        creditDays: Math.trunc(
+                            masterReportPaymentNumberV76B2(
+                                term?.credit_days ??
+                                term?.creditDays
+                            )
+                        ),
+
+                        expected,
+                        stagePlan,
+                        planned,
+                        received,
+                        lastReceipt,
+                        outstanding,
+                        status
+                    };
+                })
+                .filter(Boolean);
+        }
         async function generateProjectMasterReport() {
             const projectId = document.getElementById('masterReportProject')?.value;
             const project = projects.find(item => String(item._id) === String(projectId));
@@ -6123,7 +6488,202 @@ function formatExportPoValueForCurrentUser(project) {
                 }
 
                 // Page 2 begins with the detailed phase hierarchy when earlier sections exist.
-                if (options.has('phases')) {
+                                // PMIS_MASTER_PAYMENT_MILESTONE_REGISTER_V76B2
+                if (options.has('payments')) {
+                    const paymentRowsV76B2 =
+                        masterReportPaymentRowsV76B2(project);
+
+                    y = masterReportSection(
+                        doc,
+                        nextSectionTitle(
+                            'PAYMENT MILESTONE REGISTER'
+                        ),
+                        y,
+                        project,
+                        reportTitle,
+                        logoData,
+                        54
+                    );
+
+                    const paymentBodyV76B2 =
+                        paymentRowsV76B2.length
+                            ? paymentRowsV76B2.map(item => [
+                                item.milestone,
+                                item.stage,
+                                (
+                                    item.percentage
+                                        .toFixed(2)
+                                        .replace(/\.00$/,'')
+                                ) + '%',
+                                String(item.creditDays),
+                                masterReportMoney(item.expected),
+                                masterReportDate(item.stagePlan),
+                                masterReportDate(item.planned),
+                                masterReportMoney(item.received),
+                                masterReportDate(item.lastReceipt),
+                                masterReportMoney(item.outstanding),
+                                item.status
+                            ])
+                            : [[
+                                '',
+                                'No configured payment milestones',
+                                '',
+                                '',
+                                '',
+                                '',
+                                '',
+                                '',
+                                '',
+                                '',
+                                ''
+                            ]];
+
+                    doc.autoTable({
+                        startY:y,
+
+                        head:[[ 
+                            'Milestone',
+                            'Linked Stage',
+                            '%',
+                            'Credit Days',
+                            'Planned Amount',
+                            'Stage Plan Date',
+                            'Planned Realization',
+                            'Actual Received',
+                            'Last Receipt',
+                            'Outstanding',
+                            'Status'
+                        ]],
+
+                        body:paymentBodyV76B2,
+                        theme:'grid',
+
+                        styles:{
+                            fontSize:6.2,
+                            cellPadding:1.7,
+                            overflow:'linebreak',
+                            valign:'middle',
+                            textColor:[15,23,42]
+                        },
+
+                        headStyles:{
+                            fillColor:[226,232,240],
+                            textColor:[11,43,74],
+                            fontStyle:'bold',
+                            fontSize:6.0,
+                            halign:'center',
+                            valign:'middle',
+                            minCellHeight:8
+                        },
+
+                        columnStyles:{
+                            0:{cellWidth:20,fontStyle:'bold'},
+                            1:{cellWidth:54},
+                            2:{cellWidth:12,halign:'center'},
+                            3:{cellWidth:16,halign:'center'},
+                            4:{cellWidth:27},
+                            5:{cellWidth:24},
+                            6:{cellWidth:26},
+                            7:{cellWidth:27},
+                            8:{cellWidth:24},
+                            9:{cellWidth:27},
+                            10:{cellWidth:20}
+                        },
+
+                        margin:{
+                            top:34,
+                            left:10,
+                            right:10,
+                            bottom:14
+                        },
+
+                        tableWidth:
+                            doc.internal.pageSize.getWidth() - 20,
+
+                        showHead:'everyPage',
+                        rowPageBreak:'avoid',
+                        willDrawPage:continuationHeader,
+
+                        didParseCell:data => {
+                            const column = data.column.index;
+
+                            if (
+                                data.section === 'body' &&
+                                (
+                                    column === 2 ||
+                                    column === 3 ||
+                                    (
+                                        column >= 4 &&
+                                        column <= 10
+                                    )
+                                )
+                            ) {
+                                data.cell.styles.halign = 'center';
+                            }
+
+                            if (column >= 4 && column <= 6) {
+                                data.cell.styles.fillColor =
+                                    data.section === 'head'
+                                        ? [219,234,254]
+                                        : [239,246,255];
+
+                                data.cell.styles.textColor =
+                                    [11,43,74];
+                            }
+
+                            if (column >= 7 && column <= 10) {
+                                data.cell.styles.fillColor =
+                                    data.section === 'head'
+                                        ? [204,251,241]
+                                        : [240,253,250];
+
+                                data.cell.styles.textColor =
+                                    [6,95,70];
+                            }
+
+                            if (
+                                data.section === 'body' &&
+                                column === 10
+                            ) {
+                                const value = String(
+                                    data.cell.raw || ''
+                                );
+
+                                if (value === 'Overdue') {
+                                    data.cell.styles.fillColor =
+                                        [254,226,226];
+                                    data.cell.styles.textColor =
+                                        [185,28,28];
+                                    data.cell.styles.fontStyle =
+                                        'bold';
+                                }
+                                else if (value === 'Realized') {
+                                    data.cell.styles.fillColor =
+                                        [220,252,231];
+                                    data.cell.styles.textColor =
+                                        [21,128,61];
+                                    data.cell.styles.fontStyle =
+                                        'bold';
+                                }
+                                else if (value === 'Partially Received') {
+                                    data.cell.styles.fillColor =
+                                        [255,237,213];
+                                    data.cell.styles.textColor =
+                                        [194,65,12];
+                                    data.cell.styles.fontStyle =
+                                        'bold';
+                                }
+                            }
+                        }
+                    });
+
+                    y =
+                        (
+                            doc.lastAutoTable?.finalY ||
+                            y
+                        ) + 6;
+                }
+if (options.has('phases')) {
                     if (sectionNumber > 0 && doc.internal.getNumberOfPages() === 1) {
                         y = masterReportAddPage(doc,project,reportTitle,logoData);
                     }
@@ -19728,7 +20288,14 @@ async function sendReport(payload,button,originalHtml) {
 
         const sidebar = document.getElementById('sidebar');
         if (!sidebar || document.getElementById('pmisCashflowMenuV75A')) return;
-        const dashboardLink = Array.from(sidebar.querySelectorAll('a.sidebar-btn')).find(a => String(a.getAttribute('href') || '').includes('project_review.html'));
+        // PMIS_REPORT_CASHFLOW_SUBSTAGE_ORDER_V75Q5
+        const masterReportLink = Array
+            .from(sidebar.querySelectorAll('.sidebar-btn'))
+            .find(link =>
+                /project\s+master\s+report/i.test(
+                    String(link.textContent || '')
+                )
+            ) || null;
         const link = document.createElement('a');
         link.id = 'pmisCashflowMenuV75A';
         link.href = 'cashflow.html';
@@ -19736,7 +20303,7 @@ async function sendReport(payload,button,originalHtml) {
         link.innerHTML = `
             <div class="sb-icon" style="background:rgba(16,185,129,.18);"><i class="bi bi-graph-up-arrow" style="color:#34d399;"></i></div>
             Cashflow / Payments`;
-        if (dashboardLink) dashboardLink.insertAdjacentElement('afterend', link);
+        if (masterReportLink) masterReportLink.insertAdjacentElement('afterend', link);
         else sidebar.appendChild(link);
     }
 
@@ -20898,17 +21465,19 @@ async function sendReport(payload,button,originalHtml) {
     }
 
     function dashboardLinkV75M(sidebar) {
+        // PMIS_REPORT_CASHFLOW_SUBSTAGE_ORDER_V75Q5
+        // Legacy function name retained so existing V75M callers remain untouched.
+        // The anchor is now Project Master Report inside REPORTS.
         return Array
             .from(
                 sidebar.querySelectorAll(
-                    'a.sidebar-btn'
+                    '.sidebar-btn'
                 )
             )
             .find(link =>
-                hrefPathV75M(link)
-                    .split('?')[0]
-                    .split('#')[0] ===
-                'project_review.html'
+                /project\s+master\s+report/i.test(
+                    String(link.textContent || '')
+                )
             ) || null;
     }
 
@@ -20993,7 +21562,7 @@ async function sendReport(payload,button,originalHtml) {
         );
 
         // Keep one stable location:
-        // Project Dashboard -> Cashflow / Payments -> Resource Hub.
+        // Project Master Report -> Cashflow / Payments.
         if (dashboard) {
             if (
                 dashboard.nextElementSibling !==
@@ -21129,6 +21698,11 @@ async function sendReport(payload,button,originalHtml) {
     }
 })();
 </script>
+<!-- PMIS_MASTER_PAYMENT_MILESTONE_REGISTER_V76B2 -->
+
+<!-- PMIS_MASTER_PAYMENT_REGISTER_ALIGNMENT_V76B3 -->
+
+<!-- PMIS_MASTER_PAYMENT_REGISTER_FULL_WIDTH_ALIGN_V76B4 -->
 </body>
 
 </html>

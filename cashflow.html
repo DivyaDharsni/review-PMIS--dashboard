@@ -117,9 +117,11 @@
         @media(max-width:768px){body{padding:14px 14px 70px}.app-header{padding:12px 13px;border-radius:20px;min-height:70px}.brand-box .brand-logo-wrap{display:none}.brand-sub{display:none}.header-right .user-pill{display:none}.cashflow-main{max-width:none}.filter-grid{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}.title-row h1{font-size:1.35rem}.sidebar{width:min(320px,90vw);left:-100vw;padding:24px}.menu-toggle{width:44px;height:44px}}
         @media(max-width:480px){.kpis{grid-template-columns:1fr}.app-header{margin-bottom:17px}.title-row{align-items:flex-start}.title-row>div:last-child{width:100%}}
     </style>
+<style id="pmis-cashflow-v76b2-hide-register-option">.pmis-v76a-export-option{display:none!important;}</style>
 </head>
-<body>
+<body data-pmis-cashflow-version="V76A">
 <!-- PMIS_PAYMENT_MILESTONES_CASHFLOW_V75A -->
+<!-- PMIS_CASHFLOW_SINGLE_SOURCE_V75Y -->
 <!-- PMIS_CASHFLOW_NATIVE_UI_ALIGNMENT_V75B -->
 <!-- PMIS_FLEX_MILESTONES_SPLIT_PAYMENTS_V75C -->
 <!-- PMIS_OPTIONAL_PAYMENT_TERMS_COMPLETION_GATE_V75E -->
@@ -196,7 +198,7 @@
 
         <div class="charts">
             <section class="panel chart-card"><h3>Monthly Cashflow — Planned vs Actual</h3><p>Planned realization month compared with actual receipt month.</p><div class="chart-wrap"><canvas id="cashflowChart"></canvas></div></section>
-            <section class="panel chart-card"><h3>Payment Status Mix</h3><p>Number of milestones by current commercial status.</p><div class="chart-wrap"><canvas id="statusChart"></canvas></div></section>
+            <section class="panel chart-card"><h3>Payment Amount Mix</h3><p>Received and outstanding value split for the current filtered scope.</p><div class="chart-wrap"><canvas id="statusChart"></canvas></div></section>
         </div>
         <div class="charts second">
             <section class="panel chart-card"><h3>Cumulative Cashflow</h3><p>Cumulative planned and actual customer collections.</p><div class="chart-wrap"><canvas id="cumulativeChart"></canvas></div></section>
@@ -276,6 +278,180 @@ const groupIndex=Object.fromEntries(GROUPS.map((g,i)=>[g.id,i]));
 let projects=[],rows=[],filtered=[];
 let activeReceipt=null;
 let charts={};
+const openCashflowProjectsV75Y=new Set();
+
+/* PMIS_CASHFLOW_FILTER_CHART_OWNERSHIP_FIX_V75Z */
+/* PMIS_CASHFLOW_EXPORT_REGISTER_V76A */
+function chartLabelMoneyV76A(value){
+ const amount=Number(value)||0;
+
+ if(Math.abs(amount)>=10000000){
+  const cr=amount/10000000;
+  return '₹'+cr.toLocaleString(
+   'en-IN',
+   {
+    minimumFractionDigits:cr>=10?1:2,
+    maximumFractionDigits:cr>=10?1:2
+   }
+  )+'Cr';
+ }
+
+ if(Math.abs(amount)>=100000){
+  const lakh=amount/100000;
+  return '₹'+lakh.toLocaleString(
+   'en-IN',
+   {
+    minimumFractionDigits:lakh>=10?1:2,
+    maximumFractionDigits:lakh>=10?1:2
+   }
+  )+'L';
+ }
+
+ return '₹'+Math.round(amount).toLocaleString('en-IN');
+}
+
+const pmisV75ZDataLabels={
+ id:'pmisV75ZDataLabels',
+ afterDatasetsDraw(chart){
+  const ctx=chart.ctx;
+  const type=chart.config.type;
+  const horizontal=chart.options?.indexAxis==='y';
+  const area=chart.chartArea;
+
+  if(!area)return;
+
+  const all=[];
+  chart.data.datasets.forEach(ds=>{
+   (ds.data||[]).forEach(value=>{
+    const n=Number(value)||0;
+    if(n>0)all.push(n);
+   });
+  });
+
+  const max=all.length?Math.max(...all):0;
+  const total=all.reduce((sum,value)=>sum+value,0);
+
+  chart.data.datasets.forEach((dataset,datasetIndex)=>{
+   const meta=chart.getDatasetMeta(datasetIndex);
+   if(meta.hidden)return;
+
+   const values=(dataset.data||[]).map(value=>Number(value)||0);
+
+   values.forEach((value,index)=>{
+    if(!(value>0))return;
+
+    let show=true;
+
+    if(type==='line'){
+     let last=-1;
+     values.forEach((v,i)=>{if(v>0)last=i});
+     show=index===last||(index%4===0&&value>=max*.15);
+    }else if(type==='doughnut'||type==='pie'){
+     show=total>0&&(value/total)>=.08;
+    }else if(!horizontal){
+     const isActual=/actual|received/i.test(String(dataset.label||''));
+     show=isActual||value>=max*.07;
+     if(!isActual&&index%2===1&&value<max*.15)show=false;
+    }
+
+    if(!show)return;
+
+    const element=meta.data[index];
+    if(!element)return;
+
+    const point=element.tooltipPosition();
+    let label=chartLabelMoneyV76A(value);
+
+    if(type==='doughnut'||type==='pie'){
+     const pct=total>0?(value/total*100):0;
+     label=chartLabelMoneyV76A(value)+' · '+pct.toFixed(0)+'%';
+    }
+
+    ctx.save();
+    ctx.font='700 10px Arial';
+    ctx.fillStyle='#0f172a';
+
+    const textWidth=ctx.measureText(label).width;
+    const half=textWidth/2;
+
+    if(horizontal){
+     let x=point.x+6;
+     const maxX=area.right-textWidth-4;
+
+     if(x>maxX){
+      x=Math.max(area.left+4,point.x-textWidth-7);
+     }
+
+     const y=Math.min(
+      area.bottom-7,
+      Math.max(area.top+7,point.y)
+     );
+
+     ctx.textAlign='left';
+     ctx.textBaseline='middle';
+     ctx.fillText(label,x,y);
+    }else if(type==='doughnut'||type==='pie'){
+     const x=Math.min(
+      area.right-half-4,
+      Math.max(area.left+half+4,point.x)
+     );
+
+     const y=Math.min(
+      area.bottom-8,
+      Math.max(area.top+8,point.y)
+     );
+
+     ctx.textAlign='center';
+     ctx.textBaseline='middle';
+     ctx.fillText(label,x,y);
+    }else{
+     const x=Math.min(
+      area.right-half-4,
+      Math.max(area.left+half+4,point.x)
+     );
+
+     let y=point.y-6;
+     let baseline='bottom';
+
+     if(y<area.top+12){
+      y=point.y+10;
+      baseline='top';
+     }
+
+     y=Math.min(
+      area.bottom-12,
+      Math.max(area.top+12,y)
+     );
+
+     ctx.textAlign='center';
+     ctx.textBaseline=baseline;
+     ctx.fillText(label,x,y);
+    }
+
+    ctx.restore();
+   });
+  });
+ }
+};
+
+let pmisV75ZPluginRegistered=false;
+
+function registerV75ZChartPlugin(){
+ if(
+  pmisV75ZPluginRegistered||
+  typeof Chart!=='function'
+ )return;
+
+ try{
+  Chart.register(pmisV75ZDataLabels);
+  pmisV75ZPluginRegistered=true;
+ }catch(error){
+  console.warn(
+   '[PMIS V75Z] Data label plugin registration skipped:',
+   error
+  );
+ }
+}
 
 const $=id=>document.getElementById(id);
 const num=v=>Number.isFinite(Number(v))?Number(v):0;
@@ -323,11 +499,29 @@ function childrenFor(p,parentId){
 }
 function stagePlanEnd(p,id){
  if(id==='po_date')return String(p?.po_date||'').slice(0,10);
- const direct=String(p?.detailed_phases?.[id]?.plan_end||'').slice(0,10);
+
+ const data=p?.detailed_phases?.[id]||{};
+ const revisions=Array.isArray(data.revisions)
+  ?data.revisions.filter(item=>item&&item.end)
+  :[];
+
+ if(revisions.length){
+  const revised=String(revisions[revisions.length-1].end||'').slice(0,10);
+  if(revised)return revised;
+ }
+
+ const direct=String(data.plan_end||'').slice(0,10);
  if(direct)return direct;
- if(groupIndex[id]!==undefined){return maxIso(childrenFor(p,id).map(cid=>p?.detailed_phases?.[cid]?.plan_end))}
+
+ if(groupIndex[id]!==undefined){
+  return maxIso(
+   childrenFor(p,id).map(cid=>stagePlanEnd(p,cid))
+  );
+ }
+
  return '';
 }
+
 function stageComplete(p,id){
  if(id==='po_date')return !!p?.po_date;
  const d=p?.detailed_phases?.[id]||{};
@@ -401,42 +595,660 @@ function populateFilters(){
 }
 function dateInRange(date,from,to){if(!date)return false;const d=String(date).slice(0,10);return (!from||d>=from)&&(!to||d<=to)}
 function applyFilters(){
- const project=$('fProject').value,customer=$('fCustomer').value,manager=$('fManager').value,status=$('fStatus').value,fy=$('fFy').value,basis=$('fDateBasis').value,from=$('fFrom').value,to=$('fTo').value;
+ const project=$('fProject').value;
+ const customer=$('fCustomer').value;
+ const manager=$('fManager').value;
+ const status=$('fStatus').value;
+ const fy=$('fFy').value;
+ const basis=$('fDateBasis').value;
+ const from=$('fFrom').value;
+ const to=$('fTo').value;
+
  filtered=rows.filter(r=>{
-  if(project&&String(r.project._id)!==project)return false;if(customer&&String(r.project.customer_name||'')!==customer)return false;if(manager&&String(r.project.project_manager||'')!==manager)return false;if(status&&r.status!==status)return false;
-  if(fy){const plannedFy=fyOf(r.planned);const actualFys=receipts(r.term).map(x=>fyOf(x?.received_date));if(basis==='planned'&&plannedFy!==fy)return false;if(basis==='actual'&&!actualFys.includes(fy))return false;if(basis==='either'&&plannedFy!==fy&&!actualFys.includes(fy))return false}
-  if(from||to){const pOk=dateInRange(r.planned,from,to);const aOk=receipts(r.term).some(x=>dateInRange(x?.received_date,from,to));if(basis==='planned'&&!pOk)return false;if(basis==='actual'&&!aOk)return false;if(basis==='either'&&!pOk&&!aOk)return false}
+  if(project&&String(r.project._id)!==project)return false;
+  if(customer&&String(r.project.customer_name||'')!==customer)return false;
+  if(manager&&String(r.project.project_manager||'')!==manager)return false;
+  if(status&&r.status!==status)return false;
+
+  if(fy){
+   const plannedFy=fyOf(r.planned);
+   const actualFys=receipts(r.term).map(x=>fyOf(x?.received_date));
+
+   if(basis==='planned'&&plannedFy!==fy)return false;
+   if(basis==='actual'&&!actualFys.includes(fy))return false;
+   if(basis==='either'&&plannedFy!==fy&&!actualFys.includes(fy))return false;
+  }
+
+  if(from||to){
+   const pOk=dateInRange(r.planned,from,to);
+   const aOk=receipts(r.term).some(x=>dateInRange(x?.received_date,from,to));
+
+   if(basis==='planned'&&!pOk)return false;
+   if(basis==='actual'&&!aOk)return false;
+   if(basis==='either'&&!pOk&&!aOk)return false;
+  }
+
   return true;
  });
+
  renderAll();
 }
+
 function statusClass(s){return s==='Realized'?'s-paid':s==='Partially Received'?'s-partial':s==='Overdue'?'s-overdue':s==='Due'?'s-due':s==='Plan Date Pending'?'s-plan':'s-notdue'}
 function renderKpis(){
  const uniq=new Map();filtered.forEach(r=>uniq.set(String(r.project._id),r.project));const po=[...uniq.values()].reduce((s,p)=>s+num(p.po_value),0);const planned=filtered.reduce((s,r)=>s+r.expected,0);const actual=filtered.reduce((s,r)=>s+r.received,0);const outstanding=Math.max(0,planned-actual);
  $('kPo').textContent=money(po);$('kPlanned').textContent=money(planned);$('kActual').textContent=money(actual);$('kOutstanding').textContent=money(outstanding);$('kCollection').textContent=planned>0?(actual/planned*100).toFixed(1)+'%':'0%';
 }
-function renderTable(){
- $('rowCount').textContent=filtered.length+' milestone'+(filtered.length===1?'':'s');if(!filtered.length){$('tableArea').className='empty';$('tableArea').innerHTML='<i class="bi bi-inbox fs-2 d-block mb-2"></i>No payment milestones match the selected filters.';return}
- $('tableArea').className='table-responsive';$('tableArea').innerHTML=`<table class="table table-hover"><thead><tr><th>Project</th><th>Customer</th><th>Milestone</th><th>Linked Stage</th><th>%</th><th>Credit Days</th><th>Planned Amount</th><th>Stage Plan Date</th><th>Planned Realization</th><th>Actual Received</th><th>Last Receipt</th><th>Outstanding</th><th>Status</th><th>Action</th></tr></thead><tbody>${filtered.map(r=>{
-  const term=r.term,p=r.project,locked=!r.eligible||r.balance<=.5;const title=!r.eligible?'Linked stage is not 100% complete yet.':r.balance<=.5?'Milestone is fully realized.':'Open receipt history / add split payment';
-  return `<tr><td><strong>${esc(p.code||p.tracking_code||'Project')}</strong><div class="small text-secondary">${esc(p.name||'')}</div></td><td>${esc(p.customer_name||'-')}</td><td><strong>M${r.index+1}</strong><div class="small text-secondary">${esc(term.remarks||'')}</div></td><td class="stage-text">${esc(stageLabel(p,term.linked_stage_id))}</td><td>${num(term.percentage).toFixed(2).replace(/\.00$/,'')}%</td><td>${Math.trunc(num(term.credit_days))}</td><td class="money">${money(r.expected)}</td><td>${fmtDate(stagePlanEnd(p,term.linked_stage_id))}</td><td>${fmtDate(r.planned)}</td><td class="money">${money(r.received)}</td><td>${fmtDate(r.actual)}</td><td class="money">${money(r.balance)}</td><td><span class="badge-soft ${statusClass(r.status)}">${esc(r.status)}</span></td><td><button class="btn-record" data-record="${esc(p._id)}:${r.index}" title="${esc(title)}" ${locked?'disabled':''}><i class="bi bi-cash-coin me-1"></i>Receipts</button></td></tr>`
- }).join('')}</tbody></table>`;
- $('tableArea').querySelectorAll('[data-record]').forEach(btn=>btn.addEventListener('click',()=>openReceipt(btn.dataset.record)));
+function hardSyncProjectCardsV75Z(){
+ const area=$('tableArea');
+ if(!area)return;
+
+ const project=String($('fProject')?.value||'');
+ const customer=String($('fCustomer')?.value||'');
+ const manager=String($('fManager')?.value||'');
+ const status=String($('fStatus')?.value||'');
+
+ let visibleMilestones=0;
+
+ area.querySelectorAll('.pmis-v75y-project-card').forEach(card=>{
+  const cardProject=String(card.dataset.projectId||'');
+  const cardCustomer=String(card.dataset.projectCustomer||'');
+  const cardManager=String(card.dataset.projectManager||'');
+  const statuses=String(card.dataset.projectStatuses||'')
+   .split('|')
+   .filter(Boolean);
+
+  const show=
+   (!project||cardProject===project)&&
+   (!customer||cardCustomer===customer)&&
+   (!manager||cardManager===manager)&&
+   (!status||statuses.includes(status));
+
+  card.style.display=show?'':'none';
+
+  if(show){
+   visibleMilestones+=Number(card.dataset.projectMilestones||0);
+  }
+ });
+
+ const count=$('rowCount');
+ if(count){
+  count.textContent=
+   visibleMilestones+
+   ' milestone'+
+   (visibleMilestones===1?'':'s');
+ }
 }
+
+function renderTable(){
+ const area=$('tableArea');
+ const count=$('rowCount');
+
+ if(!area||!count)return;
+
+ count.textContent=
+  filtered.length+
+  ' milestone'+
+  (filtered.length===1?'':'s');
+
+ if(!filtered.length){
+  area.className='empty';
+  area.innerHTML=
+   '<i class="bi bi-inbox fs-2 d-block mb-2"></i>'+
+   'No payment projects match the selected filters.';
+  return;
+ }
+
+ const groups=new Map();
+
+ filtered.forEach(r=>{
+  const p=r.project||{};
+  const key=String(
+   p._id||
+   p.tracking_code||
+   p.code||
+   p.name||
+   'project'
+  );
+
+  if(!groups.has(key)){
+   groups.set(key,{
+    key,
+    project:p,
+    rows:[]
+   });
+  }
+
+  groups.get(key).rows.push(r);
+ });
+
+ const grouped=[...groups.values()]
+  .sort((a,b)=>
+   String(
+    a.project?.tracking_code||
+    a.project?.code||
+    a.project?.name||
+    ''
+   ).localeCompare(
+    String(
+     b.project?.tracking_code||
+     b.project?.code||
+     b.project?.name||
+     ''
+    )
+   )
+  );
+
+ const validKeys=new Set(
+  grouped.map(group=>group.key)
+ );
+
+ [...openCashflowProjectsV75Y].forEach(key=>{
+  if(!validKeys.has(key)){
+   openCashflowProjectsV75Y.delete(key);
+  }
+ });
+
+ function planTd(value,first=false){
+  return `
+   <td class="pmis-v75y-plan-cell ${first?'pmis-v75y-plan-start':''}">
+    ${value}
+   </td>
+  `;
+ }
+
+ function actualTd(value,first=false){
+  return `
+   <td class="pmis-v75y-actual-cell ${first?'pmis-v75y-actual-start':''}">
+    ${value}
+   </td>
+  `;
+ }
+
+ function renderMilestones(group){
+  return group.rows.map(r=>{
+   const p=r.project;
+   const term=r.term;
+   const locked=!r.eligible||r.balance<=.5;
+
+   const title=
+    !r.eligible
+     ?'Linked stage is not 100% complete yet.'
+     :r.balance<=.5
+       ?'Milestone is fully realized.'
+       :'Open receipt history / add split payment';
+
+   return `
+    <tr>
+     <td>
+      <strong>M${r.index+1}</strong>
+      <div class="small text-secondary">
+       ${esc(term.remarks||'')}
+      </div>
+     </td>
+
+     <td class="stage-text">
+      ${esc(stageLabel(p,term.linked_stage_id))}
+     </td>
+
+     <td>
+      ${num(term.percentage).toFixed(2).replace(/\.00$/,'')}%
+     </td>
+
+     <td>
+      ${Math.trunc(num(term.credit_days))}
+     </td>
+
+     ${planTd(`<span class="money">${money(r.expected)}</span>`,true)}
+     ${planTd(fmtDate(stagePlanEnd(p,term.linked_stage_id)))}
+     ${planTd(fmtDate(r.planned))}
+
+     ${actualTd(`<span class="money">${money(r.received)}</span>`,true)}
+     ${actualTd(fmtDate(r.actual))}
+     ${actualTd(`<span class="money">${money(r.balance)}</span>`)}
+     ${actualTd(`<span class="badge-soft ${statusClass(r.status)}">${esc(r.status)}</span>`)}
+
+     <td>
+      <button
+       class="btn-record"
+       data-record="${esc(p._id)}:${r.index}"
+       title="${esc(title)}"
+       ${locked?'disabled':''}
+      >
+       <i class="bi bi-cash-coin me-1"></i>
+       Receipts
+      </button>
+     </td>
+    </tr>
+   `;
+  }).join('');
+ }
+
+ area.className='';
+
+ area.innerHTML=`
+  <div class="pmis-v75y-project-list">
+   ${grouped.map(group=>{
+    const p=group.project;
+    const open=openCashflowProjectsV75Y.has(group.key);
+
+    return `
+     <div
+      class="pmis-v75y-project-card ${open?'is-open':''}"
+      data-project-key="${esc(group.key)}"
+      data-project-id="${esc(String(p._id||''))}"
+      data-project-customer="${esc(String(p.customer_name||''))}"
+      data-project-manager="${esc(String(p.project_manager||''))}"
+      data-project-statuses="${esc([...new Set(group.rows.map(row=>row.status))].join('|'))}"
+      data-project-milestones="${group.rows.length}"
+     >
+      <button
+       type="button"
+       class="pmis-v75y-project-head"
+       data-project-toggle="${esc(group.key)}"
+      >
+       <div class="pmis-v75y-project-left">
+        <div class="pmis-v75y-project-title">
+         ${esc(
+          p.tracking_code||
+          p.code||
+          p.name||
+          'Project'
+         )}
+        </div>
+
+        <div class="pmis-v75y-project-sub">
+         ${esc(p.name||'')}
+         ${p.customer_name?' · '+esc(p.customer_name):''}
+        </div>
+
+        <div class="pmis-v75y-project-meta">
+         <span>
+          <i class="bi bi-person-badge"></i>
+          <strong>Project Manager:</strong>
+          ${esc(p.project_manager||'Not assigned')}
+         </span>
+
+         <span>
+          <i class="bi bi-cash-stack"></i>
+          <strong>PO Value:</strong>
+          ${money(p.po_value)}
+         </span>
+        </div>
+       </div>
+
+       <div class="pmis-v75y-project-right">
+        <span class="pmis-v75y-count">
+         ${group.rows.length}
+         milestone${group.rows.length===1?'':'s'}
+        </span>
+        <i class="bi bi-chevron-down pmis-v75y-chevron"></i>
+       </div>
+      </button>
+
+      <div class="pmis-v75y-project-detail">
+       <div class="table-responsive">
+        <table class="table table-hover">
+         <thead>
+          <tr>
+           <th>Milestone</th>
+           <th>Linked Stage</th>
+           <th>%</th>
+           <th>Credit Days</th>
+
+           <th class="pmis-v75y-plan-head pmis-v75y-plan-start">
+            Planned Amount
+           </th>
+           <th class="pmis-v75y-plan-head">
+            Stage Plan Date
+           </th>
+           <th class="pmis-v75y-plan-head">
+            Planned Realization
+           </th>
+
+           <th class="pmis-v75y-actual-head pmis-v75y-actual-start">
+            Actual Received
+           </th>
+           <th class="pmis-v75y-actual-head">
+            Last Receipt
+           </th>
+           <th class="pmis-v75y-actual-head">
+            Outstanding
+           </th>
+           <th class="pmis-v75y-actual-head">
+            Status
+           </th>
+
+           <th>Action</th>
+          </tr>
+         </thead>
+
+         <tbody>
+          ${renderMilestones(group)}
+         </tbody>
+        </table>
+       </div>
+      </div>
+     </div>
+    `;
+   }).join('')}
+  </div>
+ `;
+
+ area
+  .querySelectorAll('[data-project-toggle]')
+  .forEach(button=>{
+   button.addEventListener('click',()=>{
+    const key=String(
+     button.dataset.projectToggle||''
+    );
+
+    if(openCashflowProjectsV75Y.has(key)){
+     openCashflowProjectsV75Y.delete(key);
+    }else{
+     openCashflowProjectsV75Y.add(key);
+    }
+
+    button
+     .closest('.pmis-v75y-project-card')
+     ?.classList.toggle(
+      'is-open',
+      openCashflowProjectsV75Y.has(key)
+     );
+   });
+  });
+
+ hardSyncProjectCardsV75Z();
+
+ area
+  .querySelectorAll('[data-record]')
+  .forEach(button=>{
+   button.addEventListener(
+    'click',
+    ()=>openReceipt(button.dataset.record)
+   );
+  });
+}
+
 function monthKey(date){return date?String(date).slice(0,7):''}
 function monthLabel(key){if(!/^\d{4}-\d{2}$/.test(key))return key;const [y,m]=key.split('-').map(Number);return new Date(y,m-1,1).toLocaleDateString('en-IN',{month:'short',year:'2-digit'})}
 function monthRange(keys){const valid=keys.filter(k=>/^\d{4}-\d{2}$/.test(k)).sort();if(!valid.length)return[];let [y,m]=valid[0].split('-').map(Number),[ey,em]=valid[valid.length-1].split('-').map(Number),out=[];for(let guard=0;guard<120;guard++){const k=`${y}-${String(m).padStart(2,'0')}`;out.push(k);if(y===ey&&m===em)break;m++;if(m===13){m=1;y++}}return out}
 function destroyChart(name){if(charts[name]){charts[name].destroy();charts[name]=null}}
 function renderCharts(){
  if(typeof Chart!=='function')return;
- const plannedMap={},actualMap={};filtered.forEach(r=>{if(r.planned){const k=monthKey(r.planned);plannedMap[k]=(plannedMap[k]||0)+r.expected}receipts(r.term).forEach(x=>{if(!x?.received_date)return;const k=monthKey(x.received_date);actualMap[k]=(actualMap[k]||0)+Math.max(0,num(x.amount))})});
- const months=monthRange([...Object.keys(plannedMap),...Object.keys(actualMap)]);const labels=months.map(monthLabel);const planned=months.map(k=>plannedMap[k]||0),actual=months.map(k=>actualMap[k]||0);
- destroyChart('cash');charts.cash=new Chart($('cashflowChart'),{type:'bar',data:{labels,datasets:[{label:'Planned',data:planned},{label:'Actual',data:actual}]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'bottom'},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${money(c.raw)}`}}},scales:{y:{beginAtZero:true,ticks:{callback:v=>new Intl.NumberFormat('en-IN',{notation:'compact'}).format(v)}}}}});
- let cp=0,ca=0;destroyChart('cum');charts.cum=new Chart($('cumulativeChart'),{type:'line',data:{labels,datasets:[{label:'Cumulative Planned',data:planned.map(v=>cp+=v),tension:.25},{label:'Cumulative Actual',data:actual.map(v=>ca+=v),tension:.25}]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'bottom'},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${money(c.raw)}`}}},scales:{y:{beginAtZero:true,ticks:{callback:v=>new Intl.NumberFormat('en-IN',{notation:'compact'}).format(v)}}}}});
- const order=['Realized','Partially Received','Due','Overdue','Not Due','Plan Date Pending'];const counts=order.map(s=>filtered.filter(r=>r.status===s).length);destroyChart('status');charts.status=new Chart($('statusChart'),{type:'doughnut',data:{labels:order,datasets:[{data:counts}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}});
- const outMap={};filtered.forEach(r=>{const k=String(r.project.code||r.project.tracking_code||r.project.name||'Project');outMap[k]=(outMap[k]||0)+r.balance});const top=Object.entries(outMap).sort((a,b)=>b[1]-a[1]).slice(0,8);destroyChart('out');charts.out=new Chart($('outstandingChart'),{type:'bar',data:{labels:top.map(x=>x[0]),datasets:[{label:'Outstanding',data:top.map(x=>x[1])}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>money(c.raw)}}},scales:{x:{beginAtZero:true,ticks:{callback:v=>new Intl.NumberFormat('en-IN',{notation:'compact'}).format(v)}}}}});
+
+ registerV75ZChartPlugin();
+
+ const plannedMap={};
+ const actualMap={};
+
+ filtered.forEach(r=>{
+  if(r.planned){
+   const key=monthKey(r.planned);
+   plannedMap[key]=(plannedMap[key]||0)+r.expected;
+  }
+
+  receipts(r.term).forEach(receipt=>{
+   if(!receipt?.received_date)return;
+   const key=monthKey(receipt.received_date);
+   actualMap[key]=(actualMap[key]||0)+Math.max(0,num(receipt.amount));
+  });
+ });
+
+ const months=monthRange([
+  ...Object.keys(plannedMap),
+  ...Object.keys(actualMap)
+ ]);
+
+ const labels=months.map(monthLabel);
+ const planned=months.map(key=>plannedMap[key]||0);
+ const actual=months.map(key=>actualMap[key]||0);
+
+ destroyChart('cash');
+ charts.cash=new Chart(
+  $('cashflowChart'),
+  {
+   type:'bar',
+   data:{
+    labels,
+    datasets:[
+     {label:'Planned',data:planned},
+     {label:'Actual Received',data:actual}
+    ]
+   },
+   options:{
+    responsive:true,
+    maintainAspectRatio:false,
+    interaction:{mode:'index',intersect:false},
+    plugins:{
+     legend:{position:'bottom'},
+     tooltip:{
+      callbacks:{
+       label:c=>`${c.dataset.label}: ${money(c.raw)}`
+      }
+     }
+    },
+    scales:{
+     y:{
+      beginAtZero:true,
+      ticks:{
+       callback:v=>new Intl.NumberFormat(
+        'en-IN',
+        {notation:'compact'}
+       ).format(v)
+      }
+     }
+    }
+   }
+  }
+ );
+
+ let cumulativePlanned=0;
+ let cumulativeActual=0;
+
+ destroyChart('cum');
+ charts.cum=new Chart(
+  $('cumulativeChart'),
+  {
+   type:'line',
+   data:{
+    labels,
+    datasets:[
+     {
+      label:'Cumulative Planned',
+      data:planned.map(v=>cumulativePlanned+=v),
+      tension:.25
+     },
+     {
+      label:'Cumulative Actual',
+      data:actual.map(v=>cumulativeActual+=v),
+      tension:.25
+     }
+    ]
+   },
+   options:{
+    responsive:true,
+    maintainAspectRatio:false,
+    interaction:{mode:'index',intersect:false},
+    plugins:{
+     legend:{position:'bottom'},
+     tooltip:{
+      callbacks:{
+       label:c=>`${c.dataset.label}: ${money(c.raw)}`
+      }
+     }
+    },
+    scales:{
+     y:{
+      beginAtZero:true,
+      ticks:{
+       callback:v=>new Intl.NumberFormat(
+        'en-IN',
+        {notation:'compact'}
+       ).format(v)
+      }
+     }
+    }
+   }
+  }
+ );
+
+ const mix={
+  received:0,
+  overdue:0,
+  due:0,
+  future:0,
+  pending:0
+ };
+
+ filtered.forEach(r=>{
+  const receivedAmount=Math.min(
+   Math.max(0,r.expected),
+   Math.max(0,r.received)
+  );
+
+  mix.received+=receivedAmount;
+
+  const balance=Math.max(0,r.balance);
+  if(!(balance>0))return;
+
+  if(!r.planned){
+   mix.pending+=balance;
+   return;
+  }
+
+  if(r.status==='Overdue'){
+   mix.overdue+=balance;
+   return;
+  }
+
+  if(r.status==='Due'){
+   mix.due+=balance;
+   return;
+  }
+
+  mix.future+=balance;
+ });
+
+ destroyChart('status');
+ charts.status=new Chart(
+  $('statusChart'),
+  {
+   type:'doughnut',
+   data:{
+    labels:[
+     'Received',
+     'Overdue Outstanding',
+     'Due',
+     'Future / Not Due',
+     'Plan Date Pending'
+    ],
+    datasets:[
+     {
+      data:[
+       mix.received,
+       mix.overdue,
+       mix.due,
+       mix.future,
+       mix.pending
+      ]
+     }
+    ]
+   },
+   options:{
+    responsive:true,
+    maintainAspectRatio:false,
+    plugins:{
+     legend:{position:'bottom'},
+     tooltip:{
+      callbacks:{
+       label:c=>`${c.label}: ${money(c.raw)}`
+      }
+     }
+    }
+   }
+  }
+ );
+
+ const outstandingByProject={};
+
+ filtered.forEach(r=>{
+  const key=String(
+   r.project.code||
+   r.project.tracking_code||
+   r.project.name||
+   'Project'
+  );
+
+  outstandingByProject[key]=
+   (outstandingByProject[key]||0)+r.balance;
+ });
+
+ const top=Object.entries(outstandingByProject)
+  .sort((a,b)=>b[1]-a[1])
+  .slice(0,8);
+
+ destroyChart('out');
+ charts.out=new Chart(
+  $('outstandingChart'),
+  {
+   type:'bar',
+   data:{
+    labels:top.map(item=>item[0]),
+    datasets:[
+     {
+      label:'Outstanding',
+      data:top.map(item=>item[1])
+     }
+    ]
+   },
+   options:{
+    indexAxis:'y',
+    responsive:true,
+    maintainAspectRatio:false,
+    plugins:{
+     legend:{display:false},
+     tooltip:{
+      callbacks:{
+       label:c=>money(c.raw)
+      }
+     }
+    },
+    scales:{
+     x:{
+      beginAtZero:true,
+      ticks:{
+       callback:v=>new Intl.NumberFormat(
+        'en-IN',
+        {notation:'compact'}
+       ).format(v)
+      }
+     }
+    }
+   }
+  }
+ );
 }
-function renderAll(){renderKpis();renderTable();renderCharts()}
+
+function renderAll(){
+ renderKpis();
+
+ try{
+  renderTable();
+ }catch(error){
+  console.error('[PMIS V75Y] Project register render failed:',error);
+  $('tableArea').className='empty';
+  $('tableArea').innerHTML=
+   '<i class="bi bi-exclamation-triangle fs-2 d-block mb-2 text-danger"></i>'+
+   'Unable to render the filtered project register.';
+ }
+
+ try{
+  renderCharts();
+ }catch(error){
+  console.error('[PMIS V75Y] Cashflow chart render failed:',error);
+ }
+}
 function findProjectAndTerm(token){const [id,indexRaw]=String(token||'').split(':');const p=projects.find(x=>String(x._id)===id);const index=Number(indexRaw);const term=p&&Array.isArray(p.payment_milestones)?p.payment_milestones[index]:null;return p&&term?{p,term,index}:null}
 function renderReceiptHistory(term){
  const list=receipts(term);const box=$('receiptHistory');const badge=$('receiptSplitCount');
@@ -480,920 +1292,2377 @@ function init(){
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
 </script>
-<style id="pmis-cashflow-analytics-only-v75g-style">
-/* PMIS_CASHFLOW_ANALYTICS_ONLY_LATEST_PLAN_V75G */
-#tableArea a.btn-record {
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+
+<!-- PMIS_CASHFLOW_SINGLE_SOURCE_V75Y -->
+<style id="pmis-cashflow-single-source-v75y-style">
+:root{
+ --pmis-v75y-plan-head:#dbeafe;
+ --pmis-v75y-plan-cell:#eff6ff;
+ --pmis-v75y-plan-border:#3b82f6;
+ --pmis-v75y-actual-head:#ccfbf1;
+ --pmis-v75y-actual-cell:#f0fdfa;
+ --pmis-v75y-actual-border:#14b8a6;
+}
+.pmis-v75y-project-list{display:grid;gap:12px}
+.pmis-v75y-project-card{background:#fff;border:1px solid #dbe5ef;border-radius:18px;overflow:hidden}
+.pmis-v75y-project-head{width:100%;border:0;background:#f8fbff;color:#0b2b4a;padding:15px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;text-align:left;cursor:pointer}
+.pmis-v75y-project-head:hover{background:#f3f8fd}
+.pmis-v75y-project-left{min-width:0}
+.pmis-v75y-project-title{font-size:1rem;font-weight:900;line-height:1.2}
+.pmis-v75y-project-sub{color:#64748b;font-size:.78rem;margin-top:4px}
+.pmis-v75y-project-meta{display:flex;flex-wrap:wrap;gap:7px 20px;margin-top:8px;color:#475569;font-size:.72rem}
+.pmis-v75y-project-meta span{display:inline-flex;align-items:center;gap:5px}
+.pmis-v75y-project-meta strong{color:#0b2b4a;font-weight:900}
+.pmis-v75y-project-right{display:flex;align-items:center;gap:10px;flex:0 0 auto}
+.pmis-v75y-count{font-size:.76rem;font-weight:900;white-space:nowrap}
+.pmis-v75y-chevron{transition:transform .18s ease}
+.pmis-v75y-project-card.is-open .pmis-v75y-chevron{transform:rotate(180deg)}
+.pmis-v75y-project-detail{display:none;border-top:1px solid #dbe5ef}
+.pmis-v75y-project-card.is-open .pmis-v75y-project-detail{display:block}
+.pmis-v75y-project-detail .table{margin:0!important}
+.pmis-v75y-project-detail th{white-space:nowrap}
+#tableArea th.pmis-v75y-plan-head{background:var(--pmis-v75y-plan-head)!important;color:#0b2b4a!important}
+#tableArea td.pmis-v75y-plan-cell{background:var(--pmis-v75y-plan-cell)!important}
+#tableArea th.pmis-v75y-actual-head{background:var(--pmis-v75y-actual-head)!important;color:#065f46!important}
+#tableArea td.pmis-v75y-actual-cell{background:var(--pmis-v75y-actual-cell)!important}
+#tableArea .pmis-v75y-plan-start{border-left:4px solid var(--pmis-v75y-plan-border)!important}
+#tableArea .pmis-v75y-actual-start{border-left:4px solid var(--pmis-v75y-actual-border)!important}
+#tableArea tr:hover td.pmis-v75y-plan-cell{background:#e5efff!important}
+#tableArea tr:hover td.pmis-v75y-actual-cell{background:#ddfaf5!important}
+@media(max-width:800px){
+ .pmis-v75y-project-head{padding:13px 14px}
+ .pmis-v75y-project-meta{gap:5px 10px;font-size:.65rem}
 }
 </style>
-<script id="pmis-cashflow-analytics-only-v75g">
-/* PMIS_CASHFLOW_ANALYTICS_ONLY_LATEST_PLAN_V75G */
+
+<!-- PMIS_CASHFLOW_EXPORT_REGISTER_V76A -->
+<style id="pmis-cashflow-export-register-v76a-style">
+.pmis-v76a-export-controls{
+ display:inline-flex;
+ align-items:center;
+ gap:10px;
+ flex-wrap:wrap;
+ margin-left:10px;
+}
+.pmis-v76a-export-option{
+ display:inline-flex;
+ align-items:center;
+ gap:7px;
+ padding:8px 11px;
+ border:1px solid #dbe5ef;
+ border-radius:999px;
+ background:#fff;
+ color:#475569;
+ font-size:.7rem;
+ font-weight:800;
+ cursor:pointer;
+ user-select:none;
+}
+.pmis-v76a-export-option input{
+ width:15px;
+ height:15px;
+ margin:0;
+ accent-color:#0b2b4a;
+}
+.pmis-v76a-export-option strong{
+ color:#0b2b4a;
+}
+@media(max-width:900px){
+ .pmis-v76a-export-controls{
+  width:100%;
+  margin-left:0;
+  margin-top:8px;
+ }
+}
+</style>
+
+<!-- PMIS_CASHFLOW_REPORT_LAYOUT_V75S2 -->
+<style id="pmis-cashflow-report-layout-v75s2-style">
+    /* Keep the reconciliation strip compact and out of the chart grid. */
+    #pmisCashflowReconcileV75R {
+        grid-column: 1 / -1 !important;
+        width: 100% !important;
+        min-height: 0 !important;
+        height: auto !important;
+        margin: 8px 0 14px !important;
+        padding: 9px 14px !important;
+        align-self: start !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Guarantee usable graph height. */
+    .chart-card,
+    section.chart-card {
+        min-height: 390px !important;
+    }
+
+    .chart-card .chart-wrap,
+    .chart-card .chart-container,
+    .chart-card > div:has(> canvas) {
+        position: relative !important;
+        min-height: 300px !important;
+        height: 300px !important;
+        width: 100% !important;
+    }
+
+    .chart-card canvas,
+    section.chart-card canvas {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        height: 300px !important;
+        min-height: 300px !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+
+    #pmisCashflowExportV75R {
+        display: none !important;
+    }
+
+    .pmis-v75s2-export-btn {
+        border: 0;
+        border-radius: 999px;
+        padding: 10px 17px;
+        font-size: .76rem;
+        font-weight: 850;
+        background: #0b2b4a;
+        color: #fff;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        box-shadow: 0 7px 18px rgba(11,43,74,.16);
+        margin-left: 10px;
+        cursor: pointer;
+    }
+
+    .pmis-v75s2-export-btn:hover {
+        transform: translateY(-1px);
+    }
+
+    .pmis-v75s2-export-btn:disabled {
+        opacity: .6;
+        cursor: wait;
+        transform: none;
+    }
+
+    @media (max-width: 900px) {
+        .chart-card,
+        section.chart-card {
+            min-height: 350px !important;
+        }
+
+        .chart-card .chart-wrap,
+        .chart-card .chart-container,
+        .chart-card > div:has(> canvas),
+        .chart-card canvas,
+        section.chart-card canvas {
+            min-height: 270px !important;
+            height: 270px !important;
+        }
+    }
+</style>
+
+<script id="pmis-cashflow-report-layout-v75s2">
+/* PMIS_CASHFLOW_REPORT_LAYOUT_V75S2 */
 (function () {
     'use strict';
 
-    if (window.__PMIS_CASHFLOW_ANALYTICS_ONLY_LATEST_PLAN_V75G__) return;
-    window.__PMIS_CASHFLOW_ANALYTICS_ONLY_LATEST_PLAN_V75G__ = true;
+    if (window.__PMIS_CASHFLOW_REPORT_LAYOUT_V75S2__) return;
+    window.__PMIS_CASHFLOW_REPORT_LAYOUT_V75S2__ = true;
 
-    function isoV75G(value) {
-        if (!value) return '';
-        const raw = String(value).slice(0,10);
-        return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : '';
+    const CR = 10000000;
+    let tidyTimer = null;
+    let exportBusy = false;
+
+    function $(id) {
+        return document.getElementById(id);
     }
 
-    function maxIsoV75G(values) {
-        return values
-            .map(isoV75G)
-            .filter(Boolean)
-            .sort()
-            .pop() || '';
+    function txt(value) {
+        return String(value ?? '').trim();
     }
 
-    function latestApprovedEndV75G(p,id) {
-        if (id === 'po_date') {
-            return isoV75G(p?.po_date);
+    function num(value) {
+        const n = Number(value);
+        return Number.isFinite(n) ? n : 0;
+    }
+
+    function moneyCr(value, short = false) {
+        const cr = num(value) / CR;
+
+        if (short) {
+            if (Math.abs(cr) >= 100) return '₹' + cr.toFixed(0) + 'Cr';
+            if (Math.abs(cr) >= 10) return '₹' + cr.toFixed(1) + 'Cr';
+            return '₹' + cr.toFixed(2) + 'Cr';
         }
 
-        const data = p?.detailed_phases?.[id] || {};
-        const revisions = Array.isArray(data.revisions)
-            ? data.revisions.filter(item => item && item.end)
-            : [];
-
-        if (revisions.length) {
-            const revised =
-                isoV75G(revisions[revisions.length - 1].end);
-            if (revised) return revised;
-        }
-
-        const direct = isoV75G(data.plan_end);
-        if (direct) return direct;
-
-        if (
-            typeof groupIndex !== 'undefined' &&
-            groupIndex[id] !== undefined &&
-            typeof childrenFor === 'function'
-        ) {
-            return maxIsoV75G(
-                childrenFor(p,id).map(childId =>
-                    latestApprovedEndV75G(p,childId)
-                )
-            );
-        }
-
-        return '';
-    }
-
-    if (
-        typeof stagePlanEnd === 'function' &&
-        !window.__PMIS_V75G_STAGE_PLAN_END_WRAPPED__
-    ) {
-        stagePlanEnd = function (p,id) {
-            return latestApprovedEndV75G(p,id);
-        };
-
-        window.__PMIS_V75G_STAGE_PLAN_END_WRAPPED__ = true;
-    }
-
-    function convertReceiptButtonsToPlanLinks() {
-        document
-            .querySelectorAll('#tableArea [data-record]')
-            .forEach(button => {
-                const token = String(
-                    button.getAttribute('data-record') || ''
-                );
-
-                const separator = token.lastIndexOf(':');
-                if (separator <= 0) return;
-
-                const projectId = token.slice(0,separator);
-                const index = token.slice(separator + 1);
-
-                const link = document.createElement('a');
-                link.className = button.className;
-                link.href =
-                    'project_phases.html?id=' +
-                    encodeURIComponent(projectId) +
-                    '&payment=' +
-                    encodeURIComponent(index);
-                link.title =
-                    'Open the linked stage in Project Plan';
-                link.innerHTML =
-                    '<i class="bi bi-box-arrow-up-right me-1"></i>Open Plan';
-
-                button.replaceWith(link);
-            });
-    }
-
-    if (
-        typeof renderTable === 'function' &&
-        !window.__PMIS_V75G_CASHFLOW_TABLE_WRAPPED__
-    ) {
-        const previousRenderTableV75G = renderTable;
-
-        renderTable = function () {
-            const result =
-                previousRenderTableV75G.apply(this,arguments);
-
-            convertReceiptButtonsToPlanLinks();
-            return result;
-        };
-
-        window.__PMIS_V75G_CASHFLOW_TABLE_WRAPPED__ = true;
-    }
-
-    function updateCopy() {
-        const heading = Array.from(
-            document.querySelectorAll('h1')
-        ).find(item =>
-            /cashflow|payment status/i.test(item.textContent || '')
-        );
-
-        const sub = heading?.nextElementSibling;
-
-        if (sub && sub.tagName === 'P') {
-            sub.textContent =
-                'Analytics view: planned realization from the latest approved project plan versus actual receipts recorded inside Project Plan.';
-        }
-
-        const tableHead = Array.from(
-            document.querySelectorAll('.table-head h3')
-        ).find(item =>
-            /payment milestone register/i.test(item.textContent || '')
-        );
-
-        if (tableHead) {
-            tableHead.textContent =
-                'Payment Milestone Register · Analytics';
-        }
-    }
-
-    function init() {
-        updateCopy();
-
-        if (typeof buildRows === 'function') {
-            try {
-                buildRows();
-                if (typeof populateFilters === 'function') populateFilters();
-                if (typeof applyFilters === 'function') applyFilters();
+        return '₹' + cr.toLocaleString(
+            'en-IN',
+            {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
             }
-            catch (error) {
-                console.warn(
-                    '[PMIS V75G] Cashflow refresh skipped:',
-                    error
-                );
-            }
-        }
-
-        convertReceiptButtonsToPlanLinks();
+        ) + ' Cr';
     }
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded',init,{ once:true });
-    }
-    else {
-        init();
-    }
-
-    console.log(
-        '[PMIS V75G] Cashflow page is analytics-only and uses latest approved plan dates.'
-    );
-})();
-</script>
-<style id="pmis-cashflow-project-register-v75g4-style">
-/* PMIS_CASHFLOW_PROJECT_REGISTER_V75G4 */
-.pmis-v75g4-project-list {
-    display: grid;
-    gap: 10px;
-}
-.pmis-v75g4-project-card {
-    background: #fff;
-    border: 1px solid #dbe5ef;
-    border-radius: 14px;
-    overflow: hidden;
-}
-.pmis-v75g4-project-head {
-    width: 100%;
-    border: 0;
-    background: #fff;
-    color: #0b2b4a;
-    padding: 13px 15px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 14px;
-    text-align: left;
-}
-.pmis-v75g4-project-head:hover {
-    background: #f8fbfe;
-}
-.pmis-v75g4-project-title {
-    font-size: .78rem;
-    font-weight: 900;
-}
-.pmis-v75g4-project-sub {
-    margin-top: 2px;
-    color: #64748b;
-    font-size: .68rem;
-}
-.pmis-v75g4-project-right {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex: 0 0 auto;
-}
-.pmis-v75g4-count {
-    padding: 5px 9px;
-    border: 1px solid #d7e1eb;
-    border-radius: 999px;
-    background: #f8fafc;
-    color: #475569;
-    font-size: .64rem;
-    font-weight: 800;
-}
-.pmis-v75g4-chevron {
-    transition: transform .18s ease;
-}
-.pmis-v75g4-project-card.is-open .pmis-v75g4-chevron {
-    transform: rotate(180deg);
-}
-.pmis-v75g4-project-detail {
-    display: none;
-    border-top: 1px solid #dbe5ef;
-}
-.pmis-v75g4-project-card.is-open .pmis-v75g4-project-detail {
-    display: block;
-}
-.pmis-v75g4-project-detail table {
-    margin: 0 !important;
-}
-.pmis-v75g4-project-detail th {
-    white-space: nowrap;
-}
-.pmis-v75g4-project-detail .btn-record {
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-</style>
-<script id="pmis-cashflow-project-register-v75g4">
-/* PMIS_CASHFLOW_PROJECT_REGISTER_V75G4 */
-(function () {
-    'use strict';
-
-    if (window.__PMIS_CASHFLOW_PROJECT_REGISTER_V75G4__) return;
-    window.__PMIS_CASHFLOW_PROJECT_REGISTER_V75G4__ = true;
-
-    const openProjectsV75G4 = new Set();
-
-    function projectKeyV75G4(project) {
-        return String(
-            project?._id ||
-            project?.tracking_code ||
-            project?.code ||
-            project?.name ||
-            'project'
-        );
-    }
-
-    function groupedV75G4() {
-        const groups = new Map();
-
-        (Array.isArray(filtered) ? filtered : [])
-            .forEach(row => {
-                const project = row?.project || {};
-                const key = projectKeyV75G4(project);
-
-                if (!groups.has(key)) {
-                    groups.set(key,{
-                        key,
-                        project,
-                        rows:[]
-                    });
-                }
-
-                groups.get(key).rows.push(row);
-            });
-
-        return [...groups.values()]
-            .sort((a,b) =>
-                String(
-                    a.project?.tracking_code ||
-                    a.project?.code ||
-                    a.project?.name ||
-                    ''
-                ).localeCompare(
-                    String(
-                        b.project?.tracking_code ||
-                        b.project?.code ||
-                        b.project?.name ||
-                        ''
-                    )
-                )
-            );
-    }
-
-    function milestoneRowsV75G4(group) {
-        return group.rows.map(r => {
-            const p = r.project;
-            const term = r.term;
-
-            const href =
-                'project_phases.html?id=' +
-                encodeURIComponent(p._id) +
-                '&payment=' +
-                encodeURIComponent(r.index);
-
-            return `
-                <tr>
-                    <td>
-                        <strong>M${r.index + 1}</strong>
-                        <div class="small text-secondary">
-                            ${esc(term.remarks || '')}
-                        </div>
-                    </td>
-                    <td class="stage-text">
-                        ${esc(
-                            stageLabel(
-                                p,
-                                term.linked_stage_id
-                            )
-                        )}
-                    </td>
-                    <td>
-                        ${num(term.percentage)
-                            .toFixed(2)
-                            .replace(/\.00$/,'')}%
-                    </td>
-                    <td>${Math.trunc(num(term.credit_days))}</td>
-                    <td class="money">${money(r.expected)}</td>
-                    <td>${fmtDate(stagePlanEnd(p,term.linked_stage_id))}</td>
-                    <td>${fmtDate(r.planned)}</td>
-                    <td class="money">${money(r.received)}</td>
-                    <td>${fmtDate(r.actual)}</td>
-                    <td class="money">${money(r.balance)}</td>
-                    <td>
-                        <span class="badge-soft ${statusClass(r.status)}">
-                            ${esc(r.status)}
-                        </span>
-                    </td>
-                    <td>
-                        <a
-                            class="btn-record"
-                            href="${esc(href)}"
-                            title="Open payment milestone in Project Plan"
-                        >
-                            <i class="bi bi-box-arrow-up-right me-1"></i>
-                            Open Plan
-                        </a>
-                    </td>
-                </tr>
-            `;
-        }).join('');
-    }
-
-    function renderProjectRegisterV75G4() {
-        const area = document.getElementById('tableArea');
-        const count = document.getElementById('rowCount');
-
-        if (!area) return;
-
-        const groups = groupedV75G4();
-
-        if (count) {
-            count.textContent =
-                groups.length +
-                ' project' +
-                (groups.length === 1 ? '' : 's');
-        }
-
-        if (!groups.length) {
-            area.className = 'empty';
-            area.innerHTML =
-                '<i class="bi bi-inbox fs-2 d-block mb-2"></i>' +
-                'No payment projects match the selected filters.';
-            return;
-        }
-
-        const valid = new Set(
-            groups.map(group => group.key)
+    function canvasByHeading(regex) {
+        const cards = Array.from(
+            document.querySelectorAll(
+                'section,.panel,.chart-card'
+            )
         );
 
-        [...openProjectsV75G4].forEach(key => {
-            if (!valid.has(key)) {
-                openProjectsV75G4.delete(key);
-            }
+        const card = cards.find(node => {
+            const h = node.querySelector('h1,h2,h3,h4,h5');
+            return h && regex.test(txt(h.textContent));
         });
 
-        area.className = '';
+        return card?.querySelector('canvas') || null;
+    }
 
-        area.innerHTML = `
-            <div class="pmis-v75g4-project-list">
-                ${groups.map(group => {
-                    const p = group.project;
-                    const open =
-                        openProjectsV75G4.has(group.key);
+    function chartCanvases() {
+        return {
+            monthly:
+                $('cashflowChart') ||
+                canvasByHeading(/monthly\s+cashflow/i),
 
-                    return `
-                        <div
-                            class="pmis-v75g4-project-card ${open ? 'is-open' : ''}"
-                            data-v75g4-card="${esc(group.key)}"
-                        >
-                            <button
-                                type="button"
-                                class="pmis-v75g4-project-head"
-                                data-v75g4-toggle="${esc(group.key)}"
-                            >
-                                <div>
-                                    <div class="pmis-v75g4-project-title">
-                                        ${esc(
-                                            p.tracking_code ||
-                                            p.code ||
-                                            p.name ||
-                                            'Project'
-                                        )}
-                                    </div>
-                                    <div class="pmis-v75g4-project-sub">
-                                        ${esc(p.name || '')}
-                                        ${
-                                            p.customer_name
-                                                ? ' · ' +
-                                                  esc(p.customer_name)
-                                                : ''
-                                        }
-                                    </div>
-                                </div>
+            cumulative:
+                $('cumulativeChart') ||
+                $('cumulativeCashflowChart') ||
+                canvasByHeading(/cumulative\s+cashflow/i),
 
-                                <div class="pmis-v75g4-project-right">
-                                    <span class="pmis-v75g4-count">
-                                        ${group.rows.length}
-                                        milestone${group.rows.length === 1 ? '' : 's'}
-                                    </span>
-                                    <i class="bi bi-chevron-down pmis-v75g4-chevron"></i>
-                                </div>
-                            </button>
+            mix:
+                $('statusChart') ||
+                $('paymentStatusChart') ||
+                canvasByHeading(/payment\s+amount\s+mix|payment\s+status\s+mix/i),
 
-                            <div class="pmis-v75g4-project-detail">
-                                <div class="table-responsive">
-                                    <table class="table table-hover">
-                                        <thead>
-                                            <tr>
-                                                <th>Milestone</th>
-                                                <th>Linked Stage</th>
-                                                <th>%</th>
-                                                <th>Credit Days</th>
-                                                <th>Planned Amount</th>
-                                                <th>Stage Plan Date</th>
-                                                <th>Planned Realization</th>
-                                                <th>Actual Received</th>
-                                                <th>Last Receipt</th>
-                                                <th>Outstanding</th>
-                                                <th>Status</th>
-                                                <th>Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            ${milestoneRowsV75G4(group)}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }).join('')}
-            </div>
-        `;
+            outstanding:
+                $('outstandingChart') ||
+                $('outstandingProjectChart') ||
+                canvasByHeading(/outstanding\s+by\s+project/i)
+        };
+    }
 
-        area
-            .querySelectorAll('[data-v75g4-toggle]')
-            .forEach(button => {
-                button.addEventListener('click',() => {
-                    const key =
-                        String(
-                            button.dataset.v75g4Toggle || ''
-                        );
+    function chartOf(canvas) {
+        if (!canvas || !window.Chart) return null;
 
-                    if (openProjectsV75G4.has(key)) {
-                        openProjectsV75G4.delete(key);
-                    }
-                    else {
-                        openProjectsV75G4.add(key);
-                    }
+        if (typeof Chart.getChart === 'function') {
+            return Chart.getChart(canvas) || null;
+        }
 
-                    button
-                        .closest('.pmis-v75g4-project-card')
-                        ?.classList.toggle(
-                            'is-open',
-                            openProjectsV75G4.has(key)
-                        );
+        return null;
+    }
+
+    function ensureCanvasParents() {
+        Object.values(chartCanvases())
+            .filter(Boolean)
+            .forEach(canvas => {
+                canvas.style.display = 'block';
+                canvas.style.visibility = 'visible';
+                canvas.style.opacity = '1';
+
+                const parent = canvas.parentElement;
+
+                if (parent) {
+                    parent.style.position = 'relative';
+                    parent.style.minHeight = '300px';
+                    parent.style.height = '300px';
+                    parent.style.width = '100%';
+                }
+            });
+    }
+
+    function relocateReconciliation() {
+        const box = $('pmisCashflowReconcileV75R');
+        if (!box) return;
+
+        box.style.gridColumn = '1 / -1';
+        box.style.minHeight = '0';
+        box.style.height = 'auto';
+
+        const main =
+            document.querySelector('.cashflow-main') ||
+            document.querySelector('main');
+
+        if (!main) return;
+
+        const firstChartHeading = Array.from(
+            main.querySelectorAll('h1,h2,h3,h4,h5')
+        ).find(h =>
+            /monthly\s+cashflow/i.test(txt(h.textContent))
+        );
+
+        const firstChart =
+            firstChartHeading?.closest(
+                'section,.panel,.chart-card'
+            );
+
+        const chartGrid =
+            firstChart?.parentElement;
+
+        if (
+            chartGrid &&
+            box.parentElement === chartGrid
+        ) {
+            chartGrid.insertAdjacentElement(
+                'beforebegin',
+                box
+            );
+        }
+    }
+
+    const smartLabels = {
+        id: 'pmisV75S2SmartLabels',
+
+        afterDatasetsDraw(chart) {
+            const ctx = chart.ctx;
+            const type = chart.config.type;
+            const horizontal =
+                chart.options?.indexAxis === 'y';
+
+            const allValues = [];
+
+            chart.data.datasets.forEach(ds => {
+                (ds.data || []).forEach(v => {
+                    const x = num(v);
+                    if (x > 0) allValues.push(x);
                 });
             });
-    }
 
-    function installV75G4() {
-        if (
-            typeof filtered === 'undefined' ||
-            typeof esc !== 'function' ||
-            typeof stageLabel !== 'function'
-        ) {
-            return false;
-        }
+            const maxValue = allValues.length
+                ? Math.max(...allValues)
+                : 0;
 
-        renderTable = renderProjectRegisterV75G4;
-        window.renderTable = renderProjectRegisterV75G4;
+            const totalValue = allValues.reduce(
+                (sum, v) => sum + v,
+                0
+            );
 
-        // Force the current filtered data into the grouped register.
-        renderProjectRegisterV75G4();
+            chart.data.datasets.forEach(
+                (dataset, datasetIndex) => {
+                    const meta =
+                        chart.getDatasetMeta(datasetIndex);
 
-        return true;
-    }
+                    if (meta.hidden) return;
 
-    let tries = 0;
+                    const values =
+                        (dataset.data || []).map(num);
 
-    const timer = setInterval(() => {
-        tries += 1;
+                    values.forEach((value, index) => {
+                        if (!(value > 0)) return;
 
-        if (installV75G4() || tries >= 120) {
-            clearInterval(timer);
-        }
-    },100);
+                        let show = true;
 
-    if (document.readyState === 'loading') {
-        document.addEventListener(
-            'DOMContentLoaded',
-            () => setTimeout(installV75G4,0),
-            { once:true }
-        );
-    }
-    else {
-        setTimeout(installV75G4,0);
-    }
+                        if (type === 'line') {
+                            const lastNonZero =
+                                values.reduce(
+                                    (last, v, i) =>
+                                        v > 0 ? i : last,
+                                    -1
+                                );
 
-    // If another earlier module re-renders the flat register later,
-    // re-apply the final grouped register.
-    const observer = new MutationObserver(() => {
-        const area = document.getElementById('tableArea');
+                            show =
+                                index === lastNonZero ||
+                                (
+                                    index % 4 === 0 &&
+                                    value >= maxValue * .15
+                                );
+                        }
+                        else if (
+                            type === 'doughnut' ||
+                            type === 'pie'
+                        ) {
+                            const pct =
+                                totalValue > 0
+                                    ? value / totalValue
+                                    : 0;
 
-        if (
-            !area ||
-            area.querySelector('.pmis-v75g4-project-list')
-        ) {
-            return;
-        }
+                            show = pct >= .08;
+                        }
+                        else if (!horizontal) {
+                            // Monthly vertical bars:
+                            // show all Actual values, but only meaningful Planned values.
+                            const label =
+                                txt(dataset.label).toLowerCase();
 
-        queueMicrotask(() => {
-            try {
-                if (
-                    typeof filtered !== 'undefined' &&
-                    Array.isArray(filtered)
-                ) {
-                    renderProjectRegisterV75G4();
+                            const isActual =
+                                /actual|received/.test(label);
+
+                            show =
+                                isActual ||
+                                value >= maxValue * .07;
+
+                            // Avoid adjacent planned-label collisions.
+                            if (
+                                !isActual &&
+                                index % 2 === 1 &&
+                                value < maxValue * .15
+                            ) {
+                                show = false;
+                            }
+                        }
+
+                        if (!show) return;
+
+                        const element =
+                            meta.data[index];
+
+                        if (!element) return;
+
+                        const p =
+                            element.tooltipPosition();
+
+                        let label =
+                            moneyCr(value, true);
+
+                        if (
+                            type === 'doughnut' ||
+                            type === 'pie'
+                        ) {
+                            const pct =
+                                totalValue > 0
+                                    ? value / totalValue * 100
+                                    : 0;
+
+                            label +=
+                                ' · ' +
+                                pct.toFixed(0) +
+                                '%';
+                        }
+
+                        ctx.save();
+                        ctx.font =
+                            '700 10px Arial';
+                        ctx.fillStyle =
+                            '#0f172a';
+
+                        if (horizontal) {
+                            ctx.textAlign = 'left';
+                            ctx.textBaseline = 'middle';
+
+                            ctx.fillText(
+                                label,
+                                p.x + 6,
+                                p.y
+                            );
+                        }
+                        else if (
+                            type === 'doughnut' ||
+                            type === 'pie'
+                        ) {
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+
+                            ctx.fillText(
+                                label,
+                                p.x,
+                                p.y
+                            );
+                        }
+                        else {
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'bottom';
+
+                            ctx.fillText(
+                                label,
+                                p.x,
+                                p.y - 5
+                            );
+                        }
+
+                        ctx.restore();
+                    });
                 }
-            }
-            catch (_) {}
-        });
-    });
-
-    const startObserver = () => {
-        const area = document.getElementById('tableArea');
-        if (!area) return false;
-
-        observer.observe(
-            area,
-            {
-                childList:true,
-                subtree:false
-            }
-        );
-
-        return true;
+            );
+        }
     };
 
-    let obsTries = 0;
-    const obsTimer = setInterval(() => {
-        obsTries += 1;
+    function cloneDatasets(chart) {
+        return chart.data.datasets.map(ds => {
+            const copy = {};
 
-        if (startObserver() || obsTries >= 120) {
-            clearInterval(obsTimer);
-        }
-    },100);
+            Object.keys(ds).forEach(key => {
+                if (key === 'data') {
+                    copy.data = Array.from(ds.data || []);
+                }
+                else if (
+                    typeof ds[key] !== 'function'
+                ) {
+                    copy[key] = ds[key];
+                }
+            });
 
-    console.log(
-        '[PMIS V75G4] Final project-grouped payment milestone register installed.'
-    );
-})();
-</script>
-<style id="pmis-v75n-project-register-style">
-/* PMIS_V75N_PROJECT_REGISTER_ACCORDION */
-.pmis-v75n-register-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-.pmis-v75n-register-group {
-    border: 1px solid #dbe5ef;
-    border-radius: 18px;
-    background: #ffffff;
-    overflow: hidden;
-}
-.pmis-v75n-register-group summary {
-    list-style: none;
-    cursor: pointer;
-    padding: 14px 18px;
-    display: flex;
-    justify-content: space-between;
-    gap: 14px;
-    align-items: center;
-    background: #f8fbff;
-}
-.pmis-v75n-register-group summary::-webkit-details-marker {
-    display: none;
-}
-.pmis-v75n-register-left {
-    min-width: 0;
-}
-.pmis-v75n-register-title {
-    color: #0b2b4a;
-    font-size: 1rem;
-    font-weight: 900;
-    line-height: 1.2;
-}
-.pmis-v75n-register-sub {
-    color: #64748b;
-    font-size: .78rem;
-    margin-top: 4px;
-}
-.pmis-v75n-register-right {
-    color: #0b2b4a;
-    font-size: .78rem;
-    font-weight: 800;
-    white-space: nowrap;
-}
-.pmis-v75n-register-table {
-    padding: 0 0 6px 0;
-}
-.pmis-v75n-register-table .table,
-.pmis-v75n-register-table table {
-    margin-bottom: 0 !important;
-}
-</style>
-<script id="pmis-v75n-project-register-accordion">
-/* PMIS_V75N_PROJECT_REGISTER_ACCORDION */
-(function () {
-    'use strict';
-
-    if (window.__PMIS_V75N_PROJECT_REGISTER_ACCORDION__) return;
-    window.__PMIS_V75N_PROJECT_REGISTER_ACCORDION__ = true;
-
-    function linesV75N(cell) {
-        return String(
-            cell?.innerText || ''
-        )
-            .split(/\n+/)
-            .map(item => item.trim())
-            .filter(Boolean);
+            return copy;
+        });
     }
 
-    function groupRowsV75N(rows) {
-        const groups = [];
+    function croreScale() {
+        return {
+            beginAtZero: true,
+            ticks: {
+                callback(value) {
+                    const cr = num(value) / CR;
 
-        rows.forEach(row => {
-            const cells =
-                Array.from(row.cells || []);
+                    if (Math.abs(cr) >= 10) {
+                        return cr.toFixed(0) + 'Cr';
+                    }
 
-            if (cells.length < 2) return;
+                    if (Math.abs(cr) >= 1) {
+                        return cr.toFixed(1) + 'Cr';
+                    }
 
-            const first =
-                linesV75N(cells[0]);
-
-            const second =
-                linesV75N(cells[1]);
-
-            const code =
-                first[0] || 'Unnamed Project';
-
-            const name =
-                first[1] || '';
-
-            const customer =
-                second[0] || '';
-
-            let group =
-                groups.find(item =>
-                    item.code === code &&
-                    item.name === name
-                );
-
-            if (!group) {
-                group = {
-                    code,
-                    name,
-                    customer,
-                    rows: []
-                };
-                groups.push(group);
+                    return cr.toFixed(2) + 'Cr';
+                }
             }
+        };
+    }
 
-            group.rows.push(
-                row.outerHTML
-            );
+    function rebuildChart(canvas, kind) {
+        const old = chartOf(canvas);
+        if (!old) return;
+
+        const labels = Array.from(
+            old.data.labels || []
+        );
+
+        const datasets = cloneDatasets(old);
+
+        let type = old.config.type;
+        const indexAxis =
+            old.options?.indexAxis;
+
+        try {
+            old.destroy();
+        }
+        catch (_) {}
+
+        const options = {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            resizeDelay: 50,
+            layout: {
+                padding: {
+                    top: 22,
+                    right: kind === 'outstanding' ? 62 : 18,
+                    bottom: 8,
+                    left: 6
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        boxWidth: 28,
+                        padding: 14,
+                        usePointStyle: false
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label(context) {
+                            return (
+                                txt(context.dataset?.label) +
+                                (
+                                    context.dataset?.label
+                                        ? ': '
+                                        : ''
+                                ) +
+                                moneyCr(context.raw)
+                            );
+                        }
+                    }
+                }
+            }
+        };
+
+        if (kind === 'monthly') {
+            options.scales = {
+                y: croreScale(),
+                x: {
+                    ticks: {
+                        maxRotation: 45,
+                        minRotation: 35,
+                        autoSkip: false,
+                        font: {
+                            size: 10
+                        }
+                    }
+                }
+            };
+        }
+        else if (kind === 'cumulative') {
+            options.scales = {
+                y: croreScale(),
+                x: {
+                    ticks: {
+                        maxRotation: 35,
+                        minRotation: 25,
+                        autoSkip: true,
+                        maxTicksLimit: 8,
+                        font: {
+                            size: 10
+                        }
+                    }
+                }
+            };
+
+            datasets.forEach(ds => {
+                ds.tension = .24;
+                ds.pointRadius = 3;
+                ds.pointHoverRadius = 5;
+            });
+        }
+        else if (kind === 'outstanding') {
+            type = 'bar';
+            options.indexAxis = 'y';
+            options.scales = {
+                x: croreScale(),
+                y: {
+                    ticks: {
+                        font: {
+                            size: 10
+                        }
+                    }
+                }
+            };
+
+            options.plugins.legend.display = false;
+        }
+        else if (kind === 'mix') {
+            options.layout.padding = {
+                top: 18,
+                right: 24,
+                bottom: 8,
+                left: 24
+            };
+
+            options.plugins.legend.labels.generateLabels =
+                function (chart) {
+                    const ds =
+                        chart.data.datasets?.[0];
+
+                    const values =
+                        Array.from(ds?.data || [])
+                            .map(num);
+
+                    const total =
+                        values.reduce(
+                            (sum, value) =>
+                                sum + value,
+                            0
+                        );
+
+                    return (
+                        chart.data.labels || []
+                    ).map((label, index) => {
+                        const value =
+                            values[index] || 0;
+
+                        const pct =
+                            total > 0
+                                ? value / total * 100
+                                : 0;
+
+                        return {
+                            text:
+                                label +
+                                ' — ' +
+                                moneyCr(value, true) +
+                                ' (' +
+                                pct.toFixed(0) +
+                                '%)',
+                            fillStyle:
+                                Array.isArray(
+                                    ds?.backgroundColor
+                                )
+                                    ? ds.backgroundColor[index]
+                                    : ds?.backgroundColor,
+                            strokeStyle:
+                                Array.isArray(
+                                    ds?.borderColor
+                                )
+                                    ? ds.borderColor[index]
+                                    : ds?.borderColor,
+                            lineWidth: 0,
+                            hidden: false,
+                            index
+                        };
+                    });
+                };
+        }
+
+        new Chart(
+            canvas,
+            {
+                type,
+                data: {
+                    labels,
+                    datasets
+                },
+                options,
+                plugins: [
+                    smartLabels
+                ]
+            }
+        );
+    }
+
+    function tidyCharts() {
+        if (!window.Chart) return;
+
+        relocateReconciliation();
+        ensureCanvasParents();
+
+        const canvases = chartCanvases();
+
+        Object.values(canvases)
+            .forEach(canvas => {
+                if (!canvas) return;
+
+                const chart = chartOf(canvas);
+
+                if (!chart) return;
+
+                try {
+                    chart.resize();
+                    chart.update('none');
+                }
+                catch (_) {}
+            });
+    }
+
+    function queueTidy(delay = 260) {
+        clearTimeout(tidyTimer);
+
+        tidyTimer = setTimeout(
+            tidyCharts,
+            delay
+        );
+    }
+
+    function selectedFilterSummary() {
+        const controls =
+            Array.from(
+                document.querySelectorAll(
+                    'select,input[type="date"],input[type="month"]'
+                )
+            )
+            .filter(el => !el.closest('.modal'));
+
+        const parts = [];
+
+        controls.forEach(el => {
+            const value = txt(el.value);
+
+            if (
+                !value ||
+                value.toLowerCase() === 'all' ||
+                value === '*'
+            ) return;
+
+            const label =
+                el.labels?.length
+                    ? txt(
+                        Array.from(el.labels)
+                            .map(x => x.textContent)
+                            .join(' ')
+                    )
+                    : txt(
+                        el.getAttribute('aria-label') ||
+                        el.name ||
+                        el.id
+                    );
+
+            const visible =
+                el.tagName === 'SELECT'
+                    ? txt(
+                        el.options?.[
+                            el.selectedIndex
+                        ]?.textContent
+                    )
+                    : value;
+
+            if (visible) {
+                parts.push(
+                    (label ? label + ': ' : '') +
+                    visible
+                );
+            }
         });
 
-        return groups;
+        return parts.length
+            ? parts.join(' | ')
+            : 'All available Cashflow data';
     }
 
-    function transformRegisterV75N() {
-        const area =
-            document.getElementById(
-                'tableArea'
-            );
+    function readReconciliation() {
+        const box =
+            $('pmisCashflowReconcileV75R');
 
-        if (!area) return;
+        return txt(box?.textContent);
+    }
 
+    function tableData() {
         const table =
-            area.querySelector(
-                ':scope > table, table'
+            $('tableArea')?.querySelector('table') ||
+            document.querySelector(
+                '.cashflow-main table'
             );
 
-        if (!table) return;
-
-        if (
-            table.closest(
-                '.pmis-v75n-register-list'
-            )
-        ) {
-            return;
+        if (!table) {
+            return {
+                head: [],
+                body: []
+            };
         }
 
-        const thead =
-            table.querySelector(
-                'thead'
-            );
-
-        const tbody =
-            table.querySelector(
-                'tbody'
-            );
-
-        if (!thead || !tbody) return;
-
-        const rows =
-            Array.from(
-                tbody.querySelectorAll('tr')
+        const head = Array
+            .from(
+                table.querySelectorAll(
+                    'thead tr:last-child th'
+                )
             )
-                .filter(row =>
-                    row.cells &&
-                    row.cells.length >= 2
+            .map(th =>
+                txt(th.textContent)
+            );
+
+        const body = Array
+            .from(
+                table.querySelectorAll(
+                    'tbody tr'
+                )
+            )
+            .map(row =>
+                Array
+                    .from(
+                        row.querySelectorAll(
+                            'td'
+                        )
+                    )
+                    .map(td =>
+                        txt(td.textContent)
+                    )
+            )
+            .filter(row =>
+                row.some(Boolean)
+            );
+
+        return {
+            head,
+            body
+        };
+    }
+
+
+    function registerSnapshotV76A() {
+        const cards =
+            Array.from(
+                document.querySelectorAll(
+                    '#tableArea .pmis-v75y-project-card'
+                )
+            )
+            .filter(card =>
+                card.style.display !== 'none'
+            );
+
+        return cards.map(card => {
+            const title =
+                txt(
+                    card.querySelector(
+                        '.pmis-v75y-project-title'
+                    )?.textContent
+                ) || 'Project';
+
+            const subtitle =
+                txt(
+                    card.querySelector(
+                        '.pmis-v75y-project-sub'
+                    )?.textContent
                 );
 
-        if (!rows.length) return;
+            const meta =
+                txt(
+                    card.querySelector(
+                        '.pmis-v75y-project-meta'
+                    )?.textContent
+                ).replace(/\s+/g, ' ');
 
-        const groups =
-            groupRowsV75N(rows);
+            const count =
+                txt(
+                    card.querySelector(
+                        '.pmis-v75y-count'
+                    )?.textContent
+                );
 
-        if (!groups.length) return;
+            const expanded = true;
 
-        const wrapper =
+            const table =
+                card.querySelector(
+                    'table'
+                );
+
+            const head =
+                table
+                    ? Array.from(
+                        table.querySelectorAll(
+                            'thead tr:last-child th'
+                        )
+                    ).map(th =>
+                        txt(th.textContent)
+                    )
+                    : [];
+
+            const body =
+                table
+                    ? Array.from(
+                        table.querySelectorAll(
+                            'tbody tr'
+                        )
+                    ).map(row =>
+                        Array.from(
+                            row.querySelectorAll(
+                                'td'
+                            )
+                        ).map(td =>
+                            txt(td.textContent)
+                                .replace(/\s+/g, ' ')
+                        )
+                    ).filter(row =>
+                        row.some(Boolean)
+                    )
+                    : [];
+
+            return {
+                title,
+                subtitle,
+                meta,
+                count,
+                expanded,
+                head,
+                body
+            };
+        });
+    }
+
+    function currentKpis() {
+        const items = [];
+
+        const cards =
+            Array.from(
+                document.querySelectorAll(
+                    '.kpi,.kpi-card,.summary-card,.stat-card,.metric-card'
+                )
+            );
+
+        cards.forEach(card => {
+            const label =
+                txt(
+                    card.querySelector(
+                        '.label,.kpi-label,.stat-label,.metric-label'
+                    )?.textContent
+                ) ||
+                txt(
+                    card.querySelector(
+                        'small,h4,h5'
+                    )?.textContent
+                );
+
+            const value =
+                txt(
+                    card.querySelector(
+                        '.value,.kpi-value,.stat-value,.metric-value,h2,h3'
+                    )?.textContent
+                );
+
+            if (
+                label &&
+                value &&
+                !items.some(x =>
+                    x.label === label
+                )
+            ) {
+                items.push({
+                    label,
+                    value
+                });
+            }
+        });
+
+        if (!items.length) {
+            const reconciliation =
+                readReconciliation();
+
+            const matches =
+                Array.from(
+                    reconciliation.matchAll(
+                        /(Actual Received|Outstanding)\s+₹?([\d.]+)\s*Cr/gi
+                    )
+                );
+
+            matches.forEach(match => {
+                items.push({
+                    label: match[1],
+                    value:
+                        '₹' +
+                        match[2] +
+                        ' Cr'
+                });
+            });
+        }
+
+        return items.slice(0, 6);
+    }
+
+    function scriptLoaded(srcPart) {
+        return Array
+            .from(
+                document.scripts
+            )
+            .some(script =>
+                txt(script.src).includes(srcPart)
+            );
+    }
+
+    function loadScript(url, globalCheck) {
+        return new Promise(
+            (resolve, reject) => {
+                try {
+                    if (globalCheck()) {
+                        resolve();
+                        return;
+                    }
+                }
+                catch (_) {}
+
+                const existing =
+                    Array.from(
+                        document.scripts
+                    )
+                    .find(script =>
+                        script.src === url
+                    );
+
+                if (existing) {
+                    existing.addEventListener(
+                        'load',
+                        () => resolve(),
+                        { once: true }
+                    );
+
+                    existing.addEventListener(
+                        'error',
+                        reject,
+                        { once: true }
+                    );
+
+                    return;
+                }
+
+                const script =
+                    document.createElement(
+                        'script'
+                    );
+
+                script.src = url;
+                script.async = true;
+
+                script.onload =
+                    () => resolve();
+
+                script.onerror =
+                    () => reject(
+                        new Error(
+                            'Could not load ' +
+                            url
+                        )
+                    );
+
+                document.head.appendChild(
+                    script
+                );
+            }
+        );
+    }
+
+    async function ensurePdfLibraries() {
+        if (
+            !window.jspdf?.jsPDF &&
+            !window.jsPDF
+        ) {
+            await loadScript(
+                'https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js',
+                () =>
+                    !!window.jspdf?.jsPDF ||
+                    !!window.jsPDF
+            );
+        }
+
+        const JsPDF =
+            window.jspdf?.jsPDF ||
+            window.jsPDF;
+
+        if (!JsPDF) {
+            throw new Error(
+                'jsPDF could not be loaded.'
+            );
+        }
+
+        const probe = new JsPDF();
+
+        if (
+            typeof probe.autoTable !==
+            'function'
+        ) {
+            await loadScript(
+                'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js',
+                () => {
+                    const test =
+                        new JsPDF();
+
+                    return typeof test.autoTable ===
+                        'function';
+                }
+            );
+        }
+
+        return JsPDF;
+    }
+
+    function canvasImage(canvas) {
+        try {
+            if (!canvas) return null;
+
+            return canvas.toDataURL(
+                'image/png',
+                1
+            );
+        }
+        catch (_) {
+            return null;
+        }
+    }
+
+        /* PMIS_CASHFLOW_PDF_FONT_SPACING_CLEANUP_V76C3 */
+    function pdfCleanV76C3(value) {
+        return txt(value)
+            .replace(/\u00a0/g,' ')
+            .replace(/\u20b9/g,'Rs. ')
+            .replace(/[–—]/g,'-')
+            .replace(/[·•]/g,' | ')
+            .replace(/\s*\|\s*/g,' | ')
+            .replace(/\s+/g,' ')
+            .trim();
+    }
+
+    function pdfRowsV76C3(rows) {
+        return (Array.isArray(rows) ? rows : [])
+            .map(row =>
+                (Array.isArray(row) ? row : [])
+                    .map(pdfCleanV76C3)
+            );
+    }
+
+    function addHeader(
+        doc,
+        title,
+        filter,
+        pageWidth
+    ) {
+        doc.setFillColor(11,43,74);
+
+        doc.roundedRect(
+            10,
+            8,
+            pageWidth - 20,
+            20,
+            2.5,
+            2.5,
+            'F'
+        );
+
+        doc.setFont('helvetica','bold');
+        doc.setFontSize(13.5);
+        doc.setTextColor(255,255,255);
+
+        doc.text(
+            pdfCleanV76C3(title),
+            15,
+            16
+        );
+
+        doc.setFont('helvetica','normal');
+        doc.setFontSize(6.6);
+        doc.setTextColor(226,232,240);
+
+        doc.text(
+            pdfCleanV76C3(filter),
+            15,
+            22.8,
+            {
+                maxWidth:
+                    pageWidth - 30
+            }
+        );
+
+        doc.setFont('helvetica','normal');
+        doc.setTextColor(15,23,42);
+    }
+
+        function addFooter(doc) {
+        const count =
+            doc.getNumberOfPages();
+
+        for (
+            let page = 1;
+            page <= count;
+            page++
+        ) {
+            doc.setPage(page);
+
+            const width =
+                doc.internal.pageSize.getWidth();
+
+            const height =
+                doc.internal.pageSize.getHeight();
+
+            doc.setDrawColor(226,232,240);
+            doc.setLineWidth(0.2);
+
+            doc.line(
+                10,
+                height - 8.5,
+                width - 10,
+                height - 8.5
+            );
+
+            doc.setFont('helvetica','normal');
+            doc.setFontSize(6.3);
+            doc.setTextColor(100,116,139);
+
+            doc.text(
+                'PMIS Cashflow / Payment Master Report',
+                10,
+                height - 4
+            );
+
+            doc.text(
+                'Page ' +
+                page +
+                ' / ' +
+                count,
+                width - 10,
+                height - 4,
+                {
+                    align:'right'
+                }
+            );
+        }
+    }
+
+        function addKpiCards(
+        doc,
+        kpis,
+        startY,
+        pageWidth
+    ) {
+        if (!kpis.length) return startY;
+
+        const gap = 3;
+
+        const columns =
+            Math.min(
+                3,
+                kpis.length
+            );
+
+        const usable =
+            pageWidth - 20;
+
+        const cardWidth =
+            (
+                usable -
+                gap *
+                (columns - 1)
+            ) / columns;
+
+        let y = startY;
+
+        kpis.forEach(
+            (item,index) => {
+                const col =
+                    index % columns;
+
+                if (
+                    index > 0 &&
+                    col === 0
+                ) {
+                    y += 17;
+                }
+
+                const x =
+                    10 +
+                    col *
+                    (cardWidth + gap);
+
+                doc.setFillColor(
+                    248,
+                    250,
+                    252
+                );
+
+                doc.setDrawColor(
+                    226,
+                    232,
+                    240
+                );
+
+                doc.roundedRect(
+                    x,
+                    y,
+                    cardWidth,
+                    14,
+                    2,
+                    2,
+                    'FD'
+                );
+
+                doc.setFont(
+                    'helvetica',
+                    'bold'
+                );
+
+                doc.setFontSize(6.2);
+
+                doc.setTextColor(
+                    100,
+                    116,
+                    139
+                );
+
+                doc.text(
+                    pdfCleanV76C3(
+                        item.label
+                    ).slice(0,40),
+                    x + 3.5,
+                    y + 4.8
+                );
+
+                doc.setFont(
+                    'helvetica',
+                    'bold'
+                );
+
+                doc.setFontSize(9);
+
+                doc.setTextColor(
+                    15,
+                    23,
+                    42
+                );
+
+                doc.text(
+                    pdfCleanV76C3(
+                        item.value
+                    ).slice(0,30),
+                    x + 3.5,
+                    y + 10.7
+                );
+            }
+        );
+
+        return y + 17;
+    }
+
+        function addChartPanel(
+        doc,
+        title,
+        image,
+        x,
+        y,
+        w,
+        h
+    ) {
+        doc.setDrawColor(
+            226,
+            232,
+            240
+        );
+
+        doc.setLineWidth(0.2);
+
+        doc.roundedRect(
+            x,
+            y,
+            w,
+            h,
+            2,
+            2,
+            'S'
+        );
+
+        doc.setFont(
+            'helvetica',
+            'bold'
+        );
+
+        doc.setFontSize(8.1);
+
+        doc.setTextColor(
+            15,
+            23,
+            42
+        );
+
+        doc.text(
+            pdfCleanV76C3(title),
+            x + 3,
+            y + 5.5
+        );
+
+        if (image) {
+            doc.addImage(
+                image,
+                'PNG',
+                x + 2.5,
+                y + 7.5,
+                w - 5,
+                h - 9.5,
+                undefined,
+                'FAST'
+            );
+        }
+        else {
+            doc.setFont(
+                'helvetica',
+                'normal'
+            );
+
+            doc.setFontSize(6.8);
+
+            doc.setTextColor(
+                148,
+                163,
+                184
+            );
+
+            doc.text(
+                'Chart not available for the current filter.',
+                x + 3,
+                y + 13
+            );
+        }
+    }
+
+        async function exportPdf() {
+        if (exportBusy) return;
+
+        const button =
+            $('pmisCashflowExportV75S2');
+
+        exportBusy = true;
+
+        if (button) {
+            button.disabled = true;
+
+            button.innerHTML =
+                '<span class="spinner-border spinner-border-sm"></span> Preparing PDF...';
+        }
+
+        try {
+            tidyCharts();
+
+            await new Promise(
+                resolve =>
+                    setTimeout(
+                        resolve,
+                        150
+                    )
+            );
+
+            const JsPDF =
+                await ensurePdfLibraries();
+
+            const doc =
+                new JsPDF({
+                    orientation:
+                        'landscape',
+
+                    unit:
+                        'mm',
+
+                    format:
+                        'a4',
+
+                    compress:
+                        true
+                });
+
+            doc.setFont(
+                'helvetica',
+                'normal'
+            );
+
+            const pageWidth =
+                doc.internal.pageSize
+                    .getWidth();
+
+            const pageHeight =
+                doc.internal.pageSize
+                    .getHeight();
+
+            const filter =
+                pdfCleanV76C3(
+                    selectedFilterSummary()
+                );
+
+            const reconciliation =
+                pdfCleanV76C3(
+                    readReconciliation()
+                );
+
+            const kpis =
+                currentKpis()
+                    .map(item => ({
+                        label:
+                            pdfCleanV76C3(
+                                item.label
+                            ),
+
+                        value:
+                            pdfCleanV76C3(
+                                item.value
+                            )
+                    }));
+
+            const canvases =
+                chartCanvases();
+
+            const images = {
+                monthly:
+                    canvasImage(
+                        canvases.monthly
+                    ),
+
+                cumulative:
+                    canvasImage(
+                        canvases.cumulative
+                    ),
+
+                mix:
+                    canvasImage(
+                        canvases.mix
+                    ),
+
+                outstanding:
+                    canvasImage(
+                        canvases.outstanding
+                    )
+            };
+
+            /* PAGE 1 — compact dashboard */
+            addHeader(
+                doc,
+                'CASHFLOW / PAYMENT MASTER REPORT',
+                filter,
+                pageWidth
+            );
+
+            let y = 32;
+
+            y =
+                addKpiCards(
+                    doc,
+                    kpis,
+                    y,
+                    pageWidth
+                );
+
+            if (reconciliation) {
+                doc.setFillColor(
+                    248,
+                    250,
+                    252
+                );
+
+                doc.setDrawColor(
+                    226,
+                    232,
+                    240
+                );
+
+                doc.roundedRect(
+                    10,
+                    y,
+                    pageWidth - 20,
+                    8,
+                    2,
+                    2,
+                    'FD'
+                );
+
+                doc.setFont(
+                    'helvetica',
+                    'normal'
+                );
+
+                doc.setFontSize(6.3);
+
+                doc.setTextColor(
+                    71,
+                    85,
+                    105
+                );
+
+                doc.text(
+                    reconciliation,
+                    13.5,
+                    y + 5.2,
+                    {
+                        maxWidth:
+                            pageWidth - 27
+                    }
+                );
+
+                y += 10.5;
+            }
+
+            const chartGap = 3.5;
+
+            const chartWidth =
+                (
+                    pageWidth -
+                    20 -
+                    chartGap
+                ) / 2;
+
+            const chartHeight =
+                Math.min(
+                    69,
+                    (
+                        pageHeight -
+                        y -
+                        14
+                    ) / 2
+                );
+
+            addChartPanel(
+                doc,
+                'Monthly Cashflow - Planned vs Actual',
+                images.monthly,
+                10,
+                y,
+                chartWidth,
+                chartHeight
+            );
+
+            addChartPanel(
+                doc,
+                'Cumulative Cashflow',
+                images.cumulative,
+                10 +
+                    chartWidth +
+                    chartGap,
+                y,
+                chartWidth,
+                chartHeight
+            );
+
+            y +=
+                chartHeight +
+                chartGap;
+
+            addChartPanel(
+                doc,
+                'Payment Amount Mix',
+                images.mix,
+                10,
+                y,
+                chartWidth,
+                chartHeight
+            );
+
+            addChartPanel(
+                doc,
+                'Outstanding by Project',
+                images.outstanding,
+                10 +
+                    chartWidth +
+                    chartGap,
+                y,
+                chartWidth,
+                chartHeight
+            );
+
+            /*
+             * V76B2 behavior:
+             * always include the fully expanded
+             * Payment Milestone Register.
+             */
+            const includeRegister = true;
+
+            if (includeRegister) {
+                const register =
+                    registerSnapshotV76A();
+
+                doc.addPage(
+                    'a4',
+                    'landscape'
+                );
+
+                addHeader(
+                    doc,
+                    'PAYMENT MILESTONE REGISTER',
+                    filter,
+                    pageWidth
+                );
+
+                let registerY = 32;
+
+                if (!register.length) {
+                    doc.setFont(
+                        'helvetica',
+                        'normal'
+                    );
+
+                    doc.setFontSize(7.5);
+
+                    doc.setTextColor(
+                        71,
+                        85,
+                        105
+                    );
+
+                    doc.text(
+                        'No payment milestone projects are available for the current filter.',
+                        12,
+                        40
+                    );
+                }
+
+                for (
+                    const project
+                    of register
+                ) {
+                    const title =
+                        pdfCleanV76C3(
+                            project.title
+                        );
+
+                    const subtitle =
+                        pdfCleanV76C3(
+                            project.subtitle
+                        );
+
+                    const meta =
+                        pdfCleanV76C3(
+                            project.meta
+                        );
+
+                    const count =
+                        pdfCleanV76C3(
+                            project.count
+                        );
+
+                    const cleanHead =
+                        (
+                            Array.isArray(
+                                project.head
+                            )
+                                ? project.head
+                                : []
+                        ).map(
+                            pdfCleanV76C3
+                        );
+
+                    const cleanBody =
+                        pdfRowsV76C3(
+                            project.body
+                        );
+
+                    const summaryHeight =
+                        meta
+                            ? 15.5
+                            : (
+                                subtitle
+                                    ? 11.5
+                                    : 8
+                            );
+
+                    if (
+                        registerY +
+                        summaryHeight >
+                        pageHeight - 13
+                    ) {
+                        doc.addPage(
+                            'a4',
+                            'landscape'
+                        );
+
+                        addHeader(
+                            doc,
+                            'PAYMENT MILESTONE REGISTER',
+                            filter,
+                            pageWidth
+                        );
+
+                        registerY = 32;
+                    }
+
+                    doc.setFillColor(
+                        248,
+                        251,
+                        255
+                    );
+
+                    doc.setDrawColor(
+                        219,
+                        229,
+                        239
+                    );
+
+                    doc.roundedRect(
+                        10,
+                        registerY,
+                        pageWidth - 20,
+                        summaryHeight,
+                        1.8,
+                        1.8,
+                        'FD'
+                    );
+
+                    doc.setFont(
+                        'helvetica',
+                        'bold'
+                    );
+
+                    doc.setFontSize(8.6);
+
+                    doc.setTextColor(
+                        11,
+                        43,
+                        74
+                    );
+
+                    doc.text(
+                        title,
+                        13,
+                        registerY + 4.8
+                    );
+
+                    if (count) {
+                        doc.setFont(
+                            'helvetica',
+                            'bold'
+                        );
+
+                        doc.setFontSize(6.5);
+
+                        doc.text(
+                            count,
+                            pageWidth - 13,
+                            registerY + 4.8,
+                            {
+                                align:
+                                    'right'
+                            }
+                        );
+                    }
+
+                    if (subtitle) {
+                        doc.setFont(
+                            'helvetica',
+                            'normal'
+                        );
+
+                        doc.setFontSize(6.2);
+
+                        doc.setTextColor(
+                            71,
+                            85,
+                            105
+                        );
+
+                        doc.text(
+                            subtitle,
+                            13,
+                            registerY + 9,
+                            {
+                                maxWidth:
+                                    pageWidth - 38
+                            }
+                        );
+                    }
+
+                    if (meta) {
+                        doc.setFont(
+                            'helvetica',
+                            'normal'
+                        );
+
+                        doc.setFontSize(6.1);
+
+                        doc.setTextColor(
+                            51,
+                            65,
+                            85
+                        );
+
+                        doc.text(
+                            meta,
+                            13,
+                            registerY + 13.1,
+                            {
+                                maxWidth:
+                                    pageWidth - 26
+                            }
+                        );
+                    }
+
+                    registerY +=
+                        summaryHeight +
+                        1;
+
+                    if (
+                        cleanHead.length &&
+                        cleanBody.length &&
+                        typeof doc.autoTable ===
+                            'function'
+                    ) {
+                        doc.autoTable({
+                            startY:
+                                registerY,
+
+                            head: [
+                                cleanHead
+                            ],
+
+                            body:
+                                cleanBody,
+
+                            theme:
+                                'grid',
+
+                            styles: {
+                                font:
+                                    'helvetica',
+
+                                fontStyle:
+                                    'normal',
+
+                                fontSize:
+                                    5.85,
+
+                                cellPadding:
+                                    1.0,
+
+                                overflow:
+                                    'linebreak',
+
+                                valign:
+                                    'middle',
+
+                                textColor: [
+                                    15,
+                                    23,
+                                    42
+                                ],
+
+                                lineColor: [
+                                    218,
+                                    226,
+                                    234
+                                ],
+
+                                lineWidth:
+                                    0.12
+                            },
+
+                            headStyles: {
+                                font:
+                                    'helvetica',
+
+                                fontStyle:
+                                    'bold',
+
+                                fontSize:
+                                    5.6,
+
+                                cellPadding:
+                                    1.05,
+
+                                fillColor: [
+                                    226,
+                                    232,
+                                    240
+                                ],
+
+                                textColor: [
+                                    11,
+                                    43,
+                                    74
+                                ],
+
+                                halign:
+                                    'center',
+
+                                valign:
+                                    'middle'
+                            },
+
+                            bodyStyles: {
+                                font:
+                                    'helvetica',
+
+                                fontStyle:
+                                    'normal'
+                            },
+
+                            alternateRowStyles: {
+                                fillColor: [
+                                    250,
+                                    252,
+                                    254
+                                ]
+                            },
+
+                            margin: {
+                                top:
+                                    32,
+
+                                left:
+                                    10,
+
+                                right:
+                                    10,
+
+                                bottom:
+                                    12
+                            },
+
+                            rowPageBreak:
+                                'avoid',
+
+                            showHead:
+                                'everyPage',
+
+                            didParseCell:
+                                data => {
+                                    const col =
+                                        data.column.index;
+
+                                    if (
+                                        col >= 4 &&
+                                        col <= 6
+                                    ) {
+                                        data.cell.styles
+                                            .fillColor =
+                                            data.section ===
+                                                'head'
+                                                ? [
+                                                    219,
+                                                    234,
+                                                    254
+                                                ]
+                                                : [
+                                                    239,
+                                                    246,
+                                                    255
+                                                ];
+
+                                        data.cell.styles
+                                            .textColor =
+                                            [
+                                                11,
+                                                43,
+                                                74
+                                            ];
+                                    }
+
+                                    if (
+                                        col >= 7 &&
+                                        col <= 10
+                                    ) {
+                                        data.cell.styles
+                                            .fillColor =
+                                            data.section ===
+                                                'head'
+                                                ? [
+                                                    204,
+                                                    251,
+                                                    241
+                                                ]
+                                                : [
+                                                    240,
+                                                    253,
+                                                    250
+                                                ];
+
+                                        data.cell.styles
+                                            .textColor =
+                                            [
+                                                6,
+                                                95,
+                                                70
+                                            ];
+                                    }
+                                }
+                        });
+
+                        registerY =
+                            (
+                                doc.lastAutoTable
+                                    ?.finalY ||
+                                registerY
+                            ) + 2;
+                    }
+                }
+            }
+
+            addFooter(doc);
+
+            const stamp =
+                new Date()
+                    .toISOString()
+                    .slice(0,10);
+
+            doc.save(
+                'PMIS_Cashflow_Master_Report_' +
+                stamp +
+                '.pdf'
+            );
+        }
+        catch (error) {
+            console.error(
+                '[PMIS V76C3] PDF export failed:',
+                error
+            );
+
+            window.alert(
+                'Cashflow PDF export could not be generated. ' +
+                'Please check the browser console for details.'
+            );
+        }
+        finally {
+            exportBusy = false;
+
+            if (button) {
+                button.disabled = false;
+
+                button.innerHTML =
+                    '<i class="bi bi-file-earmark-pdf"></i> Export PDF';
+            }
+        }
+    }
+
+    function ensureExportButton() {
+        let controls =
+            $('pmisCashflowExportControlsV76A');
+
+        if (controls) return;
+
+        controls =
             document.createElement(
                 'div'
             );
 
-        wrapper.className =
-            'pmis-v75n-register-list';
+        controls.id =
+            'pmisCashflowExportControlsV76A';
 
-        groups.forEach(
-            (group,index) => {
-                const details =
-                    document.createElement(
-                        'details'
-                    );
+        controls.className =
+            'pmis-v76a-export-controls';
 
-                details.className =
-                    'pmis-v75n-register-group';
+        const option =
+            document.createElement(
+                'label'
+            );
 
-                if (index === 0) {
-                    details.open = true;
-                }
+        option.className =
+            'pmis-v76a-export-option';
 
-                details.innerHTML = `
-                    <summary>
-                        <div class="pmis-v75n-register-left">
-                            <div class="pmis-v75n-register-title">
-                                ${escapeHtmlV75N(group.code)}
-                            </div>
-                            <div class="pmis-v75n-register-sub">
-                                ${
-                                    [
-                                        group.name,
-                                        group.customer
-                                    ]
-                                        .filter(Boolean)
-                                        .map(escapeHtmlV75N)
-                                        .join(' · ') || 'Click to view milestone planned vs actual details'
-                                }
-                            </div>
-                        </div>
-                        <div class="pmis-v75n-register-right">
-                            ${group.rows.length} milestone${group.rows.length === 1 ? '' : 's'}
-                        </div>
-                    </summary>
-                    <div class="pmis-v75n-register-table table-responsive">
-                        <table class="${escapeAttrV75N(table.className)}">
-                            ${thead.outerHTML}
-                            <tbody>
-                                ${group.rows.join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                `;
+        option.innerHTML =
+            '<input id="pmisCashflowIncludeRegisterV76A" type="checkbox" checked>' +
+            '<span><strong>Include</strong> Payment Milestone Register</span>';
 
-                wrapper.appendChild(
-                    details
-                );
-            }
+        const button =
+            document.createElement(
+                'button'
+            );
+
+        button.id =
+            'pmisCashflowExportV75S2';
+
+        button.type =
+            'button';
+
+        button.className =
+            'pmis-v75s2-export-btn';
+
+        button.innerHTML =
+            '<i class="bi bi-file-earmark-pdf"></i> Export PDF';
+
+        button.addEventListener(
+            'click',
+            exportPdf
         );
 
-        const host =
-            table.parentElement &&
-            /table-responsive/i.test(
-                table.parentElement.className || ''
+        controls.appendChild(
+            option
+        );
+
+        controls.appendChild(
+            button
+        );
+
+        const title =
+            Array.from(
+                document.querySelectorAll(
+                    'h1'
+                )
             )
-                ? table.parentElement
-                : table;
+            .find(node =>
+                /cashflow|payment status/i.test(
+                    txt(node.textContent)
+                )
+            );
 
-        host.replaceWith(
-            wrapper
-        );
-    }
-
-    function escapeHtmlV75N(value) {
-        return String(value ?? '')
-            .replace(/&/g,'&amp;')
-            .replace(/</g,'&lt;')
-            .replace(/>/g,'&gt;');
-    }
-
-    function escapeAttrV75N(value) {
-        return escapeHtmlV75N(value)
-            .replace(/"/g,'&quot;');
-    }
-
-    function startV75N() {
-        if (
-            typeof renderTable ===
-                'function' &&
-            !window.__PMIS_V75N_CASHFLOW_RENDER_WRAPPED__
-        ) {
-            const previousRender =
-                renderTable;
-
-            renderTable =
-                function () {
-                    const result =
-                        previousRender.apply(
-                            this,
-                            arguments
-                        );
-
-                    requestAnimationFrame(
-                        transformRegisterV75N
-                    );
-
-                    return result;
-                };
-
-            window.__PMIS_V75N_CASHFLOW_RENDER_WRAPPED__ =
-                true;
+        if (title?.parentElement) {
+            title.parentElement.appendChild(
+                controls
+            );
         }
+        else {
+            (
+                document.querySelector(
+                    '.cashflow-main'
+                ) ||
+                document.querySelector(
+                    'main'
+                ) ||
+                document.body
+            ).prepend(
+                controls
+            );
+        }
+    }
 
-        requestAnimationFrame(
-            transformRegisterV75N
+    function bindRefresh() {
+        Array
+            .from(
+                document.querySelectorAll(
+                    'select,input[type="date"],input[type="month"],input[type="search"],input[type="text"]'
+                )
+            )
+            .filter(el =>
+                !el.closest('.modal')
+            )
+            .forEach(el => {
+                if (
+                    el.dataset
+                        .pmisV75sBound ===
+                    '1'
+                ) return;
+
+                el.dataset
+                    .pmisV75sBound =
+                    '1';
+
+                el.addEventListener(
+                    'change',
+                    () =>
+                        queueTidy(420)
+                );
+
+                if (
+                    el.type === 'search' ||
+                    el.type === 'text'
+                ) {
+                    el.addEventListener(
+                        'input',
+                        () =>
+                            queueTidy(500)
+                    );
+                }
+            });
+    }
+
+    function start() {
+        ensureExportButton();
+        relocateReconciliation();
+        ensureCanvasParents();
+        bindRefresh();
+
+        // Native V75Y performs the data render immediately.
+        // Tidy after the native charts have completed.
+        setTimeout(
+            () => {
+                tidyCharts();
+            },
+            1750
+        );
+
+        setTimeout(
+            () => {
+                tidyCharts();
+            },
+            2600
         );
 
         const observer =
             new MutationObserver(
-                () =>
-                    requestAnimationFrame(
-                        transformRegisterV75N
-                    )
-            );
+                mutations => {
+                    const changed =
+                        mutations.some(
+                            mutation =>
+                                Array
+                                    .from(
+                                        mutation.addedNodes
+                                    )
+                                    .some(
+                                        node =>
+                                            node.nodeType === 1 &&
+                                            (
+                                                node.matches?.(
+                                                    'canvas,select,input'
+                                                ) ||
+                                                node.querySelector?.(
+                                                    'canvas,select,input'
+                                                )
+                                            )
+                                    )
+                        );
 
-        const area =
-            document.getElementById(
-                'tableArea'
-            );
-
-        if (area) {
-            observer.observe(
-                area,
-                {
-                    childList: true,
-                    subtree: true
+                    if (changed) {
+                        bindRefresh();
+                        queueTidy(500);
+                    }
                 }
             );
-        }
+
+        observer.observe(
+            document.body,
+            {
+                childList: true,
+                subtree: true
+            }
+        );
+
+        window.addEventListener(
+            'resize',
+            () =>
+                queueTidy(220)
+        );
+
+        window.addEventListener(
+            'pageshow',
+            () =>
+                queueTidy(450)
+        );
+
+        console.log(
+            '[PMIS V75S2] Cashflow chart layout, smart labels and structured PDF export enabled.'
+        );
     }
 
     if (
@@ -1402,67 +3671,26 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     ) {
         document.addEventListener(
             'DOMContentLoaded',
-            startV75N,
-            { once: true }
+            start,
+            {
+                once: true
+            }
         );
     }
     else {
-        startV75N();
+        start();
     }
-
-    console.log(
-        '[PMIS V75N] Payment register grouped by project.'
-    );
-})();
-</script>
-<script id="pmis-v75n-r1-register-collapsed-default">
-/* PMIS_V75N_R1_REGISTER_COLLAPSED_DEFAULT */
-(function () {
-    'use strict';
-
-    if (window.__PMIS_V75N_R1_REGISTER_COLLAPSED_DEFAULT__) return;
-    window.__PMIS_V75N_R1_REGISTER_COLLAPSED_DEFAULT__ = true;
-
-    function collapseFreshGroupsV75NR1() {
-        document
-            .querySelectorAll('.pmis-v75n-register-group')
-            .forEach(group => {
-                if (group.dataset.v75nr1Initialized === '1') return;
-                group.dataset.v75nr1Initialized = '1';
-                group.removeAttribute('open');
-            });
-    }
-
-    function startV75NR1() {
-        collapseFreshGroupsV75NR1();
-
-        const area = document.getElementById('tableArea') || document.body;
-        const observer = new MutationObserver(() => {
-            requestAnimationFrame(collapseFreshGroupsV75NR1);
-        });
-
-        observer.observe(area, {
-            childList: true,
-            subtree: true
-        });
-
-        let attempts = 0;
-        const timer = setInterval(() => {
-            attempts += 1;
-            collapseFreshGroupsV75NR1();
-            if (attempts >= 20) clearInterval(timer);
-        }, 300);
-    }
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', startV75NR1, { once: true });
-    } else {
-        startV75NR1();
-    }
-
-    console.log('[PMIS V75N R1] Payment register now loads collapsed by default.');
 })();
 </script>
 
+
+
+
+
+
+
+<!-- PMIS_CASHFLOW_ALWAYS_EXPANDED_REGISTER_EXPORT_V76B2 -->
+
+<!-- PMIS_CASHFLOW_PDF_FONT_SPACING_CLEANUP_V76C3 -->
 </body>
 </html>
