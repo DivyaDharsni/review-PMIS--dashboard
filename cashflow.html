@@ -108,7 +108,7 @@
         .title-row p{margin:5px 0 0;color:var(--muted);font-size:.86rem}
         .panel{background:#fff;border:1px solid #e5edf5;border-radius:22px;box-shadow:0 7px 24px rgba(15,23,42,.045)}
         .filters{padding:18px;margin-bottom:18px}.filter-grid{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:12px}.filter-grid label{font-size:.67rem;font-weight:900;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin:0 0 5px 2px}.form-select,.form-control{border-color:#d9e3ee;border-radius:12px;font-size:.82rem;min-height:42px}.form-select:focus,.form-control:focus{border-color:#0b2b4a;box-shadow:0 0 0 4px rgba(11,43,74,.08)}
-        .kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:18px}.kpi{padding:17px}.kpi small{font-size:.66rem;color:var(--muted);font-weight:900;text-transform:uppercase;letter-spacing:.05em}.kpi b{display:block;margin-top:7px;color:var(--navy-prime);font-size:1.15rem}.kpi .sub{font-size:.69rem;color:#64748b;margin-top:3px}
+        .kpis{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:12px;margin-bottom:18px}.kpi{padding:17px}.kpi small{font-size:.66rem;color:var(--muted);font-weight:900;text-transform:uppercase;letter-spacing:.05em}.kpi b{display:block;margin-top:7px;color:var(--navy-prime);font-size:1.15rem}.kpi .sub{font-size:.69rem;color:#64748b;margin-top:3px}
         .charts{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:14px}.chart-card{padding:17px;min-height:330px}.chart-card h3{font-size:.86rem;color:var(--navy-prime);font-weight:900;margin:0 0 3px}.chart-card p{font-size:.7rem;color:var(--muted);margin:0 0 12px}.chart-wrap{height:255px;position:relative}
         .charts.second{grid-template-columns:2fr 1fr}.table-panel{margin-top:14px;overflow:hidden}.table-head{padding:15px 17px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.table-head h3{font-size:.9rem;font-weight:900;color:var(--navy-prime);margin:0}.table-responsive{max-height:560px}.table{font-size:.76rem;margin:0;min-width:1420px}.table thead th{position:sticky;top:0;z-index:2;background:#edf3f8;color:#334155;text-transform:uppercase;font-size:.63rem;letter-spacing:.04em;border-bottom:1px solid #cbd5e1;padding:11px 9px}.table td{padding:10px 9px;vertical-align:middle;border-color:#edf2f7}.stage-text{max-width:220px;white-space:normal}.money{font-variant-numeric:tabular-nums;font-weight:800}.badge-soft{display:inline-flex;padding:5px 8px;border-radius:999px;font-size:.65rem;font-weight:900;white-space:nowrap}.s-paid{background:#dcfce7;color:#166534}.s-partial{background:#fef3c7;color:#92400e}.s-overdue{background:#fee2e2;color:#991b1b}.s-due{background:#dbeafe;color:#1d4ed8}.s-notdue{background:#f1f5f9;color:#475569}.s-plan{background:#f3e8ff;color:#7e22ce}
         .btn-record{border:0;background:#0f9f92;color:#fff;border-radius:9px;padding:7px 10px;font-size:.7rem;font-weight:900}.btn-record:disabled{background:#cbd5e1;color:#64748b;cursor:not-allowed}.empty{padding:42px;text-align:center;color:#64748b}.loading{padding:60px;text-align:center;color:#64748b;font-weight:800}
@@ -116,7 +116,29 @@
         @media(max-width:1100px){.filter-grid{grid-template-columns:repeat(2,minmax(150px,1fr))}.kpis{grid-template-columns:repeat(2,1fr)}.charts,.charts.second{grid-template-columns:1fr}.header-center-title{display:none!important}.header-left,.header-right{min-width:0}}
         @media(max-width:768px){body{padding:14px 14px 70px}.app-header{padding:12px 13px;border-radius:20px;min-height:70px}.brand-box .brand-logo-wrap{display:none}.brand-sub{display:none}.header-right .user-pill{display:none}.cashflow-main{max-width:none}.filter-grid{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}.title-row h1{font-size:1.35rem}.sidebar{width:min(320px,90vw);left:-100vw;padding:24px}.menu-toggle{width:44px;height:44px}}
         @media(max-width:480px){.kpis{grid-template-columns:1fr}.app-header{margin-bottom:17px}.title-row{align-items:flex-start}.title-row>div:last-child{width:100%}}
-    </style>
+
+        /* PMIS_CASHFLOW_GST_GROSS_KPI_V76G2 */
+        @media(max-width:1450px) and (min-width:1101px){
+            .kpis{grid-template-columns:repeat(4,minmax(0,1fr))}
+        }
+
+        /* PMIS_PROJECT_GST_PERCENT_V76I5 — stage GST visibility */
+        #tableArea table{
+            min-width:1680px;
+        }
+        #tableArea th,
+        #tableArea td{
+            white-space:nowrap;
+        }
+        #tableArea .stage-text{
+            white-space:normal;
+        }
+
+        /* PMIS_STAGE_GST_ALLOCATION_V76J */
+        #tableArea table{
+            min-width:1780px;
+        }
+</style>
 <style id="pmis-cashflow-v76b2-hide-register-option">.pmis-v76a-export-option{display:none!important;}</style>
 </head>
 <body data-pmis-cashflow-version="V76A">
@@ -180,7 +202,7 @@
                 <div><label>Customer</label><select id="fCustomer" class="form-select"><option value="">All Customers</option></select></div>
                 <div><label>PM / Project Expeditor</label><select id="fManager" class="form-select"><option value="">All Expeditors</option></select></div>
                 <div><label>Payment Status</label><select id="fStatus" class="form-select"><option value="">All Statuses</option><option>Not Due</option><option>Due</option><option>Overdue</option><option>Partially Received</option><option>Realized</option><option>Plan Date Pending</option></select></div>
-                <div><label>Financial Year</label><select id="fFy" class="form-select"><option value="">All FY</option></select></div>
+<div><label>Financial Year</label><select id="fFy" class="form-select"><option value="">All FY</option></select></div>
                 <div><label>Date Basis</label><select id="fDateBasis" class="form-select"><option value="planned">Planned Realization</option><option value="actual">Actual Receipt</option><option value="either">Either Planned / Actual</option></select></div>
                 <div><label>Date From</label><input id="fFrom" type="date" class="form-control"></div>
                 <div><label>Date To</label><input id="fTo" type="date" class="form-control"></div>
@@ -189,7 +211,17 @@
         </section>
 
         <div class="kpis">
-            <div class="panel kpi"><small>PO Value</small><b id="kPo">₹0</b><div class="sub">Unique projects in current filter</div></div>
+            <div class="panel kpi"><small>Net PO Value</small><b id="kPo">₹0</b><div class="sub">Net PO value; Domestic plan includes 18% GST</div></div>
+            <div class="panel kpi">
+                <small>GST Value</small>
+                <b id="kGst">₹0</b>
+                <div class="sub">18% for Domestic orders; zero for International</div>
+            </div>
+            <div class="panel kpi">
+                <small>Gross PO Value</small>
+                <b id="kGrossPo">₹0</b>
+                <div class="sub">Net PO Value + applicable GST</div>
+            </div>
             <div class="panel kpi"><small>Planned Collection</small><b id="kPlanned">₹0</b><div class="sub">Filtered payment milestones</div></div>
             <div class="panel kpi"><small>Actual Collected</small><b id="kActual">₹0</b><div class="sub">Customer receipts recorded</div></div>
             <div class="panel kpi"><small>Outstanding</small><b id="kOutstanding">₹0</b><div class="sub">Planned amount less receipts</div></div>
@@ -320,7 +352,170 @@ const pmisV75ZDataLabels={
 
   if(!area)return;
 
+  /*
+   * PMIS V76W
+   * Keep a list of already-painted label boxes for this chart draw.
+   * This prevents nearby Planned / Actual / cumulative values from
+   * being painted over each other.
+   */
+  const placed=[];
+
+  function overlaps(box){
+   return placed.some(old=>!(
+    box.right+3<old.left||
+    box.left-3>old.right||
+    box.bottom+2<old.top||
+    box.top-2>old.bottom
+   ));
+  }
+
+  function clampCenterX(x,textWidth){
+   const half=textWidth/2;
+
+   return Math.min(
+    area.right-half-4,
+    Math.max(
+     area.left+half+4,
+     x
+    )
+   );
+  }
+
+  function boxAt(x,y,textWidth,height=11){
+   return {
+    left:x-textWidth/2,
+    right:x+textWidth/2,
+    top:y-height/2,
+    bottom:y+height/2
+   };
+  }
+
+  function placeCenteredLabel(
+   label,
+   point,
+   textWidth,
+   datasetIndex,
+   index,
+   lineMode=false
+  ){
+   const x=clampCenterX(
+    point.x,
+    textWidth
+   );
+
+   /*
+    * For line charts alternate the preferred side by dataset/index.
+    * This keeps Planned and Actual labels visually separated even
+    * when both end at almost the same point.
+    */
+   const preferBelow=
+    lineMode
+     ?(
+       (
+        datasetIndex+
+        index
+       )%2===1
+      )
+     :false;
+
+   const offsets=
+    lineMode
+     ?(
+       preferBelow
+        ?[14,-14,28,-28,40,-40,52,-52,64,-64]
+        :[-14,14,-28,28,-40,40,-52,52,-64,64]
+      )
+     :[-12,12,-24,24];
+
+   for(const offset of offsets){
+    const y=Math.min(
+     area.bottom-8,
+     Math.max(
+      area.top+8,
+      point.y+offset
+     )
+    );
+
+    const box=boxAt(
+     x,
+     y,
+     textWidth
+    );
+
+    if(overlaps(box)){
+     continue;
+    }
+
+    placed.push(box);
+
+    ctx.textAlign='center';
+    ctx.textBaseline='middle';
+    ctx.fillText(
+     label,
+     x,
+     y
+    );
+
+    return true;
+   }
+
+   /*
+    * Final fallback: try a small horizontal separation.
+    */
+   const sideOffsets=[
+    -Math.min(28,textWidth*.35),
+    Math.min(28,textWidth*.35),
+    -Math.min(52,textWidth*.7),
+    Math.min(52,textWidth*.7)
+   ];
+
+   for(const dx of sideOffsets){
+    const shiftedX=
+     clampCenterX(
+      point.x+dx,
+      textWidth
+     );
+
+    const y=Math.min(
+     area.bottom-8,
+     Math.max(
+      area.top+8,
+      point.y-14
+     )
+    );
+
+    const box=boxAt(
+     shiftedX,
+     y,
+     textWidth
+    );
+
+    if(overlaps(box)){
+     continue;
+    }
+
+    placed.push(box);
+
+    ctx.textAlign='center';
+    ctx.textBaseline='middle';
+    ctx.fillText(
+     label,
+     shiftedX,
+     y
+    );
+
+    return true;
+   }
+
+   /*
+    * If there is genuinely no clean position, do not draw an
+    * unreadable overlapping label.
+    */
+   return false;
+  }
+
   const all=[];
+
   chart.data.datasets.forEach(ds=>{
    (ds.data||[]).forEach(value=>{
     const n=Number(value)||0;
@@ -328,109 +523,240 @@ const pmisV75ZDataLabels={
    });
   });
 
-  const max=all.length?Math.max(...all):0;
-  const total=all.reduce((sum,value)=>sum+value,0);
+  const max=
+   all.length
+    ?Math.max(...all)
+    :0;
 
-  chart.data.datasets.forEach((dataset,datasetIndex)=>{
-   const meta=chart.getDatasetMeta(datasetIndex);
-   if(meta.hidden)return;
+  const total=
+   all.reduce(
+    (sum,value)=>
+     sum+value,
+    0
+   );
 
-   const values=(dataset.data||[]).map(value=>Number(value)||0);
+  chart.data.datasets.forEach(
+   (dataset,datasetIndex)=>{
+    const meta=
+     chart.getDatasetMeta(
+      datasetIndex
+     );
 
-   values.forEach((value,index)=>{
-    if(!(value>0))return;
+    if(meta.hidden)return;
 
-    let show=true;
+    const values=
+     (dataset.data||[])
+      .map(value=>
+       Number(value)||0
+      );
+
+    let lastLineIndex=-1;
 
     if(type==='line'){
-     let last=-1;
-     values.forEach((v,i)=>{if(v>0)last=i});
-     show=index===last||(index%4===0&&value>=max*.15);
-    }else if(type==='doughnut'||type==='pie'){
-     show=total>0&&(value/total)>=.08;
-    }else if(!horizontal){
-     const isActual=/actual|received/i.test(String(dataset.label||''));
-     show=isActual||value>=max*.07;
-     if(!isActual&&index%2===1&&value<max*.15)show=false;
+     values.forEach((v,i)=>{
+      if(v>0)lastLineIndex=i;
+     });
     }
 
-    if(!show)return;
+    values.forEach(
+     (value,index)=>{
+      const forceAllLabels=dataset.pmisShowAllLabels===true;
+      const forcePositiveLabels=dataset.pmisShowAllPositiveLabels===true;
 
-    const element=meta.data[index];
-    if(!element)return;
+      if(!(value>0)&&!forceAllLabels)return;
 
-    const point=element.tooltipPosition();
-    let label=chartLabelMoneyV76A(value);
+      let show=true;
 
-    if(type==='doughnut'||type==='pie'){
-     const pct=total>0?(value/total*100):0;
-     label=chartLabelMoneyV76A(value)+' · '+pct.toFixed(0)+'%';
-    }
+      if(forceAllLabels||forcePositiveLabels){
+       show=true;
+      }
+      else if(type==='line'){
+       /*
+        * Always show the last point.
+        * Keep occasional intermediate labels, but do not show one
+        * immediately beside the final point.
+        */
+       show=
+        index===lastLineIndex||
+        (
+         index%4===0&&
+         value>=max*.15&&
+         (
+          lastLineIndex-index
+         )>=2
+        );
+      }
+      else if(
+       type==='doughnut'||
+       type==='pie'
+      ){
+       show=
+        total>0&&
+        (
+         value/total
+        )>=.08;
+      }
+      else if(!horizontal){
+       const isActual=
+        /actual|received/i
+         .test(
+          String(
+           dataset.label||
+           ''
+          )
+         );
 
-    ctx.save();
-    ctx.font='700 10px Arial';
-    ctx.fillStyle='#0f172a';
+       show=
+        isActual||
+        value>=max*.07;
 
-    const textWidth=ctx.measureText(label).width;
-    const half=textWidth/2;
+       if(
+        !isActual&&
+        index%2===1&&
+        value<max*.15
+       ){
+        show=false;
+       }
+      }
 
-    if(horizontal){
-     let x=point.x+6;
-     const maxX=area.right-textWidth-4;
+      if(!show)return;
 
-     if(x>maxX){
-      x=Math.max(area.left+4,point.x-textWidth-7);
+      const element=
+       meta.data[index];
+
+      if(!element)return;
+
+      const point=
+       element.tooltipPosition();
+
+      let label=
+       chartLabelMoneyV76A(
+        value
+       );
+
+      if(
+       type==='doughnut'||
+       type==='pie'
+      ){
+       const pct=
+        total>0
+         ?(
+          value/total*100
+         )
+         :0;
+
+       label=
+        chartLabelMoneyV76A(
+         value
+        )+
+        ' · '+
+        pct.toFixed(0)+
+        '%';
+      }
+
+      ctx.save();
+      ctx.font='700 10px Arial';
+      ctx.fillStyle='#0f172a';
+
+      const textWidth=
+       ctx.measureText(
+        label
+       ).width;
+
+      if(horizontal){
+       let x=
+        point.x+6;
+
+       const maxX=
+        area.right-
+        textWidth-
+        4;
+
+       if(x>maxX){
+        x=Math.max(
+         area.left+4,
+         point.x-
+         textWidth-
+         7
+        );
+       }
+
+       let y=Math.min(
+        area.bottom-7,
+        Math.max(
+         area.top+7,
+         point.y
+        )
+       );
+
+       /*
+        * Horizontal bars rarely collide, but use the same
+        * box protection for completeness.
+        */
+       let box={
+        left:x,
+        right:x+textWidth,
+        top:y-6,
+        bottom:y+6
+       };
+
+       if(overlaps(box)){
+        y=Math.min(
+         area.bottom-7,
+         Math.max(
+          area.top+7,
+          y+12
+         )
+        );
+
+        box={
+         left:x,
+         right:x+textWidth,
+         top:y-6,
+         bottom:y+6
+        };
+       }
+
+       if(!overlaps(box)){
+        placed.push(box);
+        ctx.textAlign='left';
+        ctx.textBaseline='middle';
+        ctx.fillText(
+         label,
+         x,
+         y
+        );
+       }
+      }
+      else if(
+       type==='doughnut'||
+       type==='pie'
+      ){
+       placeCenteredLabel(
+        label,
+        point,
+        textWidth,
+        datasetIndex,
+        index,
+        false
+       );
+      }
+      else{
+       placeCenteredLabel(
+        label,
+        point,
+        textWidth,
+        datasetIndex,
+        index,
+        type==='line'
+       );
+      }
+
+      ctx.restore();
      }
-
-     const y=Math.min(
-      area.bottom-7,
-      Math.max(area.top+7,point.y)
-     );
-
-     ctx.textAlign='left';
-     ctx.textBaseline='middle';
-     ctx.fillText(label,x,y);
-    }else if(type==='doughnut'||type==='pie'){
-     const x=Math.min(
-      area.right-half-4,
-      Math.max(area.left+half+4,point.x)
-     );
-
-     const y=Math.min(
-      area.bottom-8,
-      Math.max(area.top+8,point.y)
-     );
-
-     ctx.textAlign='center';
-     ctx.textBaseline='middle';
-     ctx.fillText(label,x,y);
-    }else{
-     const x=Math.min(
-      area.right-half-4,
-      Math.max(area.left+half+4,point.x)
-     );
-
-     let y=point.y-6;
-     let baseline='bottom';
-
-     if(y<area.top+12){
-      y=point.y+10;
-      baseline='top';
-     }
-
-     y=Math.min(
-      area.bottom-12,
-      Math.max(area.top+12,y)
-     );
-
-     ctx.textAlign='center';
-     ctx.textBaseline=baseline;
-     ctx.fillText(label,x,y);
-    }
-
-    ctx.restore();
-   });
-  });
+    );
+   }
+  );
  }
 };
 
@@ -548,7 +874,87 @@ function technicalComplete(p){
 }
 function receipts(term){return Array.isArray(term?.actual_receipts)?term.actual_receipts:[]}
 function received(term){return receipts(term).reduce((s,r)=>s+Math.max(0,num(r?.amount)),0)}
-function expected(p,term){return Math.max(0,num(p?.po_value)*num(term?.percentage)/100)}
+function cashflowOrderTypeV76F4(p){
+ const raw=String(p?.cashflow_order_type||p?.order_type||'domestic').trim().toLowerCase();
+ return raw==='international'?'international':'domestic';
+}
+function cashflowGstRateV76F4(p){
+ return String(
+  p?.cashflow_order_type||
+  p?.order_type||
+  'domestic'
+ )
+  .trim()
+  .toLowerCase()==='international'
+   ?0
+   :18;
+}
+function grossPoValueV76F4(p){
+ const net=Math.max(0,num(p?.po_value));
+ return net*(1+cashflowGstRateV76F4(p)/100);
+}
+function cashflowStageNetV76J(p,term){
+ return Math.max(
+  0,
+  num(p?.po_value)*
+  num(term?.percentage)/
+  100
+ );
+}
+
+function cashflowGstRateV76J(p){
+ return String(
+  p?.cashflow_order_type||
+  p?.order_type||
+  'domestic'
+ )
+  .trim()
+  .toLowerCase()==='international'
+   ?0
+   :18;
+}
+
+function cashflowGstAllocationV76J(term){
+ const value=
+  num(
+   term?.gst_allocation_percent ??
+   term?.gstAllocationPercent ??
+   term?.gst_percent_allocation ??
+   term?.gstAllocation ??
+   0
+  );
+
+ return Math.max(
+  0,
+  Math.min(
+   100,
+   value
+  )
+ );
+}
+
+function cashflowTotalGstV76J(p){
+ return Math.max(
+  0,
+  num(p?.po_value)
+ )*
+ cashflowGstRateV76J(p)/
+ 100;
+}
+
+function cashflowStageGstV76J(p,term){
+ return cashflowTotalGstV76J(p)*
+  cashflowGstAllocationV76J(term)/
+  100;
+}
+
+function expected(p,term){
+ return Math.max(
+  0,
+  cashflowStageNetV76J(p,term)+
+  cashflowStageGstV76J(p,term)
+ );
+}
 function termMeaningful(term,index){
  const t=term&&typeof term==='object'?term:{},stage=String(t.linked_stage_id||'').trim();
  const stageChosen=!!stage&&!(index===0&&stage==='po_date');
@@ -599,6 +1005,7 @@ function applyFilters(){
  const customer=$('fCustomer').value;
  const manager=$('fManager').value;
  const status=$('fStatus').value;
+
  const fy=$('fFy').value;
  const basis=$('fDateBasis').value;
  const from=$('fFrom').value;
@@ -609,8 +1016,7 @@ function applyFilters(){
   if(customer&&String(r.project.customer_name||'')!==customer)return false;
   if(manager&&String(r.project.project_manager||'')!==manager)return false;
   if(status&&r.status!==status)return false;
-
-  if(fy){
+if(fy){
    const plannedFy=fyOf(r.planned);
    const actualFys=receipts(r.term).map(x=>fyOf(x?.received_date));
 
@@ -636,8 +1042,117 @@ function applyFilters(){
 
 function statusClass(s){return s==='Realized'?'s-paid':s==='Partially Received'?'s-partial':s==='Overdue'?'s-overdue':s==='Due'?'s-due':s==='Plan Date Pending'?'s-plan':'s-notdue'}
 function renderKpis(){
- const uniq=new Map();filtered.forEach(r=>uniq.set(String(r.project._id),r.project));const po=[...uniq.values()].reduce((s,p)=>s+num(p.po_value),0);const planned=filtered.reduce((s,r)=>s+r.expected,0);const actual=filtered.reduce((s,r)=>s+r.received,0);const outstanding=Math.max(0,planned-actual);
- $('kPo').textContent=money(po);$('kPlanned').textContent=money(planned);$('kActual').textContent=money(actual);$('kOutstanding').textContent=money(outstanding);$('kCollection').textContent=planned>0?(actual/planned*100).toFixed(1)+'%':'0%';
+ // PMIS_PO_VALUE_LIFECYCLE_ALIGNMENT_V77H
+ // Project-level PO KPIs use Project.po_value as the single source of truth.
+ // With no milestone-specific status/FY/date restriction, include every project
+ // in the selected Project / Customer / Expeditor scope, even if it has no
+ // payment milestones yet.
+ const projectFilter=String($('fProject')?.value||'');
+ const customerFilter=String($('fCustomer')?.value||'');
+ const managerFilter=String($('fManager')?.value||'');
+ const statusFilter=String($('fStatus')?.value||'');
+ const fyFilter=String($('fFy')?.value||'');
+ const fromFilter=String($('fFrom')?.value||'');
+ const toFilter=String($('fTo')?.value||'');
+
+ const milestoneScopeActive=!!(
+  statusFilter||
+  fyFilter||
+  fromFilter||
+  toFilter
+ );
+
+ let uniqueProjects=[];
+
+ if(!milestoneScopeActive){
+  uniqueProjects=projects.filter(p=>{
+   if(projectFilter&&String(p?._id||'')!==projectFilter)return false;
+   if(customerFilter&&String(p?.customer_name||'')!==customerFilter)return false;
+   if(managerFilter&&String(p?.project_manager||'')!==managerFilter)return false;
+   return true;
+  });
+ }else{
+  const uniq=new Map();
+  filtered.forEach(r=>{
+   uniq.set(String(r.project._id),r.project);
+  });
+  uniqueProjects=[...uniq.values()];
+ }
+
+ const netPo=
+  uniqueProjects.reduce(
+   (sum,p)=>
+    sum+
+    Math.max(
+     0,
+     num(p?.po_value)
+    ),
+   0
+  );
+
+ const grossPo=
+  uniqueProjects.reduce(
+   (sum,p)=>
+    sum+
+    Math.max(
+     0,
+     grossPoValueV76F4(p)
+    ),
+   0
+  );
+
+ const gstValue=
+  Math.max(
+   0,
+   grossPo-netPo
+  );
+
+ const planned=
+  filtered.reduce(
+   (sum,row)=>
+    sum+row.expected,
+   0
+  );
+
+ const actual=
+  filtered.reduce(
+   (sum,row)=>
+    sum+row.received,
+   0
+  );
+
+ const outstanding=
+  Math.max(
+   0,
+   planned-actual
+  );
+
+ $('kPo').textContent=
+  money(netPo);
+
+ $('kGst').textContent=
+  money(gstValue);
+
+ $('kGrossPo').textContent=
+  money(grossPo);
+
+ $('kPlanned').textContent=
+  money(planned);
+
+ $('kActual').textContent=
+  money(actual);
+
+ $('kOutstanding').textContent=
+  money(outstanding);
+
+ $('kCollection').textContent=
+  planned>0
+   ?(
+     actual/
+     planned*
+     100
+    ).toFixed(1)+'%'
+   :'0%';
 }
 function hardSyncProjectCardsV75Z(){
  const area=$('tableArea');
@@ -680,6 +1195,179 @@ function hardSyncProjectCardsV75Z(){
  }
 }
 
+function cashflowMilestoneNetV76I5(project,term){
+ return Math.max(
+  0,
+  num(project?.po_value)*
+  num(term?.percentage)/
+  100
+ );
+}
+
+function cashflowMilestoneGstV76I5(project,term){
+ const net=
+  cashflowMilestoneNetV76I5(
+   project,
+   term
+  );
+
+ const gross=
+  Math.max(
+   0,
+   expected(
+    project,
+    term
+   )
+  );
+
+ return Math.max(
+  0,
+  gross-net
+ );
+}
+function cashflowGstAllocPctV76P(term) {
+    return Math.max(
+        0,
+        num(
+            term?.gst_allocation_percent ??
+            term?.gstAllocationPercent ??
+            term?.gst_percent_allocation ??
+            term?.gstAllocation ??
+            0
+        )
+    );
+}
+
+function cashflowStageNetV76P(project,term) {
+    if (
+        typeof cashflowStageNetV76J ===
+            'function'
+    ) {
+        return Math.max(
+            0,
+            cashflowStageNetV76J(
+                project,
+                term
+            )
+        );
+    }
+
+    return Math.max(
+        0,
+        num(project?.po_value) *
+        num(term?.percentage) /
+        100
+    );
+}
+
+function cashflowStageGstV76P(project,term) {
+    if (
+        typeof cashflowStageGstV76J ===
+            'function'
+    ) {
+        return Math.max(
+            0,
+            cashflowStageGstV76J(
+                project,
+                term
+            )
+        );
+    }
+
+    const netPo =
+        Math.max(
+            0,
+            num(project?.po_value)
+        );
+
+    const international =
+        String(
+            project?.cashflow_order_type ??
+            project?.order_type ??
+            'domestic'
+        )
+            .trim()
+            .toLowerCase() ===
+        'international';
+
+    if (international) {
+        return 0;
+    }
+
+    return (
+        netPo *
+        0.18 *
+        cashflowGstAllocPctV76P(term) /
+        100
+    );
+}
+
+function cashflowProjectGrossV76P(project) {
+    const netPo =
+        Math.max(
+            0,
+            num(project?.po_value)
+        );
+
+    const international =
+        String(
+            project?.cashflow_order_type ??
+            project?.order_type ??
+            'domestic'
+        )
+            .trim()
+            .toLowerCase() ===
+        'international';
+
+    return (
+        netPo +
+        (
+            international
+                ? 0
+                : netPo * 0.18
+        )
+    );
+}
+
+function cashflowReceivedPctV76P(project,received) {
+    const gross =
+        cashflowProjectGrossV76P(
+            project
+        );
+
+    if (!(gross > 0)) {
+        return 0;
+    }
+
+    /*
+     * Deliberately NOT capped at 100%.
+     * Over-receipts remain visible correctly.
+     */
+    return (
+        Math.max(
+            0,
+            num(received)
+        ) /
+        gross *
+        100
+    );
+}
+
+function cashflowPercentTextV76P(value) {
+    const n =
+        Math.max(
+            0,
+            num(value)
+        );
+
+    return (
+        n
+            .toFixed(2)
+            .replace(/\.00$/,'')
+            .replace(/(\.\d)0$/,'$1') +
+        '%'
+    );
+}
 function renderTable(){
  const area=$('tableArea');
  const count=$('rowCount');
@@ -749,34 +1437,43 @@ function renderTable(){
   }
  });
 
- function planTd(value,first=false){
-  return `
-   <td class="pmis-v75y-plan-cell ${first?'pmis-v75y-plan-start':''}">
-    ${value}
-   </td>
-  `;
- }
-
- function actualTd(value,first=false){
-  return `
-   <td class="pmis-v75y-actual-cell ${first?'pmis-v75y-actual-start':''}">
-    ${value}
-   </td>
-  `;
- }
-
  function renderMilestones(group){
   return group.rows.map(r=>{
    const p=r.project;
    const term=r.term;
-   const locked=!r.eligible||r.balance<=.5;
+   const locked=!r.eligible;
 
    const title=
     !r.eligible
      ?'Linked stage is not 100% complete yet.'
      :r.balance<=.5
-       ?'Milestone is fully realized.'
+       ?'Milestone realized — additional receipt is allowed.'
        :'Open receipt history / add split payment';
+
+   const paymentPct=
+    num(term.percentage)
+     .toFixed(2)
+     .replace(/\.00$/,'');
+
+   const gstAllocPct=
+    cashflowPercentTextV76P(
+     cashflowGstAllocPctV76P(term)
+    );
+
+   const grossAllocationPctV77D2=
+    cashflowPercentTextV76P(
+     grossPoValueV76F4(p)>0
+      ?Math.max(0,num(r.expected))/grossPoValueV76F4(p)*100
+      :0
+    );
+
+   const receivedPct=
+    cashflowPercentTextV76P(
+     cashflowReceivedPctV76P(
+      p,
+      r.received
+     )
+    );
 
    return `
     <tr>
@@ -791,22 +1488,52 @@ function renderTable(){
       ${esc(stageLabel(p,term.linked_stage_id))}
      </td>
 
-     <td>
-      ${num(term.percentage).toFixed(2).replace(/\.00$/,'')}%
+     <td>${paymentPct}%</td>
+     <td>${gstAllocPct}</td>
+     <td><strong>${grossAllocationPctV77D2}</strong></td>
+     <td>${Math.trunc(num(term.credit_days))}</td>
+
+     <td class="money pmis-v75y-plan-cell pmis-v75y-plan-start">
+      ${money(cashflowStageNetV76P(p,term))}
      </td>
 
-     <td>
-      ${Math.trunc(num(term.credit_days))}
+     <td class="money pmis-v75y-plan-cell">
+      ${money(cashflowStageGstV76P(p,term))}
      </td>
 
-     ${planTd(`<span class="money">${money(r.expected)}</span>`,true)}
-     ${planTd(fmtDate(stagePlanEnd(p,term.linked_stage_id)))}
-     ${planTd(fmtDate(r.planned))}
+     <td class="money pmis-v75y-plan-cell">
+      ${money(r.expected)}
+     </td>
 
-     ${actualTd(`<span class="money">${money(r.received)}</span>`,true)}
-     ${actualTd(fmtDate(r.actual))}
-     ${actualTd(`<span class="money">${money(r.balance)}</span>`)}
-     ${actualTd(`<span class="badge-soft ${statusClass(r.status)}">${esc(r.status)}</span>`)}
+     <td class="pmis-v75y-plan-cell">
+      ${fmtDate(stagePlanEnd(p,term.linked_stage_id))}
+     </td>
+
+     <td class="pmis-v75y-plan-cell">
+      ${fmtDate(r.planned)}
+     </td>
+
+     <td class="money pmis-v75y-actual-cell pmis-v75y-actual-start">
+      ${money(r.received)}
+     </td>
+
+     <td class="pmis-v75y-actual-cell">
+      ${fmtDate(r.actual)}
+     </td>
+
+     <td class="pmis-v75y-actual-cell">
+      <strong>${receivedPct}</strong>
+     </td>
+
+     <td class="money pmis-v75y-actual-cell">
+      ${money(r.balance)}
+     </td>
+
+     <td class="pmis-v75y-actual-cell">
+      <span class="badge-soft ${statusClass(r.status)}">
+       ${esc(r.status)}
+      </span>
+     </td>
 
      <td>
       <button
@@ -832,6 +1559,66 @@ function renderTable(){
     const p=group.project;
     const open=openCashflowProjectsV75Y.has(group.key);
 
+    const tracking=
+     String(
+      p.tracking_code||
+      ''
+     ).trim();
+
+    const projectCode=
+     String(
+      p.code||
+      p.project_code||
+      p.projectCode||
+      ''
+     ).trim();
+
+    const fallbackTitle=
+     tracking||
+     projectCode||
+     p.name||
+     'Project';
+
+    const netPoValue=
+     Math.max(
+      0,
+      num(p?.po_value)
+     );
+
+    const grossPoValue=
+     Math.max(
+      0,
+      grossPoValueV76F4(p)
+     );
+
+    const gstValue=
+     Math.max(
+      0,
+      grossPoValue-netPoValue
+     );
+
+    const projectReceived=
+     (
+      Array.isArray(p?.payment_milestones)
+       ?p.payment_milestones
+       :[]
+     ).reduce(
+      (sum,term)=>
+       sum+received(term),
+      0
+     );
+
+    const grossOutstanding=
+     Math.max(
+      0,
+      grossPoValue-projectReceived
+     );
+
+    const totalReceivedPct=
+     grossPoValue>0
+      ?projectReceived/grossPoValue*100
+      :0;
+
     return `
      <div
       class="pmis-v75y-project-card ${open?'is-open':''}"
@@ -849,12 +1636,21 @@ function renderTable(){
       >
        <div class="pmis-v75y-project-left">
         <div class="pmis-v75y-project-title">
-         ${esc(
-          p.tracking_code||
-          p.code||
-          p.name||
-          'Project'
-         )}
+         <span class="pmis-v76r-tracking-code">
+          ${esc(fallbackTitle)}
+         </span>
+         ${
+          projectCode&&
+          tracking&&
+          projectCode!==tracking
+           ?`
+            <span class="pmis-v76r-project-code">
+             <span>Project Code:</span>
+             <strong>${esc(projectCode)}</strong>
+            </span>
+           `
+           :''
+         }
         </div>
 
         <div class="pmis-v75y-project-sub">
@@ -869,10 +1665,45 @@ function renderTable(){
           ${esc(p.project_manager||'Not assigned')}
          </span>
 
-         <span>
+         <span class="pmis-v77d2-po-meta">
+          <i class="bi bi-file-earmark-text"></i>
+          <strong>PO Reference:</strong>
+          ${esc(String(p.po_reference||p.poReference||'-').trim()||'-')}
+         </span>
+
+         <span class="pmis-v77d2-po-meta">
+          <i class="bi bi-calendar-event"></i>
+          <strong>PO Date:</strong>
+          ${fmtDate(p.po_date||p.poDate||'')}
+         </span>
+
+         <span class="pmis-v76r-kpi pmis-v76s-kpi-po">
           <i class="bi bi-cash-stack"></i>
-          <strong>PO Value:</strong>
-          ${money(p.po_value)}
+          <strong>Net PO Value:</strong>
+          ${money(netPoValue)}
+         </span>
+
+         <span class="pmis-v76r-kpi pmis-v76r-kpi-gst">
+          <i class="bi bi-receipt"></i>
+          <strong>Total GST Value:</strong>
+          ${money(gstValue)}
+         </span>
+
+         <span class="pmis-v76r-kpi pmis-v76r-kpi-gross">
+          <i class="bi bi-wallet2"></i>
+          <strong>Total Gross Value:</strong>
+          ${money(grossPoValue)}
+         </span>
+
+         <span class="pmis-v76r-kpi pmis-v76r-kpi-outstanding">
+          <i class="bi bi-hourglass-split"></i>
+          <strong>Total Gross Outstanding:</strong>
+          ${money(grossOutstanding)}
+         </span>
+
+         <span class="pmis-v76r-kpi pmis-v76s-kpi-received">
+          <strong>Total Received %:</strong>
+          ${cashflowPercentTextV76P(totalReceivedPct)}
          </span>
         </div>
        </div>
@@ -888,37 +1719,25 @@ function renderTable(){
 
       <div class="pmis-v75y-project-detail">
        <div class="table-responsive">
-        <table class="table table-hover">
+        <table class="table table-hover pmis-v76r-register">
          <thead>
           <tr>
            <th>Milestone</th>
            <th>Linked Stage</th>
-           <th>%</th>
+           <th>Payment %</th>
+           <th>GST Alloc %</th>
+           <th>Gross Allocation %</th>
            <th>Credit Days</th>
-
-           <th class="pmis-v75y-plan-head pmis-v75y-plan-start">
-            Planned Amount
-           </th>
-           <th class="pmis-v75y-plan-head">
-            Stage Plan Date
-           </th>
-           <th class="pmis-v75y-plan-head">
-            Planned Realization
-           </th>
-
-           <th class="pmis-v75y-actual-head pmis-v75y-actual-start">
-            Actual Received
-           </th>
-           <th class="pmis-v75y-actual-head">
-            Last Receipt
-           </th>
-           <th class="pmis-v75y-actual-head">
-            Outstanding
-           </th>
-           <th class="pmis-v75y-actual-head">
-            Status
-           </th>
-
+           <th class="pmis-v75y-plan-head pmis-v75y-plan-start">Planned Net Amount</th>
+           <th class="pmis-v75y-plan-head">GST Amount</th>
+           <th class="pmis-v75y-plan-head">Planned Amount (Gross)</th>
+           <th class="pmis-v75y-plan-head">Stage Plan Date</th>
+           <th class="pmis-v75y-plan-head">Planned Realization</th>
+           <th class="pmis-v75y-actual-head pmis-v75y-actual-start">Actual Received</th>
+           <th class="pmis-v75y-actual-head">Last Receipt</th>
+           <th class="pmis-v75y-actual-head">Actual Received %</th>
+           <th class="pmis-v75y-actual-head">Gross Outstanding</th>
+           <th class="pmis-v75y-actual-head">Status</th>
            <th>Action</th>
           </tr>
          </thead>
@@ -1012,8 +1831,8 @@ function renderCharts(){
    data:{
     labels,
     datasets:[
-     {label:'Planned',data:planned},
-     {label:'Actual Received',data:actual}
+     {label:'Planned',data:planned,pmisShowAllPositiveLabels:true},
+     {label:'Actual Received',data:actual,pmisShowAllPositiveLabels:true}
     ]
    },
    options:{
@@ -1057,12 +1876,18 @@ function renderCharts(){
      {
       label:'Cumulative Planned',
       data:planned.map(v=>cumulativePlanned+=v),
-      tension:.25
+      tension:.25,
+      pointRadius:3.5,
+      pointHoverRadius:4.5,
+      pmisShowAllLabels:true
      },
      {
       label:'Cumulative Actual',
       data:actual.map(v=>cumulativeActual+=v),
-      tension:.25
+      tension:.25,
+      pointRadius:3.5,
+      pointHoverRadius:4.5,
+      pmisShowAllLabels:true
      }
     ]
    },
@@ -1258,23 +2083,44 @@ function renderReceiptHistory(term){
  box.innerHTML=`<div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th>#</th><th>Date</th><th>Amount</th><th>Reference</th><th>Remarks</th><th>Recorded By</th></tr></thead><tbody>${list.map((r,i)=>`<tr><td><strong>${i+1}</strong></td><td>${fmtDate(r?.received_date)}</td><td class="money">${money(r?.amount)}</td><td>${esc(r?.reference||'-')}</td><td>${esc(r?.remarks||'-')}</td><td>${esc(r?.recorded_by||'-')}</td></tr>`).join('')}</tbody></table></div>`;
 }
 function openReceipt(token){
- const found=findProjectAndTerm(token);if(!found)return;const {p,term,index}=found;if(!stageComplete(p,String(term.linked_stage_id||''))){alert('The linked project stage is not 100% complete yet. Actual payment input remains locked.');return}const exp=expected(p,term),got=received(term),balance=Math.max(0,exp-got);
- activeReceipt={projectId:String(p._id),index};$('receiptContext').innerHTML=`<strong>${esc(p.code||p.name)} — Milestone M${index+1}</strong><br>${esc(stageLabel(p,term.linked_stage_id))}<br><span class="text-secondary">Milestone: ${money(exp)} &nbsp;•&nbsp; Received: ${money(got)} &nbsp;•&nbsp; Balance: ${money(balance)}</span>`;renderReceiptHistory(term);$('rAmount').value=balance>0.5?balance.toFixed(2):'';$('rAmount').max=balance.toFixed(2);$('rDate').value=isoToday();$('rReference').value='';$('rRemarks').value='';$('receiptError').style.display='none';const btn=$('btnSaveReceipt');if(btn){btn.disabled=balance<=.5;btn.innerHTML=balance<=.5?'<i class="bi bi-check2-circle me-1"></i>Milestone Fully Realized':'<i class="bi bi-plus-lg me-1"></i>Add Split Payment';}bootstrap.Modal.getOrCreateInstance($('receiptModal')).show();
+ const found=findProjectAndTerm(token);if(!found)return;
+ const {p,term,index}=found;
+ if(!stageComplete(p,String(term.linked_stage_id||''))){alert('The linked project stage is not 100% complete yet. Actual payment input remains locked.');return}
+ const exp=expected(p,term),got=received(term),balance=Math.max(0,exp-got),excess=Math.max(0,got-exp);
+ activeReceipt={projectId:String(p._id),index};
+ $('receiptContext').innerHTML=`<strong>${esc(p.code||p.name)} — Milestone M${index+1}</strong><br>${esc(stageLabel(p,term.linked_stage_id))}<br><span class="text-secondary">Planned Gross: ${money(exp)} &nbsp;•&nbsp; Received: ${money(got)} &nbsp;•&nbsp; Outstanding: ${money(balance)}${excess>0?` &nbsp;•&nbsp; <strong>Excess Received: ${money(excess)}</strong>`:''}</span>`;
+ renderReceiptHistory(term);
+ $('rAmount').value=balance>0.5?balance.toFixed(2):'';
+ $('rAmount').removeAttribute('max');
+ $('rDate').value=isoToday();$('rReference').value='';$('rRemarks').value='';$('receiptError').style.display='none';
+ const btn=$('btnSaveReceipt');if(btn){btn.disabled=false;btn.innerHTML=balance>0.5?'<i class="bi bi-plus-lg me-1"></i>Add Split Payment':'<i class="bi bi-plus-lg me-1"></i>Add Additional Receipt';}
+ bootstrap.Modal.getOrCreateInstance($('receiptModal')).show();
 }
 function setReceiptError(msg){$('receiptError').textContent=msg;$('receiptError').style.display='block'}
 async function patchProject(id,payload){const res=await fetch('/api/projects/'+encodeURIComponent(id),{method:'PATCH',headers:headers(true),cache:'no-store',body:JSON.stringify(payload)});const data=await res.json().catch(()=>({}));if(!res.ok)throw new Error(data.error||data.message||('Project update failed (HTTP '+res.status+')'));return data}
 async function saveReceipt(){
- if(!activeReceipt)return;const p=projects.find(x=>String(x._id)===activeReceipt.projectId);const index=activeReceipt.index;const term=p?.payment_milestones?.[index];if(!p||!term)return;const exp=expected(p,term),got=received(term),balance=Math.max(0,exp-got),amount=num($('rAmount').value),date=$('rDate').value,reference=$('rReference').value.trim(),remarks=$('rRemarks').value.trim();
- if(!(amount>0))return setReceiptError('Enter an amount greater than 0.');if(amount>balance+.5)return setReceiptError('Receipt cannot exceed the outstanding milestone balance of '+money(balance)+'.');if(!date)return setReceiptError('Received Date is required.');if(!reference)return setReceiptError('Payment / UTR Reference is required.');if(!stageComplete(p,String(term.linked_stage_id||'')))return setReceiptError('The linked stage is no longer complete. Receipt entry is locked.');
- const next=p.payment_milestones.map((x,i)=>({...x,actual_receipts:receipts(x).map(r=>({...r}))}));next[index].actual_receipts.push({id:'rcpt_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),amount:Number(amount.toFixed(2)),received_date:date,reference:reference.slice(0,120),remarks:remarks.slice(0,250),recorded_at:new Date().toISOString(),recorded_by:localStorage.getItem('danprel_display_name')||localStorage.getItem('danprel_employee_id')||localStorage.getItem('danprel_username')||'PMIS User'});
- const btn=$('btnSaveReceipt');btn.disabled=true;try{
-  let updated=await patchProject(p._id,{payment_milestones:next,payment_terms_version:'V75E',payment_terms_updated_at:new Date().toISOString()});
+ if(!activeReceipt)return;
+ const p=projects.find(x=>String(x._id)===activeReceipt.projectId),index=activeReceipt.index,term=p?.payment_milestones?.[index];if(!p||!term)return;
+ const amount=num($('rAmount').value),date=$('rDate').value,reference=$('rReference').value.trim(),remarks=$('rRemarks').value.trim();
+ if(!(amount>0))return setReceiptError('Enter an amount greater than 0.');
+ if(!date)return setReceiptError('Received Date is required.');
+ if(!reference)return setReceiptError('Payment / UTR Reference is required.');
+ if(!stageComplete(p,String(term.linked_stage_id||'')))return setReceiptError('The linked stage is no longer complete. Receipt entry is locked.');
+ const next=p.payment_milestones.map(x=>({...x,actual_receipts:receipts(x).map(r=>({...r}))}));
+ next[index].actual_receipts.push({id:'rcpt_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),amount:Number(amount.toFixed(2)),received_date:date,reference:reference.slice(0,120),remarks:remarks.slice(0,250),recorded_at:new Date().toISOString(),recorded_by:localStorage.getItem('danprel_display_name')||localStorage.getItem('danprel_employee_id')||localStorage.getItem('danprel_username')||'PMIS User'});
+ const btn=$('btnSaveReceipt');btn.disabled=true;
+ try{
+  let updated=await patchProject(p._id,{payment_milestones:next,payment_terms_version:'V76F4',payment_terms_updated_at:new Date().toISOString()});
   Object.assign(p,updated&&updated._id?updated:{payment_milestones:next});
   if(technicalComplete(p)&&commercialComplete(p)&&String(p.status||'').toLowerCase()!=='closed'){
    updated=await patchProject(p._id,{status:'Closed',current_phase:'Project Completed / Closed'});Object.assign(p,updated&&updated._id?updated:{status:'Closed',current_phase:'Project Completed / Closed'});
   }
   buildRows();populateFilters();applyFilters();
-  const refreshed=p?.payment_milestones?.[index];const newGot=received(refreshed),newBalance=Math.max(0,expected(p,refreshed)-newGot);$('receiptContext').innerHTML=`<strong>${esc(p.code||p.name)} — Milestone M${index+1}</strong><br>${esc(stageLabel(p,refreshed.linked_stage_id))}<br><span class="text-secondary">Milestone: ${money(expected(p,refreshed))} &nbsp;•&nbsp; Received: ${money(newGot)} &nbsp;•&nbsp; Balance: ${money(newBalance)}</span>`;renderReceiptHistory(refreshed);$('rAmount').value=newBalance>0.5?newBalance.toFixed(2):'';$('rAmount').max=newBalance.toFixed(2);$('rDate').value=isoToday();$('rReference').value='';$('rRemarks').value='';$('receiptError').style.display='none';btn.disabled=newBalance<=.5;btn.innerHTML=newBalance<=.5?'<i class="bi bi-check2-circle me-1"></i>Milestone Fully Realized':'<i class="bi bi-plus-lg me-1"></i>Add Split Payment';
+  const refreshed=p?.payment_milestones?.[index],newExpected=expected(p,refreshed),newGot=received(refreshed),newBalance=Math.max(0,newExpected-newGot),newExcess=Math.max(0,newGot-newExpected);
+  $('receiptContext').innerHTML=`<strong>${esc(p.code||p.name)} — Milestone M${index+1}</strong><br>${esc(stageLabel(p,refreshed.linked_stage_id))}<br><span class="text-secondary">Planned Gross: ${money(newExpected)} &nbsp;•&nbsp; Received: ${money(newGot)} &nbsp;•&nbsp; Outstanding: ${money(newBalance)}${newExcess>0?` &nbsp;•&nbsp; <strong>Excess Received: ${money(newExcess)}</strong>`:''}</span>`;
+  renderReceiptHistory(refreshed);
+  $('rAmount').value=newBalance>0.5?newBalance.toFixed(2):'';$('rAmount').removeAttribute('max');$('rDate').value=isoToday();$('rReference').value='';$('rRemarks').value='';$('receiptError').style.display='none';
+  btn.disabled=false;btn.innerHTML=newBalance>0.5?'<i class="bi bi-plus-lg me-1"></i>Add Split Payment':'<i class="bi bi-plus-lg me-1"></i>Add Additional Receipt';
  }catch(error){setReceiptError(error.message||'Unable to save receipt.');btn.disabled=false;}
 }
 async function load(){
@@ -2042,56 +2888,45 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
         );
     }
 
-    function selectedFilterSummary() {
-        const controls =
-            Array.from(
-                document.querySelectorAll(
-                    'select,input[type="date"],input[type="month"]'
-                )
-            )
-            .filter(el => !el.closest('.modal'));
-
+        function selectedFilterSummary() {
         const parts = [];
 
-        controls.forEach(el => {
+        function selectedText(id) {
+            const el = $(id);
+            if (!el) return '';
+
             const value = txt(el.value);
+            if (!value) return '';
 
-            if (
-                !value ||
-                value.toLowerCase() === 'all' ||
-                value === '*'
-            ) return;
-
-            const label =
-                el.labels?.length
-                    ? txt(
-                        Array.from(el.labels)
-                            .map(x => x.textContent)
-                            .join(' ')
-                    )
-                    : txt(
-                        el.getAttribute('aria-label') ||
-                        el.name ||
-                        el.id
-                    );
-
-            const visible =
-                el.tagName === 'SELECT'
-                    ? txt(
-                        el.options?.[
-                            el.selectedIndex
-                        ]?.textContent
-                    )
-                    : value;
-
-            if (visible) {
-                parts.push(
-                    (label ? label + ': ' : '') +
-                    visible
+            if (el.tagName === 'SELECT') {
+                return txt(
+                    el.options?.[
+                        el.selectedIndex
+                    ]?.textContent
                 );
             }
-        });
 
+            return value;
+        }
+
+        const project = selectedText('fProject');
+        const customer = selectedText('fCustomer');
+        const manager = selectedText('fManager');
+        const status = selectedText('fStatus');
+
+        const fy = selectedText('fFy');
+        const from = txt($('fFrom')?.value);
+        const to = txt($('fTo')?.value);
+
+        if (project) parts.push('Project: ' + project);
+        if (customer) parts.push('Customer: ' + customer);
+        if (manager) parts.push('PM / Expeditor: ' + manager);
+        if (status) parts.push('Status: ' + status);
+        if (fy) parts.push('FY: ' + fy);
+        if (from) parts.push('From: ' + from);
+        if (to) parts.push('To: ' + to);
+
+        // fDateBasis intentionally controls filtering only.
         return parts.length
             ? parts.join(' | ')
             : 'All available Cashflow data';
@@ -2196,6 +3031,45 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
                     )?.textContent
                 );
 
+            const metaItemsV77D2 =
+                Array.from(
+                    card.querySelectorAll(
+                        '.pmis-v75y-project-meta > span'
+                    )
+                )
+                    .map(span => {
+                        const strong =
+                            span.querySelector('strong');
+
+                        const label =
+                            txt(strong?.textContent)
+                                .replace(/:\s*$/,'');
+
+                        let value =
+                            txt(span.textContent)
+                                .replace(/\s+/g,' ');
+
+                        const strongText =
+                            txt(strong?.textContent);
+
+                        if (strongText) {
+                            value =
+                                value.replace(
+                                    strongText,
+                                    ''
+                                ).trim();
+                        }
+
+                        return {
+                            label,
+                            value
+                        };
+                    })
+                    .filter(item =>
+                        item.label ||
+                        item.value
+                    );
+
             const expanded = true;
 
             const table =
@@ -2234,85 +3108,100 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
                     )
                     : [];
 
+            /*
+             * PMIS V76U:
+             * Frontend keeps the Action / Receipts column.
+             * PDF register removes it.
+             */
+            const actionIndex =
+                head.findIndex(
+                    value =>
+                        txt(value)
+                            .toLowerCase() ===
+                        'action'
+                );
+
+            const exportHead =
+                actionIndex >= 0
+                    ? head.filter(
+                        (_,index) =>
+                            index !==
+                            actionIndex
+                    )
+                    : head;
+
+            const exportBody =
+                actionIndex >= 0
+                    ? body.map(row =>
+                        row.filter(
+                            (_,index) =>
+                                index !==
+                                actionIndex
+                        )
+                    )
+                    : body;
+
             return {
                 title,
                 subtitle,
                 meta,
                 count,
+                metaItemsV77D2,
                 expanded,
-                head,
-                body
+                head:
+                    exportHead,
+                body:
+                    exportBody
             };
         });
     }
 
-    function currentKpis() {
-        const items = [];
-
-        const cards =
-            Array.from(
-                document.querySelectorAll(
-                    '.kpi,.kpi-card,.summary-card,.stat-card,.metric-card'
-                )
-            );
-
-        cards.forEach(card => {
-            const label =
-                txt(
-                    card.querySelector(
-                        '.label,.kpi-label,.stat-label,.metric-label'
-                    )?.textContent
-                ) ||
-                txt(
-                    card.querySelector(
-                        'small,h4,h5'
-                    )?.textContent
-                );
-
-            const value =
-                txt(
-                    card.querySelector(
-                        '.value,.kpi-value,.stat-value,.metric-value,h2,h3'
-                    )?.textContent
-                );
-
-            if (
-                label &&
-                value &&
-                !items.some(x =>
-                    x.label === label
-                )
-            ) {
-                items.push({
-                    label,
-                    value
-                });
+        function currentKpis() {
+        const definitions = [
+            {
+                id:'kPo',
+                label:'NET PO VALUE'
+            },
+            {
+                id:'kGst',
+                label:'GST VALUE'
+            },
+            {
+                id:'kGrossPo',
+                label:'GROSS PO VALUE'
+            },
+            {
+                id:'kPlanned',
+                label:'PLANNED COLLECTION'
+            },
+            {
+                id:'kActual',
+                label:'ACTUAL COLLECTED'
+            },
+            {
+                id:'kOutstanding',
+                label:'OUTSTANDING'
+            },
+            {
+                id:'kCollection',
+                label:'COLLECTION %'
             }
-        });
+        ];
 
-        if (!items.length) {
-            const reconciliation =
-                readReconciliation();
+        return definitions
+            .map(item => ({
+                label:
+                    item.label,
 
-            const matches =
-                Array.from(
-                    reconciliation.matchAll(
-                        /(Actual Received|Outstanding)\s+₹?([\d.]+)\s*Cr/gi
+                value:
+                    txt(
+                        $(item.id)
+                            ?.textContent
                     )
-                );
-
-            matches.forEach(match => {
-                items.push({
-                    label: match[1],
-                    value:
-                        '₹' +
-                        match[2] +
-                        ' Cr'
-                });
-            });
-        }
-
-        return items.slice(0, 6);
+            }))
+            .filter(item =>
+                item.value
+            );
     }
 
     function scriptLoaded(srcPart) {
@@ -2464,50 +3353,125 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
             );
     }
 
+        let pmisCashflowLogoPromiseV76E = null;
+
+    function cashflowLogoV76E() {
+        if (pmisCashflowLogoPromiseV76E) {
+            return pmisCashflowLogoPromiseV76E;
+        }
+
+        pmisCashflowLogoPromiseV76E =
+            fetch(
+                'asset/image.png',
+                { cache:'force-cache' }
+            )
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(
+                            'Logo HTTP ' +
+                            response.status
+                        );
+                    }
+
+                    return response.blob();
+                })
+                .then(blob =>
+                    new Promise(resolve => {
+                        const reader =
+                            new FileReader();
+
+                        reader.onloadend =
+                            () =>
+                                resolve(
+                                    reader.result ||
+                                    null
+                                );
+
+                        reader.onerror =
+                            () =>
+                                resolve(null);
+
+                        reader.readAsDataURL(blob);
+                    })
+                )
+                .catch(() => null);
+
+        return pmisCashflowLogoPromiseV76E;
+    }
+
     function addHeader(
         doc,
         title,
         filter,
-        pageWidth
+        pageWidth,
+        logoData
     ) {
-        doc.setFillColor(11,43,74);
+        doc.setFillColor(0,31,63);
+        doc.rect(0,0,pageWidth,28,'F');
 
-        doc.roundedRect(
-            10,
-            8,
-            pageWidth - 20,
-            20,
-            2.5,
-            2.5,
-            'F'
-        );
+        if (logoData) {
+            doc.setFillColor(255,255,255);
+            doc.roundedRect(10,4,18,18,2,2,'F');
 
-        doc.setFont('helvetica','bold');
-        doc.setFontSize(13.5);
+            try {
+                doc.addImage(
+                    logoData,
+                    'PNG',
+                    11.5,
+                    5.5,
+                    15,
+                    15
+                );
+            }
+            catch (_) {}
+        }
+
         doc.setTextColor(255,255,255);
+        doc.setFont('helvetica','bold');
+        doc.setFontSize(14);
 
         doc.text(
-            pdfCleanV76C3(title),
-            15,
-            16
+            'DANPREL ENGINEERING AUTOMATION PVT LTD',
+            34,
+            10.5
         );
 
         doc.setFont('helvetica','normal');
-        doc.setFontSize(6.6);
+        doc.setFontSize(9);
         doc.setTextColor(226,232,240);
 
         doc.text(
-            pdfCleanV76C3(filter),
-            15,
-            22.8,
+            pdfCleanV76C3(title),
+            34,
+            17.5
+        );
+
+        const cleanFilter =
+            pdfCleanV76C3(filter);
+
+        doc.setFontSize(6.3);
+
+        doc.text(
+            cleanFilter,
+            pageWidth - 10,
+            10.5,
             {
-                maxWidth:
-                    pageWidth - 30
+                align:'right',
+                maxWidth:115
             }
         );
 
-        doc.setFont('helvetica','normal');
+        doc.text(
+            'Generated: ' +
+            new Date()
+                .toLocaleString('en-GB'),
+            pageWidth - 10,
+            18,
+            { align:'right' }
+        );
+
         doc.setTextColor(15,23,42);
+        doc.setFont('helvetica','normal');
     }
 
         function addFooter(doc) {
@@ -2542,7 +3506,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
             doc.setTextColor(100,116,139);
 
             doc.text(
-                'PMIS Cashflow / Payment Master Report',
+                'PROJECTS- FINANCEMIS',
                 10,
                 height - 4
             );
@@ -2561,7 +3525,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
         }
     }
 
-        function addKpiCards(
+            function addKpiCards(
         doc,
         kpis,
         startY,
@@ -2569,110 +3533,60 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     ) {
         if (!kpis.length) return startY;
 
+        const visible = kpis.slice(0,7);
         const gap = 3;
-
-        const columns =
-            Math.min(
-                3,
-                kpis.length
-            );
-
-        const usable =
-            pageWidth - 20;
-
+        const columns = visible.length;
+        const usable = pageWidth - 20;
         const cardWidth =
             (
                 usable -
-                gap *
-                (columns - 1)
+                gap * (columns - 1)
             ) / columns;
 
-        let y = startY;
+        visible.forEach((item,index) => {
+            const x =
+                10 +
+                index * (cardWidth + gap);
 
-        kpis.forEach(
-            (item,index) => {
-                const col =
-                    index % columns;
+            doc.setFillColor(248,250,252);
+            doc.setDrawColor(203,213,225);
 
-                if (
-                    index > 0 &&
-                    col === 0
-                ) {
-                    y += 17;
+            doc.roundedRect(
+                x,
+                startY,
+                cardWidth,
+                16,
+                2,
+                2,
+                'FD'
+            );
+
+            doc.setFont('helvetica','bold');
+            doc.setFontSize(6.2);
+            doc.setTextColor(100,116,139);
+
+            doc.text(
+                pdfCleanV76C3(item.label),
+                x + 3.5,
+                startY + 5
+            );
+
+            doc.setFont('helvetica','bold');
+            doc.setFontSize(9.2);
+            doc.setTextColor(0,51,102);
+
+            doc.text(
+                pdfCleanV76C3(item.value),
+                x + 3.5,
+                startY + 11.8,
+                {
+                    maxWidth:
+                        cardWidth - 7
                 }
+            );
+        });
 
-                const x =
-                    10 +
-                    col *
-                    (cardWidth + gap);
-
-                doc.setFillColor(
-                    248,
-                    250,
-                    252
-                );
-
-                doc.setDrawColor(
-                    226,
-                    232,
-                    240
-                );
-
-                doc.roundedRect(
-                    x,
-                    y,
-                    cardWidth,
-                    14,
-                    2,
-                    2,
-                    'FD'
-                );
-
-                doc.setFont(
-                    'helvetica',
-                    'bold'
-                );
-
-                doc.setFontSize(6.2);
-
-                doc.setTextColor(
-                    100,
-                    116,
-                    139
-                );
-
-                doc.text(
-                    pdfCleanV76C3(
-                        item.label
-                    ).slice(0,40),
-                    x + 3.5,
-                    y + 4.8
-                );
-
-                doc.setFont(
-                    'helvetica',
-                    'bold'
-                );
-
-                doc.setFontSize(9);
-
-                doc.setTextColor(
-                    15,
-                    23,
-                    42
-                );
-
-                doc.text(
-                    pdfCleanV76C3(
-                        item.value
-                    ).slice(0,30),
-                    x + 3.5,
-                    y + 10.7
-                );
-            }
-        );
-
-        return y + 17;
+        return startY + 19;
     }
 
         function addChartPanel(
@@ -2690,8 +3604,6 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
             240
         );
 
-        doc.setLineWidth(0.2);
-
         doc.roundedRect(
             x,
             y,
@@ -2707,7 +3619,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
             'bold'
         );
 
-        doc.setFontSize(8.1);
+        doc.setFontSize(9.5);
 
         doc.setTextColor(
             15,
@@ -2716,19 +3628,168 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
         );
 
         doc.text(
-            pdfCleanV76C3(title),
-            x + 3,
-            y + 5.5
+            title,
+            x + 4,
+            y + 7
         );
 
         if (image) {
+            /*
+             * PMIS_CASHFLOW_EXPORT_CHART_ASPECT_V76H
+             *
+             * Previously every image was forced to:
+             *     width  = w - 8
+             *     height = h - 14
+             *
+             * That stretched wide canvases vertically/horizontally
+             * and made the doughnut chart look oval.
+             *
+             * V76H uses jsPDF's real image dimensions and performs
+             * a CSS "contain"-style fit inside the chart panel.
+             */
+
+            const innerX =
+                x + 5;
+
+            const innerY =
+                y + 10;
+
+            const innerW =
+                Math.max(
+                    1,
+                    w - 10
+                );
+
+            const innerH =
+                Math.max(
+                    1,
+                    h - 15
+                );
+
+            let drawW =
+                innerW;
+
+            let drawH =
+                innerH;
+
+            try {
+                const properties =
+                    doc.getImageProperties(
+                        image
+                    );
+
+                const sourceW =
+                    Number(
+                        properties?.width
+                    ) || 0;
+
+                const sourceH =
+                    Number(
+                        properties?.height
+                    ) || 0;
+
+                if (
+                    sourceW > 0 &&
+                    sourceH > 0
+                ) {
+                    const ratio =
+                        sourceW /
+                        sourceH;
+
+                    drawW =
+                        innerW;
+
+                    drawH =
+                        drawW /
+                        ratio;
+
+                    if (
+                        drawH >
+                        innerH
+                    ) {
+                        drawH =
+                            innerH;
+
+                        drawW =
+                            drawH *
+                            ratio;
+                    }
+
+                    /*
+                     * Doughnut / status charts need less horizontal
+                     * dominance than bar/line charts. Keep them
+                     * visually compact and centered.
+                     */
+                    if (
+                        /payment\s+(?:amount|status)\s+mix/i
+                            .test(
+                                String(
+                                    title ||
+                                    ''
+                                )
+                            )
+                    ) {
+                        const compactMaxW =
+                            innerW *
+                            0.76;
+
+                        if (
+                            drawW >
+                            compactMaxW
+                        ) {
+                            drawW =
+                                compactMaxW;
+
+                            drawH =
+                                drawW /
+                                ratio;
+                        }
+
+                        if (
+                            drawH >
+                            innerH
+                        ) {
+                            drawH =
+                                innerH;
+
+                            drawW =
+                                drawH *
+                                ratio;
+                        }
+                    }
+                }
+            }
+            catch (_) {
+                /*
+                 * Safe fallback:
+                 * if image metadata cannot be read, retain the
+                 * available inner area instead of failing export.
+                 */
+            }
+
+            const drawX =
+                innerX +
+                (
+                    innerW -
+                    drawW
+                ) /
+                2;
+
+            const drawY =
+                innerY +
+                (
+                    innerH -
+                    drawH
+                ) /
+                2;
+
             doc.addImage(
                 image,
                 'PNG',
-                x + 2.5,
-                y + 7.5,
-                w - 5,
-                h - 9.5,
+                drawX,
+                drawY,
+                drawW,
+                drawH,
                 undefined,
                 'FAST'
             );
@@ -2739,7 +3800,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
                 'normal'
             );
 
-            doc.setFontSize(6.8);
+            doc.setFontSize(8);
 
             doc.setTextColor(
                 148,
@@ -2748,14 +3809,230 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
             );
 
             doc.text(
-                'Chart not available for the current filter.',
-                x + 3,
-                y + 13
+                'Chart not available in current filtered scope.',
+                x + 4,
+                y + 18
             );
         }
     }
 
-        async function exportPdf() {
+
+        // PMIS_FINANCEMIS_V77D2: frontend-like project header pane for PDF register.
+        function drawProjectHeaderPaneV77D2(
+            doc,
+            project,
+            y,
+            pageWidth,
+            height
+        ) {
+            const items =
+                Array.isArray(project.metaItems)
+                    ? project.metaItems
+                    : [];
+
+            const map =
+                new Map(
+                    items.map(item => [
+                        String(item?.label || '')
+                            .trim()
+                            .toLowerCase(),
+                        pdfCleanV76C3(item?.value || '')
+                    ])
+                );
+
+            const valueOf =
+                (...labels) => {
+                    for (const label of labels) {
+                        const value =
+                            map.get(
+                                String(label)
+                                    .toLowerCase()
+                            );
+
+                        if (value) return value;
+                    }
+
+                    return '';
+                };
+
+            doc.setFillColor(248,251,255);
+            doc.setDrawColor(219,229,239);
+
+            doc.roundedRect(
+                10,
+                y,
+                pageWidth - 20,
+                height,
+                2,
+                2,
+                'FD'
+            );
+
+            doc.setFont('helvetica','bold');
+            doc.setFontSize(8.7);
+            doc.setTextColor(11,43,74);
+            doc.text(project.title,13,y+4.8);
+
+            if (project.count) {
+                doc.setFontSize(6.2);
+                doc.text(
+                    project.count,
+                    pageWidth - 13,
+                    y + 4.8,
+                    { align:'right' }
+                );
+            }
+
+            if (project.subtitle) {
+                doc.setFont('helvetica','normal');
+                doc.setFontSize(5.9);
+                doc.setTextColor(71,85,105);
+                doc.text(
+                    project.subtitle,
+                    13,
+                    y + 8.7,
+                    { maxWidth:pageWidth-26 }
+                );
+            }
+
+            doc.setFont('helvetica','bold');
+            doc.setFontSize(5.65);
+            doc.setTextColor(30,41,59);
+
+            doc.text(
+                'Project Manager: ' +
+                (valueOf('Project Manager') || '-'),
+                13,
+                y + 13.1,
+                { maxWidth:86 }
+            );
+
+            doc.text(
+                'PO Reference: ' +
+                (valueOf('PO Reference') || '-'),
+                104,
+                y + 13.1,
+                { maxWidth:98 }
+            );
+
+            doc.text(
+                'PO Date: ' +
+                (valueOf('PO Date') || '-'),
+                208,
+                y + 13.1,
+                { maxWidth:pageWidth-221 }
+            );
+
+            const cards = [
+                {
+                    label:'Net PO Value',
+                    value:valueOf('Net PO Value'),
+                    fill:[240,253,250],
+                    border:[153,246,228],
+                    text:[15,118,110]
+                },
+                {
+                    label:'Total GST Value',
+                    value:valueOf('Total GST Value'),
+                    fill:[255,247,237],
+                    border:[254,215,170],
+                    text:[194,65,12]
+                },
+                {
+                    label:'Total Gross Value',
+                    value:valueOf('Total Gross Value'),
+                    fill:[239,246,255],
+                    border:[191,219,254],
+                    text:[29,78,216]
+                },
+                {
+                    label:'Total Gross Outstanding',
+                    value:valueOf('Total Gross Outstanding'),
+                    fill:[254,242,242],
+                    border:[254,202,202],
+                    text:[185,28,28]
+                },
+                {
+                    label:'Total Received %',
+                    value:valueOf('Total Received %'),
+                    fill:[240,253,244],
+                    border:[187,247,208],
+                    text:[21,128,61]
+                }
+            ];
+
+            const gap = 2.2;
+            const cardWidth =
+                (pageWidth - 26 - gap*4)/5;
+            const cardY = y + 16.5;
+
+            cards.forEach((card,index) => {
+                const x =
+                    13 +
+                    index *
+                    (cardWidth + gap);
+
+                doc.setFillColor(...card.fill);
+                doc.setDrawColor(...card.border);
+
+                doc.roundedRect(
+                    x,
+                    cardY,
+                    cardWidth,
+                    7.2,
+                    2.5,
+                    2.5,
+                    'FD'
+                );
+
+                doc.setFont('helvetica','bold');
+                doc.setFontSize(5.35);
+                doc.setTextColor(...card.text);
+
+                doc.text(
+                    pdfCleanV76C3(
+                        card.label +
+                        ': ' +
+                        (card.value || '-')
+                    ),
+                    x + 2,
+                    cardY + 4.6,
+                    { maxWidth:cardWidth-4 }
+                );
+            });
+
+            doc.setTextColor(15,23,42);
+            doc.setFont('helvetica','normal');
+        }
+
+        function drawProjectKpisV77E(doc,items,y,pageWidth){
+ const map=new Map((Array.isArray(items)?items:[]).map(item=>[String(item?.label||'').trim().toLowerCase(),pdfCleanV76C3(item?.value||'')]));
+ const get=label=>map.get(String(label).toLowerCase())||'-';
+ const cards=[
+  {label:'Net PO Value',value:get('Net PO Value'),fill:[240,253,250],border:[153,246,228],text:[15,118,110]},
+  {label:'Total GST Value',value:get('Total GST Value'),fill:[255,247,237],border:[254,215,170],text:[194,65,12]},
+  {label:'Total Gross Value',value:get('Total Gross Value'),fill:[239,246,255],border:[191,219,254],text:[29,78,216]},
+  {label:'Total Gross Outstanding',value:get('Total Gross Outstanding'),fill:[254,242,242],border:[254,202,202],text:[185,28,28]},
+  {label:'Total Received %',value:get('Total Received %'),fill:[240,253,244],border:[187,247,208],text:[21,128,61]}
+ ];
+ const gap=2.2;
+ const width=(pageWidth-26-gap*4)/5;
+ const cardY=y+16.5;
+ cards.forEach((card,index)=>{
+  const x=13+index*(width+gap);
+  doc.setFillColor(...card.fill);
+  doc.setDrawColor(...card.border);
+  doc.roundedRect(x,cardY,width,7.2,2.4,2.4,'FD');
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(5.35);
+  doc.setTextColor(...card.text);
+  doc.text(pdfCleanV76C3(card.label+': '+card.value),x+2,cardY+4.6,{maxWidth:width-4});
+ });
+ doc.setTextColor(15,23,42);
+ doc.setFont('helvetica','normal');
+}
+
+async function exportPdf() {
         if (exportBusy) return;
 
         const button =
@@ -2812,6 +4089,9 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
                 doc.internal.pageSize
                     .getHeight();
 
+            const logoData =
+                await cashflowLogoV76E();
+
             const filter =
                 pdfCleanV76C3(
                     selectedFilterSummary()
@@ -2863,13 +4143,14 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 
             /* PAGE 1 — compact dashboard */
             addHeader(
-                doc,
-                'CASHFLOW / PAYMENT MASTER REPORT',
-                filter,
-                pageWidth
-            );
+                    doc,
+                    'PROJECT FINANCIAL PERFORMANCE REPORT',
+                    filter,
+                    pageWidth,
+                    logoData
+                );
 
-            let y = 32;
+            let y = 33;
 
             y =
                 addKpiCards(
@@ -3015,10 +4296,124 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
                     doc,
                     'PAYMENT MILESTONE REGISTER',
                     filter,
-                    pageWidth
+                    pageWidth,
+                    logoData
                 );
 
-                let registerY = 32;
+                let registerY = 33;
+                /*
+                 * PMIS V76V2:
+                 * Preflight one project's complete milestone table.
+                 * If it can fit on one A4 landscape page, keep the
+                 * project summary + table together.
+                 */
+                function estimateRegisterTableHeightV76V2(
+                    head,
+                    body
+                ) {
+                    if (
+                        !Array.isArray(head) ||
+                        !head.length ||
+                        !Array.isArray(body) ||
+                        !body.length
+                    ) {
+                        return 0;
+                    }
+
+                    try {
+                        const probe =
+                            new JsPDF({
+                                orientation:
+                                    'landscape',
+                                unit:
+                                    'mm',
+                                format:
+                                    'a4',
+                                compress:
+                                    true
+                            });
+
+                        probe.autoTable({
+                            startY:
+                                1,
+                            head: [
+                                head
+                            ],
+                            body,
+                            theme:
+                                'grid',
+                            styles: {
+                                font:
+                                    'helvetica',
+                                fontStyle:
+                                    'normal',
+                                fontSize:
+                                    5.85,
+                                cellPadding:
+                                    1.0,
+                                overflow:
+                                    'linebreak',
+                                valign:
+                                    'middle',
+                                lineWidth:
+                                    0.12
+                            },
+                            headStyles: {
+                                font:
+                                    'helvetica',
+                                fontStyle:
+                                    'bold',
+                                fontSize:
+                                    5.6,
+                                cellPadding:
+                                    1.05,
+                                halign:
+                                    'center',
+                                valign:
+                                    'middle'
+                            },
+                            margin: {
+                                top:
+                                    1,
+                                left:
+                                    10,
+                                right:
+                                    10,
+                                bottom:
+                                    1
+                            },
+                            rowPageBreak:
+                                'avoid',
+                            pageBreak:
+                                'avoid',
+                            showHead:
+                                'firstPage'
+                        });
+
+                        if (
+                            probe.getNumberOfPages() >
+                            1
+                        ) {
+                            return Number.POSITIVE_INFINITY;
+                        }
+
+                        return Math.max(
+                            0,
+                            (
+                                probe.lastAutoTable
+                                    ?.finalY ||
+                                1
+                            ) - 1
+                        );
+                    }
+                    catch (_) {
+                        return (
+                            7 +
+                            body.length *
+                            8
+                        );
+                    }
+                }
 
                 if (!register.length) {
                     doc.setFont(
@@ -3060,6 +4455,52 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
                             project.meta
                         );
 
+                    const projectMetaItemsV77E =
+                        (Array.isArray(project.metaItemsV77E)
+                            ? project.metaItemsV77E
+                            : (Array.isArray(project.metaItemsV77D2)
+                                ? project.metaItemsV77D2
+                                : (Array.isArray(project.metaItemsV77D)
+                                    ? project.metaItemsV77D
+                                    : [])))
+                            .map(item => ({
+                                label: pdfCleanV76C3(item?.label || ''),
+                                value: pdfCleanV76C3(item?.value || '')
+                            }));
+
+                    const metaMapV77E = new Map(
+                        projectMetaItemsV77E.map(item => [
+                            String(item.label || '').trim().toLowerCase(),
+                            item.value
+                        ])
+                    );
+
+                    const displayMetaV77E = [
+                        ['Project Manager', metaMapV77E.get('project manager') || '-'],
+                        ['PO Reference', metaMapV77E.get('po reference') || '-'],
+                        ['PO Date', metaMapV77E.get('po date') || '-']
+                    ].map(item => item[0] + ': ' + item[1]).join('     |     ');
+
+                    const projectMetaItemsV77D2 =
+                        (
+                            Array.isArray(
+                                project.metaItemsV77D2
+                            )
+                                ? project.metaItemsV77D2
+                                : []
+                        ).map(item => ({
+                            label:
+                                pdfCleanV76C3(
+                                    item?.label ||
+                                    ''
+                                ),
+                            value:
+                                pdfCleanV76C3(
+                                    item?.value ||
+                                    ''
+                                )
+                        }));
+
                     const count =
                         pdfCleanV76C3(
                             project.count
@@ -3082,18 +4523,63 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
                         );
 
                     const summaryHeight =
-                        meta
-                            ? 15.5
+                        projectMetaItemsV77D2.length
+                            ? 25
                             : (
-                                subtitle
-                                    ? 11.5
-                                    : 8
+                                meta
+                                    ? 17
+                                    : (
+                                        subtitle
+                                            ? 12
+                                            : 9
+                                    )
                             );
 
+                    const tableHeightV76V2 =
+                        estimateRegisterTableHeightV76V2(
+                            cleanHead,
+                            cleanBody
+                        );
+
+                    const projectBlockHeightV76V2 =
+                        summaryHeight +
+                        1 +
+                        (
+                            Number.isFinite(
+                                tableHeightV76V2
+                            )
+                                ? tableHeightV76V2
+                                : 0
+                        );
+
+                    const availableHeightV76V2 =
+                        pageHeight -
+                        12 -
+                        registerY;
+
+                    const fitsSinglePageV76V2 =
+                        Number.isFinite(
+                            tableHeightV76V2
+                        ) &&
+                        projectBlockHeightV76V2 <=
+                        (
+                            pageHeight -
+                            12 -
+                            33
+                        );
+
                     if (
-                        registerY +
-                        summaryHeight >
-                        pageHeight - 13
+                        (
+                            fitsSinglePageV76V2 &&
+                            projectBlockHeightV76V2 >
+                            availableHeightV76V2
+                        ) ||
+                        (
+                            !fitsSinglePageV76V2 &&
+                            registerY +
+                            summaryHeight >
+                            pageHeight - 13
+                        )
                     ) {
                         doc.addPage(
                             'a4',
@@ -3104,123 +4590,37 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
                             doc,
                             'PAYMENT MILESTONE REGISTER',
                             filter,
-                            pageWidth
+                            pageWidth,
+                            logoData
                         );
 
-                        registerY = 32;
+                        registerY = 33;
                     }
 
-                    doc.setFillColor(
-                        248,
-                        251,
-                        255
-                    );
-
-                    doc.setDrawColor(
-                        219,
-                        229,
-                        239
-                    );
-
-                    doc.roundedRect(
-                        10,
-                        registerY,
-                        pageWidth - 20,
-                        summaryHeight,
-                        1.8,
-                        1.8,
-                        'FD'
-                    );
-
-                    doc.setFont(
-                        'helvetica',
-                        'bold'
-                    );
-
-                    doc.setFontSize(8.6);
-
-                    doc.setTextColor(
-                        11,
-                        43,
-                        74
-                    );
-
-                    doc.text(
-                        title,
-                        13,
-                        registerY + 4.8
-                    );
-
-                    if (count) {
-                        doc.setFont(
-                            'helvetica',
-                            'bold'
-                        );
-
-                        doc.setFontSize(6.5);
-
-                        doc.text(
-                            count,
-                            pageWidth - 13,
-                            registerY + 4.8,
-                            {
-                                align:
-                                    'right'
-                            }
-                        );
-                    }
-
-                    if (subtitle) {
-                        doc.setFont(
-                            'helvetica',
-                            'normal'
-                        );
-
-                        doc.setFontSize(6.2);
-
-                        doc.setTextColor(
-                            71,
-                            85,
-                            105
-                        );
-
-                        doc.text(
+                    drawProjectHeaderPaneV77D2(
+                        doc,
+                        {
+                            title,
                             subtitle,
-                            13,
-                            registerY + 9,
-                            {
-                                maxWidth:
-                                    pageWidth - 38
-                            }
-                        );
-                    }
-
-                    if (meta) {
-                        doc.setFont(
-                            'helvetica',
-                            'normal'
-                        );
-
-                        doc.setFontSize(6.1);
-
-                        doc.setTextColor(
-                            51,
-                            65,
-                            85
-                        );
-
-                        doc.text(
                             meta,
-                            13,
-                            registerY + 13.1,
-                            {
-                                maxWidth:
-                                    pageWidth - 26
-                            }
-                        );
-                    }
+                            metaItems:
+                                projectMetaItemsV77D2,
+                            count
+                        },
+                        registerY,
+                        pageWidth,
+                        summaryHeight
+                    );
 
-                    registerY +=
+
+                    drawProjectKpisV77E(
+                        doc,
+                        projectMetaItemsV77E,
+                        registerY,
+                        pageWidth
+                    );
+
+registerY +=
                         summaryHeight +
                         1;
 
@@ -3344,6 +4744,9 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
                             rowPageBreak:
                                 'avoid',
 
+                            pageBreak:
+                                'avoid',
+
                             showHead:
                                 'everyPage',
 
@@ -3352,9 +4755,14 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
                                     const col =
                                         data.column.index;
 
+                                    /*
+                                     * PMIS V76T2
+                                     * Frontend Planned section:
+                                     * columns 6..10 (zero-based).
+                                     */
                                     if (
-                                        col >= 4 &&
-                                        col <= 6
+                                        col >= 6 &&
+                                        col <= 10
                                     ) {
                                         data.cell.styles
                                             .fillColor =
@@ -3380,9 +4788,13 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
                                             ];
                                     }
 
+                                    /*
+                                     * Frontend Actual section:
+                                     * columns 11..15 (zero-based).
+                                     */
                                     if (
-                                        col >= 7 &&
-                                        col <= 10
+                                        col >= 11 &&
+                                        col <= 15
                                     ) {
                                         data.cell.styles
                                             .fillColor =
@@ -3407,6 +4819,60 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
                                                 70
                                             ];
                                     }
+
+                                    /* PMIS_CASHFLOW_STATUS_COLORS_V76E */
+                                    if (data.section === 'body'
+                                    ) {
+                                        const status =
+                                            String(
+                                                data.cell.raw ||
+                                                ''
+                                            ).trim();
+
+                                        const palette = {
+                                            'Realized': {
+                                                fill:[220,252,231],
+                                                text:[22,101,52]
+                                            },
+                                            'Partially Received': {
+                                                fill:[254,243,199],
+                                                text:[146,64,14]
+                                            },
+                                            'Overdue': {
+                                                fill:[254,226,226],
+                                                text:[153,27,27]
+                                            },
+                                            'Due': {
+                                                fill:[219,234,254],
+                                                text:[29,78,216]
+                                            },
+                                            'Not Due': {
+                                                fill:[241,245,249],
+                                                text:[71,85,105]
+                                            },
+                                            'Plan Date Pending': {
+                                                fill:[243,232,255],
+                                                text:[126,34,206]
+                                            }
+                                        };
+
+                                        const style =
+                                            palette[status];
+
+                                        if (style) {
+                                            data.cell.styles.fillColor =
+                                                style.fill;
+
+                                            data.cell.styles.textColor =
+                                                style.text;
+
+                                            data.cell.styles.fontStyle =
+                                                'bold';
+
+                                            data.cell.styles.halign =
+                                                'center';
+                                        }
+                                    }
                                 }
                         });
 
@@ -3428,7 +4894,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
                     .slice(0,10);
 
             doc.save(
-                'PMIS_Cashflow_Master_Report_' +
+                'Project_Financial_Performance_Report_' +
                 stamp +
                 '.pdf'
             );
@@ -3692,5 +5158,208 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 <!-- PMIS_CASHFLOW_ALWAYS_EXPANDED_REGISTER_EXPORT_V76B2 -->
 
 <!-- PMIS_CASHFLOW_PDF_FONT_SPACING_CLEANUP_V76C3 -->
+
+<!-- PMIS_CASHFLOW_BRANDING_STATUS_KPI_V76E -->
+<!-- PMIS_GROSS_CASHFLOW_GST_OVERRECEIPT_V76F4 -->
+
+<!-- PMIS_CASHFLOW_GST_GROSS_KPI_V76G2 -->
+
+<!-- PMIS_CASHFLOW_EXPORT_CHART_ASPECT_V76H -->
+
+<!-- PMIS_PROJECT_GST_PERCENT_V76I5 -->
+
+<!-- PMIS_STAGE_GST_ALLOCATION_SAFE_V76K2 -->
+
+
+<!-- PMIS_CASHFLOW_DIRECT_STATUS_OVERRECEIPT_V76N2 -->
+<script id="pmis-overreceipt-input-unlock-v76n2">
+(function () {
+    'use strict';
+
+    if (window.__PMIS_OVERRECEIPT_INPUT_UNLOCK_V76N2__) return;
+    window.__PMIS_OVERRECEIPT_INPUT_UNLOCK_V76N2__ = true;
+
+    function unlock() {
+        const input =
+            document.getElementById('rAmount');
+
+        if (input) {
+            input.removeAttribute('max');
+        }
+    }
+
+    document.addEventListener(
+        'click',
+        event => {
+            if (
+                event.target?.closest?.(
+                    '[data-record],.btn-record'
+                )
+            ) {
+                setTimeout(unlock,0);
+                setTimeout(unlock,120);
+            }
+        }
+    );
+
+    document.addEventListener(
+        'shown.bs.modal',
+        unlock
+    );
+})();
+</script>
+
+<!-- PMIS_CASHFLOW_REGISTER_ALIGNMENT_RECEIVED_PCT_V76P -->
+
+
+
+<!-- PMIS_CASHFLOW_REGISTER_CONSOLIDATED_V76R -->
+<style id="pmis-cashflow-register-consolidated-v76r-style">
+#tableArea .pmis-v76r-register{
+    min-width:1960px !important;
+}
+#tableArea .pmis-v76r-register th,
+#tableArea .pmis-v76r-register td{
+    vertical-align:middle !important;
+}
+#tableArea .pmis-v76r-register th{
+    white-space:nowrap !important;
+}
+#tableArea .pmis-v76r-register th:nth-child(3),
+#tableArea .pmis-v76r-register td:nth-child(3),
+#tableArea .pmis-v76r-register th:nth-child(4),
+#tableArea .pmis-v76r-register td:nth-child(4),
+#tableArea .pmis-v76r-register th:nth-child(5),
+#tableArea .pmis-v76r-register td:nth-child(5),
+#tableArea .pmis-v76r-register th:nth-child(13),
+#tableArea .pmis-v76r-register td:nth-child(13),
+#tableArea .pmis-v76r-register th:nth-child(15),
+#tableArea .pmis-v76r-register td:nth-child(15),
+#tableArea .pmis-v76r-register th:nth-child(16),
+#tableArea .pmis-v76r-register td:nth-child(16){
+    text-align:center !important;
+}
+#tableArea .pmis-v76r-project-code{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    margin-left:10px;
+    padding:3px 8px;
+    border-radius:8px;
+    background:#eef2ff;
+    border:1px solid #c7d2fe;
+    vertical-align:middle;
+    white-space:nowrap;
+    font-size:.72rem;
+    font-weight:800;
+}
+#tableArea .pmis-v76r-project-code > span{
+    color:#64748b;
+    font-weight:800;
+}
+#tableArea .pmis-v76r-project-code > strong{
+    color:#312e81;
+    font-weight:900;
+}
+#tableArea .pmis-v76r-kpi{
+    border-radius:999px;
+    padding:5px 9px;
+    font-weight:850;
+}
+#tableArea .pmis-v76r-kpi-gst{
+    background:#fff7ed;
+    border:1px solid #fed7aa;
+    color:#c2410c;
+}
+#tableArea .pmis-v76r-kpi-gst strong{
+    color:#c2410c;
+}
+#tableArea .pmis-v76r-kpi-gross{
+    background:#eff6ff;
+    border:1px solid #bfdbfe;
+    color:#1d4ed8;
+}
+#tableArea .pmis-v76r-kpi-gross strong{
+    color:#1d4ed8;
+}
+#tableArea .pmis-v76r-kpi-outstanding{
+    background:#fef2f2;
+    border:1px solid #fecaca;
+    color:#b91c1c;
+}
+#tableArea .pmis-v76r-kpi-outstanding strong{
+    color:#b91c1c;
+}
+
+/* PMIS_CASHFLOW_HEADER_KPI_ENHANCEMENT_V76S */
+#tableArea .pmis-v76s-kpi-po{
+    background:#f0fdfa;
+    border:1px solid #99f6e4;
+    color:#0f766e;
+}
+#tableArea .pmis-v76s-kpi-po strong{
+    color:#0f766e;
+}
+#tableArea .pmis-v76s-kpi-received{
+    background:#f0fdf4;
+    border:1px solid #bbf7d0;
+    color:#15803d;
+}
+#tableArea .pmis-v76s-kpi-received strong{
+    color:#15803d;
+}
+</style>
+
+
+<!-- PMIS_CASHFLOW_EXPORT_FRONTEND_ALIGNMENT_V76T2 -->
+
+<!-- PMIS_CASHFLOW_VALUE_FILTER_EXPORT_NO_ACTION_V76U -->
+
+<!-- PMIS_CASHFLOW_EXPORT_KEEP_PROJECT_TOGETHER_V76V2 -->
+
+<!-- PMIS_CASHFLOW_CHART_LABEL_COLLISION_FIX_V76W -->
+
+<!-- PMIS_FINANCEMIS_V77D2 -->
+<style id="pmis-financemis-v77d2-style">
+#tableArea .pmis-v76r-register{
+    min-width:2120px !important;
+}
+
+#tableArea .pmis-v76r-register th:nth-child(3),
+#tableArea .pmis-v76r-register td:nth-child(3),
+#tableArea .pmis-v76r-register th:nth-child(4),
+#tableArea .pmis-v76r-register td:nth-child(4),
+#tableArea .pmis-v76r-register th:nth-child(5),
+#tableArea .pmis-v76r-register td:nth-child(5),
+#tableArea .pmis-v76r-register th:nth-child(6),
+#tableArea .pmis-v76r-register td:nth-child(6),
+#tableArea .pmis-v76r-register th:nth-child(14),
+#tableArea .pmis-v76r-register td:nth-child(14),
+#tableArea .pmis-v76r-register th:nth-child(16),
+#tableArea .pmis-v76r-register td:nth-child(16),
+#tableArea .pmis-v76r-register th:nth-child(17),
+#tableArea .pmis-v76r-register td:nth-child(17){
+    text-align:center !important;
+}
+
+#tableArea .pmis-v77d2-po-meta{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    white-space:nowrap;
+}
+
+#tableArea .pmis-v77d2-po-meta strong{
+    color:#334155;
+}
+</style>
+
+
+<!-- PMIS_FINANCIAL_PERFORMANCE_V77E -->
+<style id="pmis-financial-performance-v77e-style">
+#tableArea .pmis-v76r-register{min-width:2120px!important;}
+#tableArea .pmis-v77e-po-meta{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;}
+#tableArea .pmis-v77e-po-meta strong{color:#334155;}
+</style>
 </body>
 </html>

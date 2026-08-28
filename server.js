@@ -187,6 +187,20 @@ const ProjectSchema = new mongoose.Schema({
     sat_location: String,
     po_date: String,
     po_value: Number,
+    // PMIS_FINANCEMIS_V77D2
+    po_reference: { type: String, default: '' },
+    // PMIS_GROSS_CASHFLOW_GST_OVERRECEIPT_V76F4
+    cashflow_order_type: {
+        type: String,
+        enum: ['domestic', 'international'],
+        default: 'domestic'
+    },
+    cashflow_gst_percent: {
+        type: Number,
+        default: 18,
+        min: 0,
+        max: 100
+    },
     project_manager: String,
     description: String,
     start_date: String,
@@ -353,7 +367,7 @@ async function sendAutoReminder(task, timeLabel) {
     const emailBody = `
         <p>Dear <strong>${task.personName}</strong>,</p>
         <p>This is an automated reminder that your task is due in <strong style="color: #ef4444;">${timeLabel}</strong>.</p>
-        
+
         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; margin: 30px 0;">
             <table style="width: 100%; border-collapse: collapse;">
                 <tr>
@@ -479,11 +493,11 @@ function formatDateLocalISO(date) {
 
 /**
  * calcCpmDuration(items)
- * 
+ *
  * Proper CPM: groups overlapping (parallel) sub-phases together,
  * takes the MAX duration within each group, then SUMs across sequential groups.
  * Gaps between sub-phases are NOT counted.
- * 
+ *
  * Returns { totalDuration, pStart } where pStart is the earliest start date.
  */
 function calcCpmDuration(items) {
@@ -769,7 +783,7 @@ async function syncDataOnStartup() {
                     dParent.reassign_start !== nReassignStart ||
                     dParent.reassign_end !== nReassignEnd ||
                     !areRevisionsEqual(dParent.revisions, parentRevisions)) {
-                    
+
                     dParent.plan_start = computedPlanStart;
                     dParent.plan_end = computedPlanEnd;
                     dParent.actual_start = nActualStart;
@@ -799,7 +813,7 @@ async function syncDataOnStartup() {
                 p.reassign_dispatch_date !== nReassignDispatch ||
                 p.mq2_date !== nMq2Date ||
                 p.reassign_mq2_date !== nReassignMq2) {
-                
+
                 p.start_date = nStartDate;
                 p.reassign_start_date = nReassignStart;
                 p.dispatch_date = nDispatchDate;
@@ -834,17 +848,17 @@ async function runReminderCheck() {
         const dateStrYesterday = formatDateLocalISO(yesterday);
 
         // 1. Check for 24-hour reminders FIRST
-        const upcoming24 = await ActionPoint.find({ 
-            targetDate: { $gte: dateStrYesterday, $lte: dateStr24 }, 
-            statusValue: { $ne: 'Completed' }, 
-            reminder24Sent: { $ne: true } 
+        const upcoming24 = await ActionPoint.find({
+            targetDate: { $gte: dateStrYesterday, $lte: dateStr24 },
+            statusValue: { $ne: 'Completed' },
+            reminder24Sent: { $ne: true }
         });
 
         console.log(`🔍 Found ${upcoming24.length} tasks for 24h reminder check`);
         for (const task of upcoming24) {
             await sendAutoReminder(task, '24 hours');
             task.reminder24Sent = true;
-            task.reminderSent = true; 
+            task.reminderSent = true;
             await task.save();
         }
 
@@ -853,12 +867,12 @@ async function runReminderCheck() {
         dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
         const dateStr48 = formatDateLocalISO(dayAfterTomorrow);
 
-        const upcoming48 = await ActionPoint.find({ 
-            targetDate: { $gte: dateStrYesterday, $lte: dateStr48 }, 
-            statusValue: { $ne: 'Completed' }, 
-            reminderSent: { $ne: true } 
+        const upcoming48 = await ActionPoint.find({
+            targetDate: { $gte: dateStrYesterday, $lte: dateStr48 },
+            statusValue: { $ne: 'Completed' },
+            reminderSent: { $ne: true }
         });
-        
+
         console.log(`🔍 Found ${upcoming48.length} tasks for 48h reminder check`);
         for (const task of upcoming48) {
             await sendAutoReminder(task, '48 hours');
@@ -866,8 +880,8 @@ async function runReminderCheck() {
             await task.save();
         }
         console.log('✅ Scheduled Reminder check completed.');
-    } catch (err) { 
-        console.error('❌ Reminder Check Error:', err); 
+    } catch (err) {
+        console.error('❌ Reminder Check Error:', err);
     }
 }
 
@@ -1080,6 +1094,8 @@ async function pmisAuthorizeProjectWriteV24(req, res, next) {
     if (!projectId) return pmisUnauthorizedV24(res, 400, 'Project ID is required.');
 
     try {
+        // PMIS_FIRST_WRITE_DB_CONNECTION_GUARD_V77A
+        await ensureMongoConnected();
         const project = await Project.findById(projectId);
         if (!project) return pmisUnauthorizedV24(res, 404, 'Project not found.');
         if (!pmisProjectAssociatedV24(project, user)) {
@@ -1116,6 +1132,8 @@ async function pmisAuthorizeActionPointWriteV24(req, res, next) {
     }
 
     try {
+        // PMIS_FIRST_WRITE_DB_CONNECTION_GUARD_V77A
+        await ensureMongoConnected();
         let projectId = String(req.body?.projectId || '').trim();
         if (!projectId) {
             const actionPointId = String(req.path || '').split('/').filter(Boolean)[0] || '';
@@ -1138,6 +1156,62 @@ async function pmisAuthorizeActionPointWriteV24(req, res, next) {
     }
 }
 
+// PMIS_FIRST_WRITE_DB_CONNECTION_GUARD_V77A
+/*
+ * ROOT CAUSE FIX:
+ *
+ * Individual PM / Project Expeditor writes are authorized by reading the
+ * assigned Project from MongoDB. On a cold/reconnecting hosted backend,
+ * that authorization read previously ran before an explicit
+ * ensureMongoConnected() wait.
+ *
+ * GET routes already wait for ensureMongoConnected(), which explains why
+ * writes start succeeding after somebody opens/uses PMIS and warms the DB.
+ *
+ * This middleware runs BEFORE the write-authorization middleware and waits
+ * for the shared Mongo connection promise for every project/action-point
+ * mutation.
+ *
+ * It does not retry the actual write, so POST requests cannot be duplicated.
+ */
+async function pmisEnsureWriteDbReadyV77A(req, res, next) {
+    const method = String(req.method || '').toUpperCase();
+
+    if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+        return next();
+    }
+
+    try {
+        await ensureMongoConnected();
+
+        req.pmisDbReadyV77A = true;
+        return next();
+    }
+    catch (error) {
+        const message = String(
+            error?.message ||
+            'Database connection is unavailable.'
+        );
+
+        console.error(
+            '[PMIS V77A] Database not ready before ' +
+            method +
+            ' write:',
+            message
+        );
+
+        return res.status(503).json({
+            error:
+                'PMIS database is reconnecting. ' +
+                'Please try Save again in a few seconds.',
+            code:
+                'PMIS_DB_WRITE_NOT_READY'
+        });
+    }
+}
+
+app.use('/api/projects', pmisEnsureWriteDbReadyV77A);
+app.use('/api/action-points', pmisEnsureWriteDbReadyV77A);
 app.use('/api/projects', pmisAuthorizeProjectWriteV24);
 app.use('/api/action-points', pmisAuthorizeActionPointWriteV24);
 
@@ -1175,14 +1249,14 @@ app.post('/api/projects', async (req, res) => {
     console.log('📡 [POST] /api/projects - Payload:', req.body);
     try {
         const data = req.body;
-        
+
         // Clean po_value if it's an empty string to avoid Mongoose Cast To Number errors
         if (data.po_value === '') {
             data.po_value = null;
         } else if (data.po_value !== undefined && data.po_value !== null) {
             data.po_value = parseFloat(String(data.po_value || "0").replace(/,/g, '')) || 0;
         }
-        
+
         let p;
         if (data._id) {
             p = await Project.findByIdAndUpdate(data._id, data, { new: true, runValidators: true });
@@ -2019,7 +2093,7 @@ app.post('/api/action-points', async (req, res) => {
 app.patch('/api/action-points/:id', async (req, res) => {
     try {
         const updateData = { ...req.body };
-        
+
         // If the target date is being updated (rescheduled), reset reminder flags
         if (updateData.targetDate) {
             updateData.reminderSent = false;
@@ -2367,17 +2441,17 @@ app.post('/api/send-email', async (req, res) => {
                 body { margin: 0; padding: 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
                 .wrapper { width: 100%; background-color: #ffffff; padding: 40px 0; }
                 .container { max-width: 600px; margin: 0 auto; padding: 0 20px; }
-                
+
                 /* Header Styling */
                 .header { border-bottom: 2px solid #f8fafc; padding-bottom: 25px; margin-bottom: 35px; }
                 .logo { width: 48px; height: auto; margin-bottom: 12px; }
                 .company-name { font-size: 14px; font-weight: 700; color: #0f172a; text-transform: uppercase; letter-spacing: 1.5px; margin: 0; }
                 .company-sub { font-size: 11px; color: #14b8a6; font-weight: 600; margin-top: 4px; }
-                
+
                 /* Content Styling */
                 .content { font-size: 16px; line-height: 1.6; color: #334155; }
                 .content p { margin-bottom: 20px; }
-                
+
                 /* Footer Styling */
                 .footer { margin-top: 50px; padding-top: 20px; border-top: 1px solid #f1f5f9; text-align: left; }
                 .footer-text { font-size: 12px; color: #94a3b8; line-height: 1.5; }
@@ -2386,7 +2460,7 @@ app.post('/api/send-email', async (req, res) => {
         <body>
             <div class="wrapper">
                 <div class="container">
-                    
+
                     <div class="header">
                         <img src="https://danprelpmis.netlify.app/asset/image.png" alt="Danprel" class="logo">
                         <h1 class="company-name">Danprel Engineering Automation Pvt Ltd</h1>
@@ -2689,3 +2763,7 @@ if (
 
 // Export for serverless
 module.exports = app;
+
+/* PMIS_GROSS_CASHFLOW_GST_OVERRECEIPT_V76F4 */
+
+/* PMIS_PROJECT_GST_PERCENT_V76I5 */

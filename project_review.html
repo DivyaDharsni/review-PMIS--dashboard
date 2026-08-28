@@ -2277,7 +2277,7 @@
         <div class="stat-chip">
             <div class="stat-chip-icon sci-gold"><i class="bi bi-gear-fill"></i></div>
             <div>
-                <div class="stat-chip-label">In Progress (In House)</div>
+                <div class="stat-chip-label">In Progress</div>
                 <div class="stat-chip-value" id="statInProgress">0</div>
             </div>
         </div>
@@ -2285,14 +2285,22 @@
         <div class="stat-chip">
             <div class="stat-chip-icon sci-teal"><i class="bi bi-tools"></i></div>
             <div>
-                <div class="stat-chip-label">Project in I & C</div>
+                <div class="stat-chip-label">Dispatched</div>
                 <div class="stat-chip-value" id="statICCount">0</div>
+            </div>
+        </div>
+        <!-- PMIS_STATUS_KPI_CARDS_V77J -->
+        <div class="stat-chip">
+            <div class="stat-chip-icon sci-indigo"><i class="bi bi-check2-square"></i></div>
+            <div>
+                <div class="stat-chip-label">I&amp;C Completed</div>
+                <div class="stat-chip-value" id="statINCCompleted">0</div>
             </div>
         </div>
         <div class="stat-chip">
             <div class="stat-chip-icon sci-teal"><i class="bi bi-check-circle-fill"></i></div>
             <div>
-                <div class="stat-chip-label">Total Projects Closed</div>
+                <div class="stat-chip-label">Payment Received</div>
                 <div class="stat-chip-value" id="statClosed">0</div>
             </div>
         </div>
@@ -2306,14 +2314,14 @@
         <div class="stat-chip">
             <div class="stat-chip-icon sci-rose"><i class="bi bi-currency-rupee"></i></div>
             <div>
-                <div class="stat-chip-label">Dispatched Value</div>
+                <div class="stat-chip-label">Dispatched PO Value</div>
                 <div class="stat-chip-value" id="statDispatchedValue">0</div>
             </div>
         </div>
         <div class="stat-chip">
             <div class="stat-chip-icon sci-navy"><i class="bi bi-cash-stack"></i></div>
             <div>
-                <div class="stat-chip-label">Total Value</div>
+                <div class="stat-chip-label">Total PO Value</div>
                 <div class="stat-chip-value" id="statTotalValue">0</div>
             </div>
         </div>
@@ -2655,14 +2663,57 @@
                             <input type="text" id="pSat" class="form-control fw-bold">
                         </div>
                     </div>
+                    <!-- PMIS_FINANCEMIS_V77D2: PO Date / Net PO / PO Reference -->
                     <div class="row g-3 mb-3">
-                        <div class="col-6">
+                        <div class="col-4">
                             <div class="section-lbl">PO Date</div>
                             <input type="date" id="pPoDate" class="form-control">
                         </div>
-                        <div class="col-6 admin-only">
-                            <div class="section-lbl">PO Value (&#8377;)</div>
+                        <div class="col-4 admin-only">
+                            <div class="section-lbl">PO Value (Net, excl. GST)</div>
                             <input type="number" id="pPoValue" class="form-control fw-bold">
+                        </div>
+                        <div class="col-4 admin-only">
+                            <div class="section-lbl">PO Reference</div>
+                            <input type="text" id="pPoReference" class="form-control fw-bold"
+                                maxlength="120" autocomplete="off"
+                                placeholder="Enter customer PO reference">
+                        </div>
+                    </div>
+                    <!-- PMIS_GROSS_CASHFLOW_GST_OVERRECEIPT_V76F4 -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-12 admin-only">
+                            <div class="section-lbl">Cashflow Order Type / GST Basis</div>
+                            <select id="pCashflowOrderType" onchange="pmisSyncCashflowGstV76I5(true)" class="form-select fw-bold">
+                                <option value="domestic">Domestic — GST applicable</option>
+                                <option value="international">International — 0% GST</option>
+                            </select>
+                            <div class="row g-2 mt-2">
+                                <div class="col-md-4">
+                                    <div class="section-lbl">GST %</div>
+                                    <div class="input-group">
+                                        <input
+                                            type="number"
+                                            id="pCashflowGstPercent"
+                                            class="form-control fw-bold"
+                                            min="0"
+                                            max="100"
+                                            step="0.01"
+                                            value="18"
+                                            placeholder="18"
+                                        >
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-8 d-flex align-items-end">
+                                    <div class="small text-muted pb-2">
+                                        Domestic projects use the entered GST %. International projects are automatically fixed at 0%.
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="small text-muted mt-1">
+                                Stored PO Value is NET. Cashflow planning adds the project GST % only for Domestic orders.
+                            </div>
                         </div>
                     </div>
                     <div class="mb-3">
@@ -3325,6 +3376,133 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <script>
         let projects = [];
+
+        // PMIS_PO_VALUE_LIFECYCLE_ALIGNMENT_V77H
+        // Canonical project lifecycle nomenclature:
+        // In Progress -> Dispatched -> I&C Completed -> Payment Received
+        function pmisV77HNumber(value) {
+            const n = Number(String(value ?? '').replace(/,/g, ''));
+            return Number.isFinite(n) ? n : 0;
+        }
+
+        function pmisV77HReceiptsTotal(term) {
+            return (Array.isArray(term?.actual_receipts) ? term.actual_receipts : [])
+                .reduce((sum,row) => sum + Math.max(0, pmisV77HNumber(row?.amount)), 0);
+        }
+
+        function pmisV77HGrossCommercialComplete(project) {
+            if (!project) return false;
+
+            if (typeof window.pmisV75ACommercialComplete === 'function') {
+                try {
+                    return !!window.pmisV75ACommercialComplete(project);
+                } catch (_) {}
+            }
+
+            const terms = Array.isArray(project?.payment_milestones)
+                ? project.payment_milestones
+                : [];
+
+            const meaningful = terms.filter((term,index) => {
+                const stage = String(term?.linked_stage_id || '').trim();
+                const receipts = Array.isArray(term?.actual_receipts) && term.actual_receipts.length > 0;
+                return receipts || pmisV77HNumber(term?.percentage) > 0 || !!stage || (index > 0 && !!String(term?.remarks || '').trim());
+            });
+
+            // Preserve existing legacy behaviour: no configured commercial plan
+            // does not block an already technically completed project.
+            if (!meaningful.length) return true;
+
+            const configured = meaningful.filter(term =>
+                !!String(term?.linked_stage_id || '').trim() &&
+                pmisV77HNumber(term?.percentage) > 0 &&
+                pmisV77HNumber(term?.percentage) <= 100
+            );
+
+            const totalPct = configured.reduce(
+                (sum,term) => sum + pmisV77HNumber(term?.percentage),
+                0
+            );
+
+            if (configured.length !== meaningful.length || Math.abs(totalPct - 100) > 0.001) {
+                return false;
+            }
+
+            const netPo = Math.max(0, pmisV77HNumber(project?.po_value));
+            if (!(netPo > 0)) return false;
+
+            const international = String(
+                project?.cashflow_order_type ||
+                project?.order_type ||
+                'domestic'
+            ).trim().toLowerCase() === 'international';
+
+            const totalGst = international ? 0 : netPo * 0.18;
+
+            return configured.every(term => {
+                const pct = Math.max(0, pmisV77HNumber(term?.percentage));
+                const gstPct = international
+                    ? 0
+                    : Math.max(0, pmisV77HNumber(
+                        term?.gst_allocation_percent ??
+                        term?.gstAllocationPercent ??
+                        term?.gst_percent_allocation ??
+                        0
+                    ));
+
+                const expectedGross =
+                    netPo * pct / 100 +
+                    totalGst * gstPct / 100;
+
+                return expectedGross > 0 && pmisV77HReceiptsTotal(term) + 0.5 >= expectedGross;
+            });
+        }
+
+                // PMIS_PROGRESS_LIFECYCLE_STATUS_V77I
+        // Status is driven by the exact weighted Overall KPIs shown on the dashboard.
+        // Dispatched      = Overall (up to Dispatch) is 100%.
+        // I&C Completed   = Overall (incl. I&C) is 100% and payment is pending.
+        // Payment Received= Overall (incl. I&C) is 100% and gross commercial plan is realized.
+        function pmisV77IOverallProgress(project, includeInc = true) {
+            if (!project) return 0;
+            const weights = [3, 15, 15, 20, 15, 10, 10, 2, 10];
+            const ids = [
+                'kickoff', 'design', 'purchase', 'mech_assembly', 'program',
+                'inhouse', 'mq1_fat', 'dispatch_parent', 'inc_parent'
+            ];
+            let activeWeight = 0;
+            let weighted = 0;
+            ids.forEach((id, index) => {
+                if (!includeInc && index === 8) return;
+                const detail = (project.detailed_phases && project.detailed_phases[id]) || {};
+                if (detail.is_excluded === true) return;
+                const raw = pmisV77HNumber(project.phases?.[index]?.progress || 0);
+                const progress = Math.max(0, Math.min(100, raw));
+                activeWeight += weights[index];
+                weighted += (progress / 100) * weights[index];
+            });
+            return activeWeight > 0
+                ? Math.max(0, Math.min(100, Math.round((weighted / activeWeight) * 100)))
+                : 0;
+        }
+
+        function pmisProjectLifecycleStatusV77H(project) {
+            if (!project) return 'In Progress';
+            const uptoDispatch = pmisV77IOverallProgress(project, false);
+            const overallInclInc = pmisV77IOverallProgress(project, true);
+
+            if (overallInclInc >= 100) {
+                return pmisV77HGrossCommercialComplete(project)
+                    ? 'Payment Received'
+                    : 'I&C Completed';
+            }
+            if (uptoDispatch >= 100) return 'Dispatched';
+            return 'In Progress';
+        }
+
+        window.pmisProjectLifecycleStatusV77H = pmisProjectLifecycleStatusV77H;
+        window.pmisV77HGrossCommercialComplete = pmisV77HGrossCommercialComplete;
+        window.pmisV77IOverallProgress = pmisV77IOverallProgress;
 
         function adjustStatFontSize(elementId) {
             const el = document.getElementById(elementId);
@@ -3989,6 +4167,7 @@ function formatExportPoValueForCurrentUser(project) {
             let dispatchedCount = 0; // Will track Dispatched + Closed for value calculation
             let closedCount = 0;     // Will track ONLY 100% Closed projects
             let projectsInIC = 0;
+            let incCompletedCount = 0;
             let deliveredCount = 0;
             let deliveredOnTimeCount = 0;
 
@@ -4049,40 +4228,32 @@ function formatExportPoValueForCurrentUser(project) {
                 const overallAvg = activeWeightOverall > 0 ? Math.round((activeWeightedSumOverall / activeWeightOverall) * 100) : 0;
 
                 const allDone = activeWeightOverall > 0 && allActiveDone;
-
-                // --- Automated Status Calculation ---
-                let displayStatus = p.status || 'Started';
-                const hasAnyProgress = (p.phases || []).some(ph => (parseFloat(ph.progress) || 0) > 0);
-                const detailed = p.detailed_phases || {};
-                const hasAnyActualStart = Object.values(detailed).some(det => det && det.actual_start);
-
-                // Identify if Machine Dispatched (Index 7 is Machine Dispatch)
-                const dispatchPhase = (p.phases && p.phases[7]) ? parseInt(p.phases[7].progress || 0) : 0;
-                const isMachineDispatched = (dispatchPhase === 100);
-
-                if (displayStatus !== 'Closed') {
-                    if (allDone) displayStatus = (window.pmisV75ACommercialComplete && window.pmisV75ACommercialComplete((typeof p !== 'undefined' && p) ? p : (typeof project !== 'undefined' ? project : null))) ? 'Closed' : 'Payment Pending'; // âœ… Automatically set to Closed if 100%
-                    else if (isMachineDispatched) displayStatus = 'Dispatched';
-                    else if (hasAnyProgress || hasAnyActualStart) displayStatus = 'In Progress';
-                    else displayStatus = 'Started';
-                }
+                // --- Canonical Lifecycle Status V77H ---
+                const displayStatus = pmisProjectLifecycleStatusV77H(p);
                 p.__pmisDisplayStatus = displayStatus;
 
-                // Update summary stats
-                if (displayStatus === 'Closed') {
+                // Update summary stats using the canonical V77H lifecycle.
+                if (displayStatus === 'Payment Received') {
                     closedCount++;
                     dispatchedCount++;
                     dispatchedVal += poVal;
-                } else if (displayStatus === 'Dispatched' || displayStatus === 'Completed') {
+                } else if (displayStatus === 'I&C Completed') {
+                    incCompletedCount++;
                     dispatchedCount++;
                     dispatchedVal += poVal;
-                    projectsInIC++; // Automatically in I&C when Dispatched
+                } else if (displayStatus === 'Dispatched') {
+                    dispatchedCount++;
+                    dispatchedVal += poVal;
+                    projectsInIC++;
                 } else {
                     inProgressCount++;
                 }
 
                 // Increment OTD metrics
-                const isOtdStatus = displayStatus === 'Dispatched' || displayStatus === 'Closed' || displayStatus === 'Completed';
+                const isOtdStatus =
+                    displayStatus === 'Dispatched' ||
+                    displayStatus === 'I&C Completed' ||
+                    displayStatus === 'Payment Received';
                 const otdDispData = (p.detailed_phases && p.detailed_phases['dispatch_parent']) || {};
                 const otdActEnd = otdDispData.actual_end || '';
                 const otdPlanEnd = p.dispatch_date || '';
@@ -4261,17 +4432,22 @@ function formatExportPoValueForCurrentUser(project) {
                     </td>
 
                     <td style="text-align: center; border-left: 1px solid #e2e8f0;">
-                        <span style="color: ${displayStatus.toLowerCase().includes('started') ? '#0369a1' :
-                        (displayStatus.toLowerCase().includes('progress') || displayStatus.toLowerCase().includes('pending')) ? '#d97706' :
-                            (displayStatus.toLowerCase().includes('closed') || displayStatus.toLowerCase().includes('completed') || displayStatus.toLowerCase().includes('dispatched')) ? '#10b981' : '#000000'
-                    }; font-size:0.9rem; font-weight: 800;">
+                        <span style="color: ${
+                            displayStatus === 'Payment Received' ? '#10b981' :
+                            displayStatus === 'I&C Completed' ? '#0f766e' :
+                            displayStatus === 'Dispatched' ? '#0284c7' :
+                            '#d97706'
+                        }; font-size:0.9rem; font-weight: 800;">
                             ${displayStatus}
                         </span>
                     </td>
 
                     <td style="text-align: center; border-left: 1px solid #e2e8f0; vertical-align: middle;">
                         ${(() => {
-                        const isDelivered = displayStatus === 'Dispatched' || displayStatus === 'Closed' || displayStatus === 'Completed';
+                        const isDelivered =
+                            displayStatus === 'Dispatched' ||
+                            displayStatus === 'I&C Completed' ||
+                            displayStatus === 'Payment Received';
                         if (!isDelivered) {
                             return `<span style="color:#94a3b8; font-weight:800;">-</span>`;
                         }
@@ -4374,6 +4550,7 @@ function formatExportPoValueForCurrentUser(project) {
 
             document.getElementById('statTotal').innerText = projects.length;
             document.getElementById('statInProgress').innerText = inProgressCount;
+            document.getElementById('statINCCompleted').innerText = incCompletedCount;
             document.getElementById('statClosed').innerText = closedCount;
             const maskInitialOverallCost = false;
             document.getElementById('statDispatchedValue').innerText = maskInitialOverallCost
@@ -4459,7 +4636,53 @@ function formatExportPoValueForCurrentUser(project) {
             setTimeout(() => document.getElementById('p1').focus(), 500);
         });
 
-        function openAddProjectModal() {
+                // PMIS_PROJECT_GST_PERCENT_V76I5
+        function pmisSyncCashflowGstV76I5(resetForType) {
+            const typeEl =
+                document.getElementById(
+                    'pCashflowOrderType'
+                );
+
+            const gstEl =
+                document.getElementById(
+                    'pCashflowGstPercent'
+                );
+
+            if (!typeEl || !gstEl) return;
+
+            const isInternational =
+                String(
+                    typeEl.value ||
+                    ''
+                )
+                    .trim()
+                    .toLowerCase() ===
+                'international';
+
+            if (isInternational) {
+                gstEl.value = '0';
+                gstEl.disabled = true;
+                return;
+            }
+
+            gstEl.disabled = false;
+
+            const current =
+                Number(
+                    gstEl.value
+                );
+
+            if (
+                !Number.isFinite(current) ||
+                (
+                    resetForType === true &&
+                    current === 0
+                )
+            ) {
+                gstEl.value = '18';
+            }
+        }
+function openAddProjectModal() {
             // PMIS_ALL_PO_ASSOCIATED_EDIT_GUARD_V24
             if (!pmisIsAdminV24()) return pmisProjectWriteDeniedV24();
 
@@ -4472,6 +4695,10 @@ function formatExportPoValueForCurrentUser(project) {
             document.getElementById('pSat').value = '';
             document.getElementById('pPoDate').value = '';
             document.getElementById('pPoValue').value = '';
+            document.getElementById('pPoReference').value = '';
+            document.getElementById('pCashflowOrderType').value = 'domestic';
+            document.getElementById('pCashflowGstPercent').value = '18';
+            pmisSyncCashflowGstV76I5(false);
             document.getElementById('pManager').value = '';
 
             const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('projModal'));
@@ -4510,6 +4737,44 @@ function formatExportPoValueForCurrentUser(project) {
             const code = document.getElementById('pCode').value.trim().toUpperCase();
             const po_date = pmisNormalizeProjectDate(document.getElementById('pPoDate').value);
             const po_value = document.getElementById('pPoValue').value;
+            const po_reference = String(document.getElementById('pPoReference')?.value || '').trim();
+            const cashflow_order_type = String(
+                document.getElementById('pCashflowOrderType')?.value || 'domestic'
+            ).trim().toLowerCase();
+            if (!['domestic','international'].includes(cashflow_order_type)) {
+                return alert('Select Domestic or International Cashflow Order Type.');
+            }
+                        const raw_cashflow_gst_percent =
+                Number.parseFloat(
+                    document.getElementById(
+                        'pCashflowGstPercent'
+                    )?.value
+                );
+
+            let cashflow_gst_percent =
+                cashflow_order_type ===
+                'international'
+                    ? 0
+                    : raw_cashflow_gst_percent;
+
+            if (
+                cashflow_order_type !==
+                    'international' &&
+                !Number.isFinite(
+                    cashflow_gst_percent
+                )
+            ) {
+                cashflow_gst_percent = 18;
+            }
+
+            if (
+                cashflow_gst_percent < 0 ||
+                cashflow_gst_percent > 100
+            ) {
+                return alert(
+                    'GST % must be between 0 and 100.'
+                );
+            }
             const customer_name = document.getElementById('pCustomer').value.trim();
             const sat_location = document.getElementById('pSat').value.trim();
             const typed_project_manager = document.getElementById('pManager').value.trim();
@@ -4526,6 +4791,9 @@ function formatExportPoValueForCurrentUser(project) {
                 code,
                 po_date,
                 po_value: po_value === '' ? null : parseFloat(String(po_value).replace(/,/g, '')),
+                po_reference,
+                cashflow_order_type,
+                cashflow_gst_percent,
                 customer_name,
                 sat_location,
                 project_manager
@@ -4827,10 +5095,46 @@ function formatExportPoValueForCurrentUser(project) {
             document.getElementById('pCode').value = p.code;
             document.getElementById('pPoDate').value = pmisNormalizeProjectDate(p.po_date);
             document.getElementById('pPoValue').value = p.po_value || '';
+            document.getElementById('pPoReference').value = p.po_reference || p.poReference || '';
+            document.getElementById('pCashflowOrderType').value =
+                String(p.cashflow_order_type || p.order_type || 'domestic').trim().toLowerCase() === 'international'
+                    ? 'international'
+                    : 'domestic';
             document.getElementById('pCustomer').value = p.customer_name || '';
             document.getElementById('pSat').value = p.sat_location || '';
             document.getElementById('pManager').value = p.project_manager || '';
 
+                        const storedCashflowGstV76I5 =
+                Number(
+                    p.cashflow_gst_percent ??
+                    p.gst_percent
+                );
+
+            document.getElementById(
+                'pCashflowGstPercent'
+            ).value =
+                String(
+                    (
+                        String(
+                            p.cashflow_order_type ||
+                            p.order_type ||
+                            'domestic'
+                        )
+                            .trim()
+                            .toLowerCase() ===
+                        'international'
+                    )
+                        ? 0
+                        : (
+                            Number.isFinite(
+                                storedCashflowGstV76I5
+                            )
+                                ? storedCashflowGstV76I5
+                                : 18
+                        )
+                );
+
+            pmisSyncCashflowGstV76I5(false);
             bootstrap.Modal.getOrCreateInstance(document.getElementById('projModal')).show();
         }
 
@@ -4893,6 +5197,8 @@ function formatExportPoValueForCurrentUser(project) {
             const selectedRoleProject = document.getElementById('roleProjectSelector')?.value || 'All';
             const from = document.getElementById('dateFrom')?.value || '';
             const to = document.getElementById('dateTo')?.value || '';
+            const lifecycleFilter = window.pmisProjectLifecycleFilterV77H || null;
+            const lifecycleMode = lifecycleFilter?.getMode?.() || 'all';
 
             // PROJECT LIST:
             // Starts on the signed-in PM/coordinator's name, but they may choose All or another expeditor.
@@ -4920,7 +5226,13 @@ function formatExportPoValueForCurrentUser(project) {
                 const searchMatch = text.includes(q);
                 const projectMatch = selectedRoleProject === 'All' ||
                     String(row.dataset.projId || '') === String(selectedRoleProject);
-                const isVisible = managerMatch && dateValid && searchMatch && projectMatch;
+                const rowProject = projects.find(project =>
+                    String(project?._id || '') === String(row.dataset.projId || '')
+                );
+                const lifecycleMatch =
+                    !lifecycleFilter ||
+                    lifecycleFilter.matchesProject(rowProject, lifecycleMode);
+                const isVisible = managerMatch && dateValid && searchMatch && projectMatch && lifecycleMatch;
                 row.style.display = isVisible ? '' : 'none';
 
                 if (isVisible && row.cells[0]) {
@@ -4968,6 +5280,11 @@ function formatExportPoValueForCurrentUser(project) {
                     if (!searchText.includes(q)) return false;
                 }
 
+                if (
+                    lifecycleFilter &&
+                    !lifecycleFilter.matchesProject(project, lifecycleMode)
+                ) return false;
+
                 return true;
             });
 
@@ -4982,6 +5299,7 @@ function formatExportPoValueForCurrentUser(project) {
             let inProgressCount = 0;
             let closedCount = 0;
             let projectsInIC = 0;
+            let incCompletedCount = 0;
             let deliveredCount = 0;
             let deliveredOnTimeCount = 0;
 
@@ -5015,28 +5333,25 @@ function formatExportPoValueForCurrentUser(project) {
                 const dispatchProgress = project.phases && project.phases[7]
                     ? parseInt(project.phases[7].progress || 0)
                     : 0;
+                const displayStatus = pmisProjectLifecycleStatusV77H(project);
 
-                let displayStatus = project.status || 'Started';
-                if (displayStatus !== 'Closed') {
-                    if (allDone) displayStatus = (window.pmisV75ACommercialComplete && window.pmisV75ACommercialComplete((typeof p !== 'undefined' && p) ? p : (typeof project !== 'undefined' ? project : null))) ? 'Closed' : 'Payment Pending';
-                    else if (dispatchProgress === 100) displayStatus = 'Dispatched';
-                    else if (hasAnyProgress || hasAnyActualStart) displayStatus = 'In Progress';
-                    else displayStatus = 'Started';
-                }
-
-                if (displayStatus === 'Closed') {
+                if (displayStatus === 'Payment Received') {
                     closedCount++;
                     dispatchedValue += poValue;
-                } else if (displayStatus === 'Dispatched' || displayStatus === 'Completed') {
+                } else if (displayStatus === 'I&C Completed') {
+                    incCompletedCount++;
+                    dispatchedValue += poValue;
+                } else if (displayStatus === 'Dispatched') {
                     dispatchedValue += poValue;
                     projectsInIC++;
                 } else {
                     inProgressCount++;
                 }
 
-                const isOtdStatus = displayStatus === 'Dispatched' ||
-                    displayStatus === 'Closed' ||
-                    displayStatus === 'Completed';
+                const isOtdStatus =
+                    displayStatus === 'Dispatched' ||
+                    displayStatus === 'I&C Completed' ||
+                    displayStatus === 'Payment Received';
                 const dispatchDetails = (project.detailed_phases && project.detailed_phases.dispatch_parent) || {};
                 const actualDispatchEnd = dispatchDetails.actual_end || '';
                 const plannedDispatchEnd = project.dispatch_date || '';
@@ -5059,6 +5374,7 @@ function formatExportPoValueForCurrentUser(project) {
 
             document.getElementById('statTotal').innerText = metricProjects.length;
             document.getElementById('statInProgress').innerText = inProgressCount;
+            document.getElementById('statINCCompleted').innerText = incCompletedCount;
             document.getElementById('statClosed').innerText = closedCount;
             document.getElementById('statICCount').innerText = projectsInIC;
             document.getElementById('statOTD').innerText = deliveredCount > 0
@@ -5636,19 +5952,10 @@ function formatExportPoValueForCurrentUser(project) {
             return 'Rs. ' + amount.toLocaleString('en-IN');
         }
 
-        function masterReportStatus(project) {
-            const active = pmisMasterLifecycle.filter((phase, index) => !((project.detailed_phases || {})[phase.id] || {}).is_excluded);
-            const allDone = active.length > 0 && active.every(phase => {
-                const index = pmisMasterLifecycle.findIndex(item => item.id === phase.id);
-                return Number(project.phases?.[index]?.progress || 0) >= 100;
-            });
-            const dispatchProgress = Number(project.phases?.[7]?.progress || 0);
-            const hasProgress = (project.phases || []).some(item => Number(item.progress || 0) > 0) ||
-                Object.values(project.detailed_phases || {}).some(item => item && item.actual_start);
-            if (String(project.status || '').toLowerCase() === 'closed' || allDone) return 'Closed';
-            if (dispatchProgress >= 100) return 'Dispatched';
-            if (hasProgress) return 'In Progress';
-            return project.status || 'Started';
+                function masterReportStatus(project) {
+            return typeof window.pmisProjectLifecycleStatusV77H === 'function'
+                ? window.pmisProjectLifecycleStatusV77H(project)
+                : 'In Progress';
         }
 
         function masterReportOverallProgress(project, includeInc = true) {
@@ -6318,105 +6625,196 @@ function formatExportPoValueForCurrentUser(project) {
         }
 
         function masterReportPaymentRowsV76B2(project) {
-            const terms = Array.isArray(project?.payment_milestones)
-                ? project.payment_milestones
-                : (
-                    Array.isArray(project?.paymentMilestones)
-                        ? project.paymentMilestones
-                        : []
+            const terms =
+                Array.isArray(project?.payment_milestones)
+                    ? project.payment_milestones
+                    : [];
+
+            const netPo =
+                Math.max(
+                    0,
+                    masterReportPaymentNumberV76B2(
+                        project?.po_value
+                    )
                 );
 
-            const poValue = Math.max(
-                0,
-                masterReportPaymentNumberV76B2(
-                    project?.po_value ??
-                    project?.poValue
+            const international =
+                String(
+                    project?.cashflow_order_type ||
+                    project?.order_type ||
+                    'domestic'
                 )
-            );
+                    .trim()
+                    .toLowerCase() ===
+                'international';
+
+            const totalGst =
+                international
+                    ? 0
+                    : netPo * 0.18;
+
+            const projectGross =
+                netPo + totalGst;
 
             return terms
-                .map((term,index) => {
-                    const stageId = String(
-                        term?.linked_stage_id ??
-                        term?.linkedStageId ??
-                        ''
-                    ).trim();
+                .map(
+                    (term,index) => {
+                        const stageId =
+                            String(
+                                term?.linked_stage_id ||
+                                ''
+                            ).trim();
 
-                    const percentage = masterReportPaymentNumberV76B2(
-                        term?.percentage ??
-                        term?.percent
-                    );
-
-                    if (!stageId || !(percentage > 0)) {
-                        return null;
-                    }
-
-                    const expected = Math.max(
-                        0,
-                        poValue * percentage / 100
-                    );
-
-                    const received = masterReportPaymentReceivedV76B2(term);
-
-                    const outstanding = Math.max(
-                        0,
-                        expected - received
-                    );
-
-                    const stagePlan = masterReportPaymentStageDateV76B2(
-                        project,
-                        stageId
-                    );
-
-                    const planned = masterReportPaymentAddDaysV76B2(
-                        stagePlan,
-                        term?.credit_days ??
-                        term?.creditDays
-                    );
-
-                    const lastReceipt = masterReportPaymentLastReceiptV76B2(term);
-
-                    const status = masterReportPaymentStatusV76B2(
-                        project,
-                        term,
-                        expected,
-                        received,
-                        planned
-                    );
-
-                    return {
-                        milestone:
-                            'M' +
-                            (index + 1) +
-                            (
-                                term?.remarks
-                                    ? '\n' + String(term.remarks)
-                                    : ''
-                            ),
-
-                        stage: masterReportPaymentStageNameV76B2(
-                            project,
-                            stageId
-                        ),
-
-                        percentage,
-
-                        creditDays: Math.trunc(
+                        const percentage =
                             masterReportPaymentNumberV76B2(
-                                term?.credit_days ??
-                                term?.creditDays
-                            )
-                        ),
+                                term?.percentage
+                            );
 
-                        expected,
-                        stagePlan,
-                        planned,
-                        received,
-                        lastReceipt,
-                        outstanding,
-                        status
-                    };
-                })
+                        if (
+                            !stageId ||
+                            !(percentage > 0)
+                        ) {
+                            return null;
+                        }
+
+                        const gstAllocation =
+                            international
+                                ? 0
+                                : Math.max(
+                                    0,
+                                    Math.min(
+                                        100,
+                                        masterReportPaymentNumberV76B2(
+                                            term?.gst_allocation_percent ??
+                                            term?.gstAllocationPercent ??
+                                            term?.gst_percent_allocation ??
+                                            term?.gstAllocation ??
+                                            0
+                                        )
+                                    )
+                                );
+
+                        const netAmount =
+                            Math.max(
+                                0,
+                                netPo *
+                                percentage /
+                                100
+                            );
+
+                        const gstAmount =
+                            Math.max(
+                                0,
+                                totalGst *
+                                gstAllocation /
+                                100
+                            );
+
+                        const expected =
+                            netAmount +
+                            gstAmount;
+
+                        const grossAllocation =
+                            projectGross > 0
+                                ? Math.max(
+                                    0,
+                                    expected /
+                                    projectGross *
+                                    100
+                                )
+                                : 0;
+
+                        const received =
+                            masterReportPaymentReceivedV76B2(
+                                term
+                            );
+
+                        const receivedPercent =
+                            projectGross > 0
+                                ? Math.max(
+                                    0,
+                                    received /
+                                    projectGross *
+                                    100
+                                )
+                                : 0;
+
+                        const outstanding =
+                            Math.max(
+                                0,
+                                expected -
+                                received
+                            );
+
+                        const stagePlan =
+                            masterReportPaymentStageDateV76B2(
+                                project,
+                                stageId
+                            );
+
+                        const planned =
+                            masterReportPaymentAddDaysV76B2(
+                                stagePlan,
+                                term?.credit_days
+                            );
+
+                        const lastReceipt =
+                            masterReportPaymentLastReceiptV76B2(
+                                term
+                            );
+
+                        const status =
+                            masterReportPaymentStatusV76B2(
+                                project,
+                                term,
+                                expected,
+                                received,
+                                planned
+                            );
+
+                        return {
+                            milestone:
+                                'M' +
+                                (index + 1) +
+                                (
+                                    term?.remarks
+                                        ? '\n' +
+                                          String(
+                                              term.remarks
+                                          )
+                                        : ''
+                                ),
+
+                            stage:
+                                masterReportPaymentStageNameV76B2(
+                                    project,
+                                    stageId
+                                ),
+
+                            percentage,
+                            gstAllocation,
+                            grossAllocation,
+
+                            creditDays:
+                                Math.trunc(
+                                    masterReportPaymentNumberV76B2(
+                                        term?.credit_days
+                                    )
+                                ),
+
+                            netAmount,
+                            gstAmount,
+                            expected,
+                            stagePlan,
+                            planned,
+                            received,
+                            lastReceipt,
+                            receivedPercent,
+                            outstanding,
+                            status
+                        };
+                    }
+                )
                 .filter(Boolean);
         }
         async function generateProjectMasterReport() {
@@ -6488,7 +6886,7 @@ function formatExportPoValueForCurrentUser(project) {
                 }
 
                 // Page 2 begins with the detailed phase hierarchy when earlier sections exist.
-                                // PMIS_MASTER_PAYMENT_MILESTONE_REGISTER_V76B2
+                                // PMIS_MASTER_PAYMENT_REGISTER_CURRENT_V77K
                 if (options.has('payments')) {
                     const paymentRowsV76B2 =
                         masterReportPaymentRowsV76B2(project);
@@ -6502,25 +6900,32 @@ function formatExportPoValueForCurrentUser(project) {
                         project,
                         reportTitle,
                         logoData,
-                        54
+                        66
                     );
+
+                    const pctTextV77K = value =>
+                        masterReportPaymentNumberV76B2(value)
+                            .toFixed(2)
+                            .replace(/\.00$/,'')
+                            .replace(/(\.\d)0$/,'$1') + '%';
 
                     const paymentBodyV76B2 =
                         paymentRowsV76B2.length
                             ? paymentRowsV76B2.map(item => [
                                 item.milestone,
                                 item.stage,
-                                (
-                                    item.percentage
-                                        .toFixed(2)
-                                        .replace(/\.00$/,'')
-                                ) + '%',
+                                pctTextV77K(item.percentage),
+                                pctTextV77K(item.gstAllocation),
+                                pctTextV77K(item.grossAllocation),
                                 String(item.creditDays),
+                                masterReportMoney(item.netAmount),
+                                masterReportMoney(item.gstAmount),
                                 masterReportMoney(item.expected),
                                 masterReportDate(item.stagePlan),
                                 masterReportDate(item.planned),
                                 masterReportMoney(item.received),
                                 masterReportDate(item.lastReceipt),
+                                pctTextV77K(item.receivedPercent),
                                 masterReportMoney(item.outstanding),
                                 item.status
                             ])
@@ -6535,23 +6940,33 @@ function formatExportPoValueForCurrentUser(project) {
                                 '',
                                 '',
                                 '',
+                                '',
+                                '',
+                                '',
+                                '',
+                                '',
                                 ''
                             ]];
 
                     doc.autoTable({
                         startY:y,
 
-                        head:[[ 
+                        head:[[
                             'Milestone',
                             'Linked Stage',
-                            '%',
+                            'Payment %',
+                            'GST Alloc %',
+                            'Gross Allocation %',
                             'Credit Days',
-                            'Planned Amount',
+                            'Planned Net Amount',
+                            'GST Amount',
+                            'Planned Amount (Gross)',
                             'Stage Plan Date',
                             'Planned Realization',
                             'Actual Received',
                             'Last Receipt',
-                            'Outstanding',
+                            'Actual Received %',
+                            'Gross Outstanding',
                             'Status'
                         ]],
 
@@ -6559,35 +6974,48 @@ function formatExportPoValueForCurrentUser(project) {
                         theme:'grid',
 
                         styles:{
-                            fontSize:6.2,
-                            cellPadding:1.7,
+                            font:'helvetica',
+                            fontStyle:'normal',
+                            fontSize:5.25,
+                            cellPadding:1.0,
                             overflow:'linebreak',
                             valign:'middle',
-                            textColor:[15,23,42]
+                            textColor:[15,23,42],
+                            lineColor:[218,226,234],
+                            lineWidth:0.12
                         },
 
                         headStyles:{
                             fillColor:[226,232,240],
                             textColor:[11,43,74],
                             fontStyle:'bold',
-                            fontSize:6.0,
+                            fontSize:5.0,
                             halign:'center',
                             valign:'middle',
                             minCellHeight:8
                         },
 
+                        alternateRowStyles:{
+                            fillColor:[250,252,254]
+                        },
+
                         columnStyles:{
-                            0:{cellWidth:20,fontStyle:'bold'},
-                            1:{cellWidth:54},
-                            2:{cellWidth:12,halign:'center'},
-                            3:{cellWidth:16,halign:'center'},
-                            4:{cellWidth:27},
-                            5:{cellWidth:24},
-                            6:{cellWidth:26},
-                            7:{cellWidth:27},
-                            8:{cellWidth:24},
-                            9:{cellWidth:27},
-                            10:{cellWidth:20}
+                            0:{cellWidth:13,fontStyle:'bold'},
+                            1:{cellWidth:30},
+                            2:{cellWidth:11,halign:'center'},
+                            3:{cellWidth:12,halign:'center'},
+                            4:{cellWidth:13,halign:'center'},
+                            5:{cellWidth:12,halign:'center'},
+                            6:{cellWidth:19,halign:'center'},
+                            7:{cellWidth:18,halign:'center'},
+                            8:{cellWidth:20,halign:'center'},
+                            9:{cellWidth:19,halign:'center'},
+                            10:{cellWidth:20,halign:'center'},
+                            11:{cellWidth:20,halign:'center'},
+                            12:{cellWidth:18,halign:'center'},
+                            13:{cellWidth:14,halign:'center'},
+                            14:{cellWidth:20,halign:'center'},
+                            15:{cellWidth:18,halign:'center'}
                         },
 
                         margin:{
@@ -6608,20 +7036,9 @@ function formatExportPoValueForCurrentUser(project) {
                             const column = data.column.index;
 
                             if (
-                                data.section === 'body' &&
-                                (
-                                    column === 2 ||
-                                    column === 3 ||
-                                    (
-                                        column >= 4 &&
-                                        column <= 10
-                                    )
-                                )
+                                column >= 6 &&
+                                column <= 10
                             ) {
-                                data.cell.styles.halign = 'center';
-                            }
-
-                            if (column >= 4 && column <= 6) {
                                 data.cell.styles.fillColor =
                                     data.section === 'head'
                                         ? [219,234,254]
@@ -6631,7 +7048,10 @@ function formatExportPoValueForCurrentUser(project) {
                                     [11,43,74];
                             }
 
-                            if (column >= 7 && column <= 10) {
+                            if (
+                                column >= 11 &&
+                                column <= 15
+                            ) {
                                 data.cell.styles.fillColor =
                                     data.section === 'head'
                                         ? [204,251,241]
@@ -6643,35 +7063,52 @@ function formatExportPoValueForCurrentUser(project) {
 
                             if (
                                 data.section === 'body' &&
-                                column === 10
+                                column === 15
                             ) {
-                                const value = String(
-                                    data.cell.raw || ''
-                                );
+                                const status =
+                                    String(
+                                        data.cell.raw || ''
+                                    ).trim();
 
-                                if (value === 'Overdue') {
+                                const palette = {
+                                    'Realized': {
+                                        fill:[220,252,231],
+                                        text:[22,101,52]
+                                    },
+                                    'Partially Received': {
+                                        fill:[254,243,199],
+                                        text:[146,64,14]
+                                    },
+                                    'Overdue': {
+                                        fill:[254,226,226],
+                                        text:[153,27,27]
+                                    },
+                                    'Due': {
+                                        fill:[219,234,254],
+                                        text:[29,78,216]
+                                    },
+                                    'Not Due': {
+                                        fill:[241,245,249],
+                                        text:[71,85,105]
+                                    },
+                                    'Plan Date Pending': {
+                                        fill:[243,232,255],
+                                        text:[126,34,206]
+                                    }
+                                };
+
+                                const style =
+                                    palette[status];
+
+                                if (style) {
                                     data.cell.styles.fillColor =
-                                        [254,226,226];
+                                        style.fill;
                                     data.cell.styles.textColor =
-                                        [185,28,28];
+                                        style.text;
                                     data.cell.styles.fontStyle =
                                         'bold';
-                                }
-                                else if (value === 'Realized') {
-                                    data.cell.styles.fillColor =
-                                        [220,252,231];
-                                    data.cell.styles.textColor =
-                                        [21,128,61];
-                                    data.cell.styles.fontStyle =
-                                        'bold';
-                                }
-                                else if (value === 'Partially Received') {
-                                    data.cell.styles.fillColor =
-                                        [255,237,213];
-                                    data.cell.styles.textColor =
-                                        [194,65,12];
-                                    data.cell.styles.fontStyle =
-                                        'bold';
+                                    data.cell.styles.halign =
+                                        'center';
                                 }
                             }
                         }
@@ -7273,32 +7710,9 @@ if (options.has('phases')) {
 
             // Compute display status using same logic as dashboard
             function computeStatus(p) {
-                let wAll = 0, sAll = 0;
-                let allActiveDone = true;
-                let hasAnyProgress = false;
-                const detailed = p.detailed_phases || {};
-
-                phaseIdMap.forEach((phId, idx) => {
-                    const d = (detailed && detailed[phId]) || {};
-                    if (d.is_excluded) return;
-                    const prog = parseInt((p.phases && p.phases[idx] && p.phases[idx].progress) || 0);
-                    const w = weights[idx];
-                    wAll += w; sAll += (prog / 100) * w;
-                    if (prog < 100) allActiveDone = false;
-                    if (prog > 0) hasAnyProgress = true;
-                });
-
-                const hasAnyActualStart = Object.values(detailed).some(d => d && d.actual_start);
-
-                // Identify if Machine Dispatched (Index 7 is Machine Dispatch)
-                const dispatchPhase = (p.phases && p.phases[7]) ? parseInt(p.phases[7].progress || 0) : 0;
-                const isMachineDispatched = (dispatchPhase === 100);
-
-                if (p.status === 'Closed') return 'Closed';
-                if (wAll > 0 && allActiveDone) return (window.pmisV75ACommercialComplete && window.pmisV75ACommercialComplete((typeof p !== 'undefined' && p) ? p : (typeof project !== 'undefined' ? project : null))) ? 'Closed' : 'Payment Pending'; // Automatically set to Closed if 100%
-                if (isMachineDispatched) return 'Dispatched';
-                if (hasAnyProgress || hasAnyActualStart) return 'In Progress';
-                return 'Started';
+                return typeof window.pmisProjectLifecycleStatusV77H === 'function'
+                    ? window.pmisProjectLifecycleStatusV77H(p)
+                    : 'In Progress';
             }
 
             const head = [
@@ -7321,6 +7735,8 @@ if (options.has('phases')) {
             const selManager = document.getElementById('managerSelector')?.value || 'All';
             const from = document.getElementById('dateFrom')?.value || '';
             const to = document.getElementById('dateTo')?.value || '';
+            const lifecycleFilterV77H = window.pmisProjectLifecycleFilterV77H || null;
+            const lifecycleModeV77H = lifecycleFilterV77H?.getMode?.() || 'all';
 
             // Filter projects to match the actual visible list on the main dashboard
             const visibleProjects = projects.filter(p => {
@@ -7349,7 +7765,10 @@ if (options.has('phases')) {
                 const searchableText = `${p.tracking_code || ''} ${p.code || ''} ${p.name || ''} ${p.customer_name || ''} ${p.sat_location || ''} ${p.project_manager || ''}`.toLowerCase();
                 const globalSearchMatch = searchableText.includes(q);
 
-                return managerMatch && dateValid && globalSearchMatch;
+                const lifecycleMatchV77H =
+                    !lifecycleFilterV77H ||
+                    lifecycleFilterV77H.matchesProject(p, lifecycleModeV77H);
+                return managerMatch && dateValid && globalSearchMatch && lifecycleMatchV77H;
             });
 
             const body = visibleProjects.map((p, i) => {
@@ -7376,7 +7795,10 @@ if (options.has('phases')) {
                 // --- OTD against Dispatch calculation ---
                 let otdStatus = '-';
                 const pStatus = computeStatus(p);
-                const isDelivered = pStatus === 'Dispatched' || pStatus === 'Closed' || pStatus === 'Completed';
+                const isDelivered =
+                    pStatus === 'Dispatched' ||
+                    pStatus === 'I&C Completed' ||
+                    pStatus === 'Payment Received';
 
                 if (isDelivered) {
                     const dispData = (p.detailed_phases && p.detailed_phases['dispatch_parent']) || {};
@@ -7431,15 +7853,17 @@ if (options.has('phases')) {
                 ];
             });
 
-            // PMIS_DASHBOARD_SINGLE_ROW_V29 - compact seven-card single-row export
+            // PMIS_DASHBOARD_SINGLE_ROW_V29 - compact dashboard KPI single-row export
             const pmisV29CardDefinitions = [
                 { key: 'total', labelLines: ['TOTAL PROJECT'], id: 'statTotal', bg: '#e6f1ff', fg: '#003366' },
-                { key: 'progress', labelLines: ['IN PROGRESS', '(IN HOUSE)'], id: 'statInProgress', bg: '#fef3c7', fg: '#d97706' },
-                { key: 'ic', labelLines: ['PROJECT IN I & C'], id: 'statICCount', bg: '#ccfbf1', fg: '#0d9488' },
-                { key: 'closed', labelLines: ['TOTAL PROJECTS', 'CLOSED'], id: 'statClosed', bg: '#ccfbf1', fg: '#0d9488' },
+                { key: 'progress', labelLines: ['IN PROGRESS'], id: 'statInProgress', bg: '#fef3c7', fg: '#d97706' },
+                { key: 'ic', labelLines: ['DISPATCHED'], id: 'statICCount', bg: '#ccfbf1', fg: '#0d9488' },
+                // PMIS_DASHBOARD_EXPORT_STATUS_KPIS_V77L
+                { key: 'incCompleted', labelLines: ['I&C COMPLETED'], id: 'statINCCompleted', bg: '#e0e7ff', fg: '#4f46e5' },
+                { key: 'closed', labelLines: ['PAYMENT RECEIVED'], id: 'statClosed', bg: '#ccfbf1', fg: '#0d9488' },
                 { key: 'otd', labelLines: ['OTD AGAINST', 'DISPATCH %'], id: 'statOTD', bg: '#e0e7ff', fg: '#4f46e5' },
-                { key: 'dispatchValue', labelLines: ['DISPATCHED VALUE'], id: 'statDispatchedValue', bg: '#ffe4e6', fg: '#e11d48', currency: true },
-                { key: 'totalValue', labelLines: ['TOTAL VALUE'], id: 'statTotalValue', bg: '#e6f1ff', fg: '#003366', currency: true }
+                { key: 'dispatchValue', labelLines: ['DISPATCHED PO VALUE'], id: 'statDispatchedValue', bg: '#ffe4e6', fg: '#e11d48', currency: true },
+                { key: 'totalValue', labelLines: ['TOTAL PO VALUE'], id: 'statTotalValue', bg: '#e6f1ff', fg: '#003366', currency: true }
             ];
 
             function pmisV29NormaliseCardValue(card) {
@@ -7449,9 +7873,37 @@ if (options.has('phases')) {
                 return `\u20B9 ${amount || '0'}`;
             }
 
+            // PMIS_DASHBOARD_EXPORT_TOTAL_VERTICAL_SPLIT_V77G2
+            // Derive the split from the exact project set being exported.
+            function pmisV77G2ExportVerticalSplit() {
+                const counts = { '100': 0, '200': 0, '300': 0 };
+
+                visibleProjects.forEach(project => {
+                    const code = String(
+                        project?.tracking_code ||
+                        project?.code ||
+                        ''
+                    ).trim();
+
+                    if (code.startsWith('100')) counts['100'] += 1;
+                    else if (code.startsWith('200')) counts['200'] += 1;
+                    else if (code.startsWith('300')) counts['300'] += 1;
+                });
+
+                return [
+                    { label: 'Automation', value: String(counts['100']) },
+                    { label: 'Engg Services', value: String(counts['200']) },
+                    { label: 'Manufacturing', value: String(counts['300']) }
+                ];
+            }
+
             const pmisV29CardValues = pmisV29CardDefinitions.map(card => ({
                 ...card,
-                value: pmisV29NormaliseCardValue(card)
+                value: pmisV29NormaliseCardValue(card),
+                verticalSplit:
+                    card.key === 'total'
+                        ? pmisV77G2ExportVerticalSplit()
+                        : null
             }));
 
             function pmisV29EscapeXml(value) {
@@ -7482,6 +7934,9 @@ if (options.has('phases')) {
                 if (card.key === 'ic') {
                     return `<g ${common}><path d="M${cx-9} ${cy+9}L${cx+9} ${cy-9}"/><path d="M${cx-9} ${cy-10}l5 5-5 5-4-4z"/><path d="M${cx+5} ${cy+5}l5 5 4-4-5-5"/></g>`;
                 }
+                if (card.key === 'incCompleted') {
+                    return `<g ${common}><rect x="${cx-10}" y="${cy-10}" width="20" height="20" rx="4"/><path d="M${cx-6} ${cy}l4 4 8-9"/></g>`;
+                }
                 if (card.key === 'closed') {
                     return `<g ${common}><circle cx="${cx}" cy="${cy}" r="11"/><path d="M${cx-6} ${cy}l4 4 9-10"/></g>`;
                 }
@@ -7494,8 +7949,76 @@ if (options.has('phases')) {
                 return `<g ${common}><rect x="${cx-11}" y="${cy-8}" width="22" height="16" rx="3"/><path d="M${cx-8} ${cy-4}h16M${cx-8} ${cy+4}h16"/><circle cx="${cx}" cy="${cy}" r="2.5"/></g>`;
             }
 
+            function pmisV77G2OverlayTotalProjectCard(
+                doc,
+                imageInfo,
+                top,
+                pdfWidth,
+                totalCard
+            ) {
+                if (
+                    !doc ||
+                    !imageInfo ||
+                    !Number(imageInfo.width) ||
+                    !totalCard ||
+                    !Array.isArray(totalCard.verticalSplit)
+                ) return;
+
+                // These are the exact V29 SVG geometry values.
+                const scale = pdfWidth / Number(imageInfo.width);
+                const cardX = 10 + 8 * scale;
+                const cardY = top + 8 * scale;
+                const cardW = 188 * scale;
+                const cardH = 88 * scale;
+                const textX = cardX + 56 * scale;
+                const valueX = cardX + cardW - 10 * scale;
+
+                // Clear only the text zone; preserve the folder icon and card shell.
+                doc.setFillColor(255,255,255);
+                doc.rect(
+                    cardX + 52 * scale,
+                    cardY + 6 * scale,
+                    cardW - 58 * scale,
+                    cardH - 10 * scale,
+                    'F'
+                );
+
+                doc.setFont('helvetica','bold');
+                doc.setTextColor(148,163,184);
+                doc.setFontSize(5.2);
+                doc.text('TOTAL PROJECT', textX, cardY + 5.2);
+
+                doc.setTextColor(0,31,63);
+                doc.setFontSize(8.4);
+                doc.text(String(totalCard.value || '0'), textX, cardY + 10.2);
+
+                totalCard.verticalSplit.slice(0,3).forEach((row,index) => {
+                    const rowY = cardY + 14.4 + index * 3.25;
+
+                    doc.setFont('helvetica','normal');
+                    doc.setTextColor(100,116,139);
+                    doc.setFontSize(4.4);
+                    doc.text(
+                        String(row?.label || ''),
+                        textX,
+                        rowY,
+                        { maxWidth: Math.max(8, valueX - textX - 6) }
+                    );
+
+                    doc.setFont('helvetica','bold');
+                    doc.setTextColor(0,31,63);
+                    doc.setFontSize(4.7);
+                    doc.text(
+                        String(row?.value || '0'),
+                        valueX,
+                        rowY,
+                        { align:'right' }
+                    );
+                });
+            }
+
             async function pmisV29RenderCardsPng(cards) {
-                const columns = 7;
+                const columns = 8;
                 const cardW = 188;
                 const cardH = 88;
                 const gapX = 8;
@@ -7517,6 +8040,33 @@ if (options.has('phases')) {
                     const labelMarkup = card.labelLines.map((line, lineIndex) =>
                         `<text x="${textX}" y="${labelY + lineIndex * 11}" font-family="Arial, Helvetica, sans-serif" font-size="8.3" font-weight="700" letter-spacing="0.15" fill="#94a3b8">${pmisV29EscapeXml(line)}</text>`
                     ).join('');
+
+                    if (
+                        card.key === 'total' &&
+                        Array.isArray(card.verticalSplit) &&
+                        card.verticalSplit.length
+                    ) {
+                        const splitValueX = x + cardW - 10;
+                        const splitMarkup = card.verticalSplit
+                            .slice(0, 3)
+                            .map((row, rowIndex) => {
+                                const rowY = y + 58 + rowIndex * 10.5;
+                                return `
+                                    <text x="${textX}" y="${rowY}" font-family="Arial, Helvetica, sans-serif" font-size="7.1" font-weight="500" fill="#64748b">${pmisV29EscapeXml(row.label)}</text>
+                                    <text x="${splitValueX}" y="${rowY}" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="7.5" font-weight="800" fill="#001f3f">${pmisV29EscapeXml(row.value)}</text>`;
+                            })
+                            .join('');
+
+                        return `
+                            <g filter="url(#pmisV29Shadow)">
+                                <rect x="${x}" y="${y}" width="${cardW}" height="${cardH}" rx="13" fill="#ffffff" stroke="#e5e7eb" stroke-width="1"/>
+                            </g>
+                            <rect x="${iconBoxX}" y="${iconBoxY}" width="${iconBoxSize}" height="${iconBoxSize}" rx="10" fill="${card.bg}"/>
+                            ${pmisV29IconMarkup(card, iconBoxX, iconBoxY, iconBoxSize)}
+                            <text x="${textX}" y="${y + 20}" font-family="Arial, Helvetica, sans-serif" font-size="8.3" font-weight="700" letter-spacing="0.15" fill="#94a3b8">TOTAL PROJECT</text>
+                            <text x="${textX}" y="${y + 45}" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="800" fill="#001f3f">${pmisV29EscapeXml(card.value)}</text>
+                            ${splitMarkup}`;
+                    }
 
                     return `
                         <g filter="url(#pmisV29Shadow)">
@@ -7561,7 +8111,7 @@ if (options.has('phases')) {
             }
 
             function pmisV29DrawNativeFallback(cards, top) {
-                const columns = 7;
+                const columns = 8;
                 const left = 10;
                 const totalWidth = pageW - 20;
                 const gapX = 1.5;
@@ -7577,6 +8127,40 @@ if (options.has('phases')) {
                     doc.roundedRect(x, y, cardWidth, cardHeight, 2, 2, 'FD');
                     doc.setFillColor(parseInt(card.bg.slice(1,3),16), parseInt(card.bg.slice(3,5),16), parseInt(card.bg.slice(5,7),16));
                     doc.roundedRect(x + 1.8, y + 4.3, 8.5, 8.5, 2, 2, 'F');
+
+                    if (
+                        card.key === 'total' &&
+                        Array.isArray(card.verticalSplit) &&
+                        card.verticalSplit.length
+                    ) {
+                        const textX = x + 11.8;
+                        const valueX = x + cardWidth - 1.8;
+
+                        doc.setTextColor(148, 163, 184);
+                        doc.setFont('helvetica', 'bold');
+                        doc.setFontSize(3.5);
+                        doc.text('TOTAL PROJECT', textX, y + 3.5, { maxWidth: cardWidth - 13 });
+
+                        doc.setTextColor(0, 31, 63);
+                        doc.setFontSize(6.1);
+                        doc.text(String(card.value || '0'), textX, y + 7.8, { maxWidth: cardWidth - 13 });
+
+                        card.verticalSplit.slice(0, 3).forEach((row, rowIndex) => {
+                            const rowY = y + 10.6 + rowIndex * 2.65;
+                            doc.setTextColor(100, 116, 139);
+                            doc.setFont('helvetica', 'normal');
+                            doc.setFontSize(2.75);
+                            doc.text(String(row.label || ''), textX, rowY, { maxWidth: cardWidth - 17 });
+
+                            doc.setTextColor(0, 31, 63);
+                            doc.setFont('helvetica', 'bold');
+                            doc.setFontSize(3);
+                            doc.text(String(row.value || '0'), valueX, rowY, { align: 'right' });
+                        });
+
+                        return;
+                    }
+
                     doc.setTextColor(148, 163, 184);
                     doc.setFont('helvetica', 'bold');
                     doc.setFontSize(4.1);
@@ -7597,6 +8181,13 @@ if (options.has('phases')) {
                 const pmisV29CardImage = await pmisV29RenderCardsPng(pmisV29CardValues);
                 pmisV29CardPdfHeight = pmisV29CardPdfWidth * (pmisV29CardImage.height / pmisV29CardImage.width);
                 doc.addImage(pmisV29CardImage.dataUrl, 'PNG', 10, pmisV29CardTop, pmisV29CardPdfWidth, pmisV29CardPdfHeight, undefined, 'FAST');
+                pmisV77G2OverlayTotalProjectCard(
+                    doc,
+                    pmisV29CardImage,
+                    pmisV29CardTop,
+                    pmisV29CardPdfWidth,
+                    pmisV29CardValues[0]
+                );
             } catch (pmisV29CardError) {
                 console.warn('V29 dashboard card image fallback used:', pmisV29CardError);
                 pmisV29CardPdfHeight = pmisV29DrawNativeFallback(pmisV29CardValues, pmisV29CardTop);
@@ -8917,10 +9508,10 @@ if (options.has('phases')) {
             </select>
             <select id="pcv34Status" class="pcv34-select" onchange="renderProjectCalendarV34()" title="Project status">
                 <option value="All">All Statuses</option>
-                <option value="Started">Started</option>
                 <option value="In Progress">In Progress</option>
                 <option value="Dispatched">Dispatched</option>
-                <option value="Closed">Closed</option>
+                <option value="I&C Completed">I&C Completed</option>
+                <option value="Payment Received">Payment Received</option>
             </select>
             <select id="pcv34Stage" class="pcv34-select" onchange="renderProjectCalendarV34()" title="Current project stage">
                 <option value="All">All Current Stages</option>
@@ -9353,31 +9944,14 @@ if (options.has('phases')) {
         return Number.isFinite(number) ? Math.max(0, Math.min(100, number)) : 0;
     }
     function projectStatus(project) {
-        const explicit = cleanText(project.status || '').trim();
-        if (/closed/i.test(explicit)) return 'Closed';
-
-        let activeCount = 0;
-        let completedCount = 0;
-        let hasProgress = false;
-        let hasActual = false;
-        PHASES.forEach((phase, index) => {
-            const detail = detailedPhase(project, phase.id);
-            if (detail.is_excluded === true) return;
-            activeCount += 1;
-            const progress = phaseProgress(project, phase, index);
-            if (progress >= 100) completedCount += 1;
-            if (progress > 0) hasProgress = true;
-            if (detail.actual_start) hasActual = true;
-        });
-        if (activeCount > 0 && completedCount === activeCount) return (window.pmisV75ACommercialComplete && window.pmisV75ACommercialComplete(project)) ? 'Closed' : 'Payment Pending';
-        if (phaseProgress(project, PHASES[7], 7) >= 100) return 'Dispatched';
-        if (hasProgress || hasActual || /progress|pending/i.test(explicit)) return 'In Progress';
-        if (/dispatch|completed/i.test(explicit)) return /completed/i.test(explicit) ? 'Closed' : 'Dispatched';
-        return 'Started';
+        return typeof window.pmisProjectLifecycleStatusV77H === 'function'
+            ? window.pmisProjectLifecycleStatusV77H(project)
+            : 'In Progress';
     }
     function currentStage(project) {
         const status = projectStatus(project);
-        if (status === 'Closed') return 'Completed';
+        if (status === 'Payment Received') return 'Payment Received';
+        if (status === 'I&C Completed') return 'I&C Completed';
 
         let latestActual = null;
         PHASES.forEach((phase, index) => {
@@ -9444,14 +10018,14 @@ if (options.has('phases')) {
         const status = projectStatus(project);
 
         let forecastEnd = null;
-        if (status === 'Closed' && actualEnd) {
+        if (status === 'Payment Received' && actualEnd) {
             forecastEnd = actualEnd;
         } else if (planEnd) {
             forecastEnd = addDays(planEnd, maxPositiveDelay);
         } else {
             forecastEnd = maxDate(phaseForecasts) || actualEnd;
         }
-        if (forecastEnd && status !== 'Closed' && forecastEnd < startOfDay(new Date()) && actualStart) {
+        if (forecastEnd && status !== 'Payment Received' && forecastEnd < startOfDay(new Date()) && actualStart) {
             forecastEnd = startOfDay(new Date());
         }
 
@@ -9568,7 +10142,7 @@ function getFilteredProjects() {
             }
         });
         const info = projectTimeline(project);
-        if ((mode === 'actual' || mode === 'both') && info.forecastEnd && info.status !== 'Closed') {
+        if ((mode === 'actual' || mode === 'both') && info.forecastEnd && info.status !== 'Payment Received') {
             events.push({ date: info.forecastEnd, kind: 'forecast', project, phase: info.stage, label: 'Project forecast completion' });
         }
         return events.filter(event => event.date);
@@ -10087,12 +10661,12 @@ function getFilteredProjects() {
         const status = storedStatus(p);
 
         if (status === "closed" || status === "completed") {
-            return "Project Completed / Closed";
+            return "Payment Received";
         }
 
         // If I&C is genuinely complete, lifecycle is complete even if an old
         // display field was not updated.
-        if (phaseComplete(p, PHASES[8], 8)) { return (window.pmisV75ACommercialComplete && window.pmisV75ACommercialComplete(p)) ? 'Project Completed / Closed' : 'Technically Completed - Payment Pending'; }
+        if (phaseComplete(p, PHASES[8], 8)) { return (window.pmisV75ACommercialComplete && window.pmisV75ACommercialComplete(p)) ? 'Payment Received' : 'I&C Completed'; }
 
         // If I&C has started / has progress, it is the current lifecycle stage.
         if (
@@ -10328,10 +10902,10 @@ function getFilteredProjects() {
         const status = String(p.status || "").trim().toLowerCase();
 
         if (status === "closed" || status === "completed") {
-            return "Project Completed / Closed";
+            return "Payment Received";
         }
 
-        if (isComplete(p, PHASES[8], 8)) { return (window.pmisV75ACommercialComplete && window.pmisV75ACommercialComplete(p)) ? 'Project Completed / Closed' : 'Technically Completed - Payment Pending'; }
+        if (isComplete(p, PHASES[8], 8)) { return (window.pmisV75ACommercialComplete && window.pmisV75ACommercialComplete(p)) ? 'Payment Received' : 'I&C Completed'; }
 
         if (
             hasActivity(p, PHASES[8]) ||
@@ -10583,309 +11157,139 @@ function getFilteredProjects() {
 <!-- PMIS_PROJECT_MASTER_EXPORT_PHASE_FIX_V42D_END -->
 
 <!-- PMIS_PROJECT_LIST_STATUS_FILTER_V47_START -->
-<style id="pmis-project-list-status-filter-v47-style">
+<style id="pmis-project-lifecycle-filter-v77h-style">
     #pmisProjectLifecycleFilterV47 {
-        display: flex;
-        align-items: center;
-        justify-content: flex-end;
-        min-width: 0;
-        flex: 0 0 auto;
+        display:flex;
+        align-items:center;
+        gap:8px;
+        flex:0 0 auto;
     }
-
-    #pmisProjectLifecycleFilterV47 .pmis-v47-pillbar {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 5px;
-        border: 1px solid rgba(255,255,255,.18);
-        border-radius: 16px;
-        background: rgba(255,255,255,.10);
-        backdrop-filter: blur(3px);
-        box-shadow: 0 8px 20px rgba(2, 16, 39, .16);
+    #pmisProjectLifecycleFilterV47 .pmis-v77h-status-label {
+        font-size:.72rem;
+        font-weight:900;
+        color:#64748b;
+        letter-spacing:.04em;
+        white-space:nowrap;
     }
-
-    #pmisProjectLifecycleFilterV47 .pmis-v47-pill {
-        appearance: none;
-        border: 1px solid transparent;
-        background: transparent;
-        color: #ffffff;
-        min-width: 88px;
-        height: 36px;
-        padding: 0 14px;
-        border-radius: 12px;
-        font-size: .80rem;
-        font-weight: 800;
-        letter-spacing: .01em;
-        cursor: pointer;
-        transition: background .18s ease, color .18s ease, border-color .18s ease, transform .18s ease, box-shadow .18s ease;
-        white-space: nowrap;
+    #pmisProjectLifecycleFilterV47 .pmis-v77h-status-select {
+        min-width:175px;
+        height:38px;
+        border:1px solid #dbe5ef;
+        border-radius:12px;
+        background:#fff;
+        color:#0f172a;
+        font-size:.80rem;
+        font-weight:800;
+        padding:0 34px 0 12px;
+        box-shadow:0 4px 12px rgba(15,23,42,.05);
     }
-
-    #pmisProjectLifecycleFilterV47 .pmis-v47-pill:hover {
-        background: rgba(255,255,255,.12);
-        border-color: rgba(255,255,255,.16);
-        transform: translateY(-1px);
-    }
-
-    #pmisProjectLifecycleFilterV47 .pmis-v47-pill.is-active {
-        background: #ffffff;
-        color: #083b71;
-        border-color: #ffffff;
-        box-shadow: 0 5px 14px rgba(255,255,255,.22);
-    }
-
-    .pmis-v47-status-hidden {
-        display: none !important;
-    }
-
-    @media (max-width: 1200px) {
-        #pmisProjectLifecycleFilterV47 .pmis-v47-pillbar {
-            gap: 4px;
-            padding: 4px;
-        }
-
-        #pmisProjectLifecycleFilterV47 .pmis-v47-pill {
-            min-width: 80px;
-            height: 34px;
-            padding: 0 12px;
-            font-size: .76rem;
-        }
-    }
-
-    @media (max-width: 900px) {
-        #pmisProjectLifecycleFilterV47 {
-            width: 100%;
-            justify-content: flex-start;
-            margin-top: 8px;
-        }
-
-        #pmisProjectLifecycleFilterV47 .pmis-v47-pillbar {
-            width: 100%;
-            justify-content: flex-start;
-            flex-wrap: wrap;
-        }
+    @media (max-width:900px) {
+        #pmisProjectLifecycleFilterV47 { width:100%; }
+        #pmisProjectLifecycleFilterV47 .pmis-v77h-status-select { flex:1; }
     }
 </style>
-
-<script id="pmis-project-list-status-filter-v47-script">
+<script id="pmis-project-lifecycle-filter-v77h-script">
 (function () {
     'use strict';
-
-    if (window.__pmisProjectListStatusFilterV47Installed) return;
-    window.__pmisProjectListStatusFilterV47Installed = true;
+    if (window.__PMIS_PROJECT_LIFECYCLE_FILTER_V77H__) return;
+    window.__PMIS_PROJECT_LIFECYCLE_FILTER_V77H__ = true;
 
     const FILTER_ID = 'pmisProjectLifecycleFilterV47';
-    const STORAGE_KEY = 'pmisProjectListStatusFilterV47';
+    const STORAGE_KEY = 'pmisProjectLifecycleFilterV77H';
+    const MODES = ['all','in_progress','dispatched','inc_completed','payment_received'];
 
-    let currentMode =
-        sessionStorage.getItem(STORAGE_KEY) ||
-        'ongoing';
+    let currentMode = sessionStorage.getItem(STORAGE_KEY) || 'all';
+    if (!MODES.includes(currentMode)) currentMode = 'all';
 
-    if (!['ongoing', 'closed', 'all'].includes(currentMode)) {
-        currentMode = 'ongoing';
+    function statusOf(project) {
+        return typeof window.pmisProjectLifecycleStatusV77H === 'function'
+            ? window.pmisProjectLifecycleStatusV77H(project)
+            : 'In Progress';
     }
 
-    let scheduled = false;
-
-    function normalize(value) {
-        return String(value ?? '')
-            .replace(/\s+/g, ' ')
-            .trim()
-            .toLowerCase();
+    function matchesProject(project, mode = currentMode) {
+        if (!project || mode === 'all') return true;
+        const status = statusOf(project);
+        if (mode === 'in_progress') return status === 'In Progress';
+        if (mode === 'dispatched') return status === 'Dispatched';
+        if (mode === 'inc_completed') return status === 'I&C Completed';
+        if (mode === 'payment_received') return status === 'Payment Received';
+        return true;
     }
 
     function findSearchInput() {
         return Array.from(document.querySelectorAll('input')).find(input =>
-            normalize(input.getAttribute('placeholder')).includes('search project')
+            String(input.getAttribute('placeholder') || '')
+                .toLowerCase()
+                .includes('search project')
         ) || null;
-    }
-
-    function tableScore(table) {
-        const head = normalize(table.querySelector('thead')?.textContent || '');
-        let score = 0;
-        if (head.includes('project code')) score += 5;
-        if (head.includes('status')) score += 5;
-        if (head.includes('kickoff')) score += 3;
-        if (head.includes('design')) score += 2;
-        if (head.includes('overall')) score += 2;
-        if (head.includes('customer feedback')) score += 1;
-        return score;
-    }
-
-    function findMainProjectTable() {
-        const tables = Array.from(document.querySelectorAll('table'));
-        let best = null;
-        let bestScore = 0;
-        tables.forEach(table => {
-            const score = tableScore(table);
-            if (score > bestScore) {
-                best = table;
-                bestScore = score;
-            }
-        });
-        return bestScore >= 8 ? best : null;
-    }
-
-    function findStatusText(row) {
-        const cells = Array.from(row.querySelectorAll('td'));
-        const exactStatuses = [
-            'closed',
-            'completed',
-            'project completed / closed',
-            'dispatched',
-            'in progress',
-            'inprogress',
-            'started',
-            'not started',
-            'notstarted'
-        ];
-
-        for (const cell of cells) {
-            const value = normalize(cell.textContent);
-            if (exactStatuses.includes(value)) {
-                return value;
-            }
-        }
-
-        for (const cell of cells) {
-            const value = normalize(cell.textContent);
-            if (/\bclosed\b/.test(value) || /\bcompleted\b/.test(value)) {
-                return value;
-            }
-        }
-
-        return '';
-    }
-
-    function isClosedStatus(statusText) {
-        const value = normalize(statusText);
-        return (
-            value === 'closed' ||
-            value === 'completed' ||
-            value.includes('project completed') ||
-            /\bclosed\b/.test(value)
-        );
-    }
-
-    function updateActiveButtons() {
-        const wrapper = document.getElementById(FILTER_ID);
-        if (!wrapper) return;
-
-        wrapper.querySelectorAll('[data-mode]').forEach(btn => {
-            btn.classList.toggle('is-active', btn.getAttribute('data-mode') === currentMode);
-            btn.setAttribute('aria-pressed', btn.getAttribute('data-mode') === currentMode ? 'true' : 'false');
-        });
-    }
-
-    function applyFilter() {
-        const table = findMainProjectTable();
-        if (!table) return;
-
-        const rows = Array.from(table.querySelectorAll('tbody tr'));
-
-        rows.forEach(row => {
-            const status = findStatusText(row);
-
-            if (!status) {
-                row.classList.remove('pmis-v47-status-hidden');
-                return;
-            }
-
-            const closed = isClosedStatus(status);
-
-            const hide =
-                currentMode === 'closed'
-                    ? !closed
-                    : currentMode === 'ongoing'
-                        ? closed
-                        : false;
-
-            row.classList.toggle('pmis-v47-status-hidden', hide);
-        });
-
-        updateActiveButtons();
-    }
-
-    function handleModeChange(mode) {
-        if (!['ongoing', 'closed', 'all'].includes(mode)) return;
-        currentMode = mode;
-        sessionStorage.setItem(STORAGE_KEY, currentMode);
-        applyFilter();
     }
 
     function ensureControl() {
         let wrapper = document.getElementById(FILTER_ID);
-        if (wrapper) {
-            updateActiveButtons();
-            return wrapper;
-        }
+        if (wrapper) return wrapper;
 
         const search = findSearchInput();
         if (!search) return null;
 
         wrapper = document.createElement('div');
         wrapper.id = FILTER_ID;
-        wrapper.title = 'Filter the main Project List by lifecycle status';
+        wrapper.title = 'Filter project list and dashboard KPIs by lifecycle status';
         wrapper.innerHTML = `
-            <div class="pmis-v47-pillbar" role="group" aria-label="Project lifecycle status">
-                <button type="button" class="pmis-v47-pill" data-mode="ongoing">Ongoing</button>
-                <button type="button" class="pmis-v47-pill" data-mode="closed">Closed</button>
-                <button type="button" class="pmis-v47-pill" data-mode="all">All</button>
-            </div>
+            <span class="pmis-v77h-status-label">STATUS</span>
+            <select class="pmis-v77h-status-select" id="pmisProjectLifecycleSelectV77H" aria-label="Project lifecycle status">
+                <option value="all">All</option>
+                <option value="in_progress">In Progress</option>
+                <option value="dispatched">Dispatched</option>
+                <option value="inc_completed">I&C Completed</option>
+                <option value="payment_received">Payment Received</option>
+            </select>
         `;
 
-        wrapper.querySelectorAll('[data-mode]').forEach(btn => {
-            btn.addEventListener('click', function () {
-                handleModeChange(this.getAttribute('data-mode'));
-            });
+        const select = wrapper.querySelector('#pmisProjectLifecycleSelectV77H');
+        select.value = currentMode;
+        select.addEventListener('change', function () {
+            currentMode = MODES.includes(this.value) ? this.value : 'all';
+            sessionStorage.setItem(STORAGE_KEY, currentMode);
+            if (typeof window.filterTable === 'function') window.filterTable();
         });
 
         const searchContainer = search.parentElement || search;
         searchContainer.insertAdjacentElement('beforebegin', wrapper);
-
-        updateActiveButtons();
         return wrapper;
     }
 
-    function run() {
+    function refresh() {
         ensureControl();
-        applyFilter();
+        const select = document.getElementById('pmisProjectLifecycleSelectV77H');
+        if (select && select.value !== currentMode) select.value = currentMode;
     }
 
-    function scheduleRun() {
-        if (scheduled) return;
-        scheduled = true;
-        requestAnimationFrame(() => {
-            scheduled = false;
-            run();
-        });
-    }
+    window.pmisProjectLifecycleFilterV77H = {
+        getMode: () => currentMode,
+        setMode(mode) {
+            currentMode = MODES.includes(mode) ? mode : 'all';
+            sessionStorage.setItem(STORAGE_KEY, currentMode);
+            refresh();
+            if (typeof window.filterTable === 'function') window.filterTable();
+        },
+        statusOf,
+        matchesProject,
+        refresh
+    };
 
-    const observer = new MutationObserver(scheduleRun);
-    observer.observe(document.body, {
-        childList: true,
-        subtree: true
-    });
-
-    document.addEventListener('input', scheduleRun, true);
-    document.addEventListener('change', scheduleRun, true);
-    document.addEventListener('keyup', scheduleRun, true);
+    // Compatibility for any later code still referencing the old V47 API.
+    window.pmisProjectListStatusFilterV47 = window.pmisProjectLifecycleFilterV77H;
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', scheduleRun, { once: true });
+        document.addEventListener('DOMContentLoaded', () => {
+            refresh();
+            if (typeof window.filterTable === 'function') window.filterTable();
+        }, { once:true });
     } else {
-        scheduleRun();
+        refresh();
+        if (typeof window.filterTable === 'function') window.filterTable();
     }
-
-    window.pmisProjectListStatusFilterV47 = {
-        setMode(mode) {
-            handleModeChange(mode);
-        },
-        getMode() {
-            return currentMode;
-        },
-        refresh: scheduleRun
-    };
 })();
 </script>
 <!-- PMIS_PROJECT_LIST_STATUS_FILTER_V47_END -->
@@ -20235,28 +20639,39 @@ async function sendReport(payload,button,originalHtml) {
 
         const state = commercialConfigurationState(terms);
 
-        /*
-         * No payment terms configured = no commercial gate.
-         * Technical completion can close the project normally.
-         *
-         * Draft/partial terms = commercial gate is active but incomplete.
-         * Valid configured terms = every configured milestone must be 100%
-         * realized before final project closure.
-         */
         if (state.status === 'not_configured') return true;
         if (state.status !== 'configured') return false;
 
-        const poValue = num(project?.po_value);
-        if (!(poValue > 0)) return false;
+        const netPo = Math.max(0, num(project?.po_value));
+        if (!(netPo > 0)) return false;
+
+        const international = String(
+            project?.cashflow_order_type ||
+            project?.order_type ||
+            'domestic'
+        ).trim().toLowerCase() === 'international';
+
+        const totalGst = international ? 0 : netPo * 0.18;
 
         return state.configured.every(item => {
             const term = item.row;
-            const expected =
-                poValue * num(term?.percentage) / 100;
+            const paymentPct = Math.max(0, num(term?.percentage));
+            const gstPct = international
+                ? 0
+                : Math.max(0, num(
+                    term?.gst_allocation_percent ??
+                    term?.gstAllocationPercent ??
+                    term?.gst_percent_allocation ??
+                    0
+                ));
+
+            const expectedGross =
+                netPo * paymentPct / 100 +
+                totalGst * gstPct / 100;
 
             return (
-                expected > 0 &&
-                totalReceived(term) + 0.5 >= expected
+                expectedGross > 0 &&
+                totalReceived(term) + 0.5 >= expectedGross
             );
         });
     };
@@ -21703,6 +22118,1603 @@ async function sendReport(payload,button,originalHtml) {
 <!-- PMIS_MASTER_PAYMENT_REGISTER_ALIGNMENT_V76B3 -->
 
 <!-- PMIS_MASTER_PAYMENT_REGISTER_FULL_WIDTH_ALIGN_V76B4 -->
+<!-- PMIS_GROSS_CASHFLOW_GST_OVERRECEIPT_V76F4 -->
+
+<!-- PMIS_PROJECT_GST_PERCENT_V76I5 -->
+
+<!-- PMIS_STAGE_GST_ALLOCATION_SAFE_V76K2 -->
+<style id="pmis-stage-gst-allocation-v76k2-style">
+/* PMIS_STAGE_GST_ALLOCATION_SAFE_V76K2 */
+#projModal .pmis-v76j-gst-head{
+    min-width:125px;
+}
+#projModal .pmis-v76j-gst-cell{
+    min-width:125px;
+}
+#projModal .pmis-v76j-gst-input{
+    min-width:105px;
+    font-weight:800;
+}
+#projModal .pmis-v76j-gst-summary{
+    margin:10px 0 12px;
+    padding:9px 12px;
+    border:1px solid #bae6fd;
+    border-radius:12px;
+    background:#f0f9ff;
+    color:#0c4a6e;
+    font-size:.76rem;
+    font-weight:750;
+}
+#projModal .pmis-v76j-gst-summary strong{
+    color:#082f49;
+}
+</style>
+<script id="pmis-stage-gst-allocation-v76j">
+(function () {
+    'use strict';
+
+    if (window.__PMIS_STAGE_GST_ALLOCATION_SAFE_V76K2__) return;
+    window.__PMIS_STAGE_GST_ALLOCATION_SAFE_V76K2__ = true;
+
+    const GST_RATE = 18;
+
+    const state = {
+        key: '',
+        values: [],
+        project: null,
+        enhancing: false
+    };
+
+    function num(value) {
+        const parsed = Number(
+            String(
+                value ?? ''
+            )
+                .replace(/,/g,'')
+                .trim()
+        );
+
+        return Number.isFinite(parsed)
+            ? parsed
+            : 0;
+    }
+
+    function clampPercent(value) {
+        return Math.max(
+            0,
+            Math.min(
+                100,
+                num(value)
+            )
+        );
+    }
+
+    function projectArrays() {
+        return [
+            window.projects,
+            window.allProjects,
+            window.projectArray,
+            window.__projects
+        ].filter(Array.isArray);
+    }
+
+    function findProjectLocal(id) {
+        for (const rows of projectArrays()) {
+            const found =
+                rows.find(item =>
+                    String(
+                        item?._id ??
+                        item?.id ??
+                        ''
+                    ) ===
+                    String(id || '')
+                );
+
+            if (found) return found;
+        }
+
+        return null;
+    }
+
+    async function fetchProject(id) {
+        if (!id) return null;
+
+        const local =
+            findProjectLocal(id);
+
+        if (local) return local;
+
+        try {
+            const response =
+                await fetch(
+                    '/api/projects?t=' +
+                    Date.now(),
+                    {
+                        cache:'no-store',
+                        credentials:'same-origin'
+                    }
+                );
+
+            if (!response.ok) return null;
+
+            const data =
+                await response.json();
+
+            const rows =
+                Array.isArray(data)
+                    ? data
+                    : (
+                        Array.isArray(data?.projects)
+                            ? data.projects
+                            : []
+                    );
+
+            return (
+                rows.find(item =>
+                    String(
+                        item?._id ??
+                        item?.id ??
+                        ''
+                    ) ===
+                    String(id)
+                ) ||
+                null
+            );
+        }
+        catch (_) {
+            return null;
+        }
+    }
+
+    function orderType() {
+        return String(
+            document.getElementById(
+                'pCashflowOrderType'
+            )?.value ||
+            'domestic'
+        )
+            .trim()
+            .toLowerCase() ===
+            'international'
+                ? 'international'
+                : 'domestic';
+    }
+
+    function isInternational() {
+        return orderType() ===
+            'international';
+    }
+
+    function termsOf(project) {
+        return Array.isArray(
+            project?.payment_milestones
+        )
+            ? project.payment_milestones
+            : [];
+    }
+
+    function savedAllocation(
+        term
+    ) {
+        return clampPercent(
+            term?.gst_allocation_percent ??
+            term?.gstAllocationPercent ??
+            term?.gst_percent_allocation ??
+            term?.gstAllocation ??
+            0
+        );
+    }
+
+    function initializeState(
+        project,
+        key
+    ) {
+        state.key =
+            String(key || '__new__');
+
+        state.project =
+            project || null;
+
+        state.values =
+            termsOf(project)
+                .map(savedAllocation);
+    }
+
+    function currentEditId() {
+        return String(
+            document.getElementById(
+                'editProjId'
+            )?.value ||
+            ''
+        ).trim();
+    }
+
+    async function prepareCurrentState() {
+        const id =
+            currentEditId();
+
+        const key =
+            id || '__new__';
+
+        if (state.key === key) {
+            return state.project;
+        }
+
+        if (!id) {
+            initializeState(
+                null,
+                '__new__'
+            );
+
+            return null;
+        }
+
+        const project =
+            await fetchProject(id);
+
+        initializeState(
+            project,
+            id
+        );
+
+        return project;
+    }
+
+    function paymentTable() {
+        const modal =
+            document.getElementById(
+                'projModal'
+            );
+
+        if (!modal) return null;
+
+        return (
+            Array
+                .from(
+                    modal.querySelectorAll(
+                        'table'
+                    )
+                )
+                .find(table => {
+                    const headers =
+                        Array.from(
+                            table.querySelectorAll(
+                                'thead th'
+                            )
+                        )
+                            .map(th =>
+                                String(
+                                    th.textContent ||
+                                    ''
+                                )
+                                    .replace(/\s+/g,' ')
+                                    .trim()
+                                    .toLowerCase()
+                            );
+
+                    return (
+                        headers.some(text =>
+                            text.includes(
+                                'milestone'
+                            )
+                        ) &&
+                        headers.some(text =>
+                            text.includes(
+                                'payment'
+                            ) &&
+                            text.includes(
+                                '%'
+                            )
+                        ) &&
+                        headers.some(text =>
+                            text.includes(
+                                'credit'
+                            ) &&
+                            text.includes(
+                                'day'
+                            )
+                        )
+                    );
+                }) ||
+            null
+        );
+    }
+
+    function headerCells(table) {
+        return Array.from(
+            table?.querySelectorAll(
+                'thead tr:last-child th'
+            ) || []
+        );
+    }
+
+    function creditHeader(table) {
+        return (
+            headerCells(table)
+                .find(th =>
+                    /credit\s*days?/i.test(
+                        String(
+                            th.textContent ||
+                            ''
+                        )
+                    )
+                ) ||
+            null
+        );
+    }
+
+    function ensureHeader(table) {
+        let gstHead =
+            table.querySelector(
+                'th.pmis-v76j-gst-head'
+            );
+
+        if (gstHead) return gstHead;
+
+        const credit =
+            creditHeader(table);
+
+        if (!credit) return null;
+
+        gstHead =
+            document.createElement(
+                'th'
+            );
+
+        gstHead.className =
+            'pmis-v76j-gst-head';
+
+        gstHead.textContent =
+            'GST Alloc %';
+
+        credit.parentElement
+            .insertBefore(
+                gstHead,
+                credit
+            );
+
+        return gstHead;
+    }
+
+    function milestoneRows(table) {
+        const bodyRows =
+            Array.from(
+                table?.querySelectorAll(
+                    'tbody tr'
+                ) || []
+            );
+
+        if (bodyRows.length) {
+            return bodyRows;
+        }
+
+        return Array
+            .from(
+                table?.querySelectorAll(
+                    'tr'
+                ) || []
+            )
+            .filter(row =>
+                !row.closest('thead')
+            );
+    }
+
+    function inputForRow(
+        row,
+        index,
+        gstIndex
+    ) {
+        let cell =
+            row.querySelector(
+                'td.pmis-v76j-gst-cell'
+            );
+
+        if (!cell) {
+            const cells =
+                Array.from(
+                    row.children
+                );
+
+            cell =
+                document.createElement(
+                    'td'
+                );
+
+            cell.className =
+                'pmis-v76j-gst-cell';
+
+            const before =
+                cells[gstIndex] ||
+                null;
+
+            row.insertBefore(
+                cell,
+                before
+            );
+        }
+
+        let input =
+            cell.querySelector(
+                'input.pmis-v76j-gst-input'
+            );
+
+        if (!input) {
+            input =
+                document.createElement(
+                    'input'
+                );
+
+            input.type =
+                'number';
+
+            input.min =
+                '0';
+
+            input.max =
+                '100';
+
+            input.step =
+                '0.01';
+
+            input.className =
+                'form-control pmis-v76j-gst-input';
+
+            input.dataset.index =
+                String(index);
+
+            cell.appendChild(
+                input
+            );
+
+            input.addEventListener(
+                'input',
+                () => {
+                    if (
+                        isInternational()
+                    ) {
+                        input.value = '0';
+                        return;
+                    }
+
+                    const i =
+                        Number(
+                            input.dataset.index
+                        );
+
+                    state.values[i] =
+                        clampPercent(
+                            input.value
+                        );
+
+                    updateSummary();
+                }
+            );
+        }
+
+        input.dataset.index =
+            String(index);
+
+        const value =
+            isInternational()
+                ? 0
+                : clampPercent(
+                    state.values[index] ??
+                    0
+                );
+
+        if (
+            document.activeElement !==
+            input
+        ) {
+            input.value =
+                String(value);
+        }
+
+        input.disabled =
+            isInternational();
+
+        return input;
+    }
+
+    function ensureSummary(table) {
+        let summary =
+            document.getElementById(
+                'pmisGstAllocationSummaryV76J'
+            );
+
+        if (summary) {
+            return summary;
+        }
+
+        summary =
+            document.createElement(
+                'div'
+            );
+
+        summary.id =
+            'pmisGstAllocationSummaryV76J';
+
+        summary.className =
+            'pmis-v76j-gst-summary';
+
+        table.insertAdjacentElement(
+            'beforebegin',
+            summary
+        );
+
+        return summary;
+    }
+
+    function formatMoney(value) {
+        const amount =
+            Math.max(
+                0,
+                num(value)
+            );
+
+        try {
+            return (
+                '₹' +
+                amount.toLocaleString(
+                    'en-IN',
+                    {
+                        maximumFractionDigits:2
+                    }
+                )
+            );
+        }
+        catch (_) {
+            return '₹' + amount;
+        }
+    }
+
+    function updateSummary() {
+        const summary =
+            document.getElementById(
+                'pmisGstAllocationSummaryV76J'
+            );
+
+        if (!summary) return;
+
+        if (isInternational()) {
+            summary.innerHTML =
+                '<strong>International order:</strong> GST is 0%. Stage GST allocation is disabled.';
+
+            return;
+        }
+
+        const total =
+            Array.from(
+                document.querySelectorAll(
+                    '#projModal .pmis-v76j-gst-input'
+                )
+            )
+                .reduce(
+                    (sum,input) =>
+                        sum +
+                        clampPercent(
+                            input.value
+                        ),
+                    0
+                );
+
+        const remaining =
+            Math.max(
+                0,
+                100 - total
+            );
+
+        const netPo =
+            num(
+                document.getElementById(
+                    'pPoValue'
+                )?.value
+            );
+
+        const totalGst =
+            netPo *
+            GST_RATE /
+            100;
+
+        const stateLabel =
+            total > 100.0001
+                ? ' <span style="color:#b91c1c;">(Allocation exceeds 100%)</span>'
+                : '';
+
+        summary.innerHTML =
+            '<strong>Total project GST @ 18%:</strong> ' +
+            formatMoney(totalGst) +
+            ' &nbsp;•&nbsp; <strong>Allocated:</strong> ' +
+            total.toFixed(2).replace(/\.00$/,'') +
+            '% &nbsp;•&nbsp; <strong>Remaining:</strong> ' +
+            remaining.toFixed(2).replace(/\.00$/,'') +
+            '%' +
+            stateLabel;
+    }
+
+    function hideOldProjectGstInput() {
+        const oldInput =
+            document.getElementById(
+                'pCashflowGstPercent'
+            );
+
+        if (oldInput) {
+            oldInput.value =
+                isInternational()
+                    ? '0'
+                    : String(GST_RATE);
+
+            oldInput.disabled = true;
+
+            const row =
+                oldInput.closest(
+                    '.row'
+                );
+
+            const host =
+                row ||
+                oldInput.parentElement;
+
+            if (host) {
+                host.style.display =
+                    'none';
+            }
+        }
+
+        const modal =
+            document.getElementById(
+                'projModal'
+            );
+
+        if (!modal) return;
+
+        Array
+            .from(
+                modal.querySelectorAll(
+                    '.small.text-muted, .text-muted, p'
+                )
+            )
+            .filter(node =>
+                /stored\s+po\s+value\s+is\s+net/i.test(
+                    String(
+                        node.textContent ||
+                        ''
+                    )
+                )
+            )
+            .forEach(node => {
+                node.textContent =
+                    'Domestic GST is fixed at 18%. Allocate that GST across the payment milestones below. International GST is 0%.';
+            });
+    }
+
+    function normalizeOrderOptions() {
+        const select =
+            document.getElementById(
+                'pCashflowOrderType'
+            );
+
+        if (!select) return;
+
+        Array.from(
+            select.options
+        ).forEach(option => {
+            const value =
+                String(
+                    option.value ||
+                    ''
+                )
+                    .trim()
+                    .toLowerCase();
+
+            if (value === 'domestic') {
+                option.textContent =
+                    'Domestic — 18% GST';
+            }
+
+            if (
+                value ===
+                'international'
+            ) {
+                option.textContent =
+                    'International — 0% GST';
+            }
+        });
+    }
+
+    function enhancePaymentTable() {
+        if (state.enhancing) return;
+
+        const table =
+            paymentTable();
+
+        if (!table) return;
+
+        state.enhancing = true;
+
+        try {
+            normalizeOrderOptions();
+            hideOldProjectGstInput();
+
+            const gstHead =
+                ensureHeader(table);
+
+            if (!gstHead) return;
+
+            const headers =
+                headerCells(table);
+
+            const gstIndex =
+                headers.indexOf(
+                    gstHead
+                );
+
+            if (gstIndex < 0) {
+                return;
+            }
+
+            const rows =
+                milestoneRows(table);
+
+            rows.forEach(
+                (row,index) => {
+                    if (
+                        state.values[index] ===
+                        undefined
+                    ) {
+                        state.values[index] =
+                            0;
+                    }
+
+                    inputForRow(
+                        row,
+                        index,
+                        gstIndex
+                    );
+                }
+            );
+
+            ensureSummary(table);
+            updateSummary();
+        }
+        finally {
+            state.enhancing = false;
+        }
+    }
+
+    function allocationValues() {
+        enhancePaymentTable();
+
+        const inputs =
+            Array.from(
+                document.querySelectorAll(
+                    '#projModal .pmis-v76j-gst-input'
+                )
+            );
+
+        if (isInternational()) {
+            return {
+                values:
+                    inputs.map(() => 0),
+                total:0
+            };
+        }
+
+        const values =
+            inputs.map(
+                input =>
+                    clampPercent(
+                        input.value
+                    )
+            );
+
+        return {
+            values,
+            total:
+                values.reduce(
+                    (sum,value) =>
+                        sum + value,
+                    0
+                )
+        };
+    }
+
+    async function ensureStateReady() {
+        await prepareCurrentState();
+
+        enhancePaymentTable();
+    }
+
+    function scheduleEnhance() {
+        [0,80].forEach(
+            delay =>
+                setTimeout(
+                    enhancePaymentTable,
+                    delay
+                )
+        );
+    }
+
+    function installFunctionWrappers() {
+        const openAdd =
+            window.openAddProjectModal;
+
+        if (
+            typeof openAdd ===
+            'function'
+        ) {
+            window.openAddProjectModal =
+                function (...args) {
+                    initializeState(
+                        null,
+                        '__new__'
+                    );
+
+                    const result =
+                        openAdd.apply(
+                            this,
+                            args
+                        );
+
+                    scheduleEnhance();
+
+                    return result;
+                };
+        }
+
+        const edit =
+            window.editProject;
+
+        if (
+            typeof edit ===
+            'function'
+        ) {
+            window.editProject =
+                function (id,...args) {
+                    state.key = '';
+                    state.project = null;
+                    state.values = [];
+
+                    const result =
+                        edit.call(
+                            this,
+                            id,
+                            ...args
+                        );
+
+                    fetchProject(id)
+                        .then(project => {
+                            initializeState(
+                                project,
+                                String(id || '')
+                            );
+
+                            scheduleEnhance();
+                        });
+
+                    scheduleEnhance();
+
+                    return result;
+                };
+        }
+
+        const save =
+            window.saveProject;
+
+        if (
+            typeof save ===
+            'function'
+        ) {
+            window.saveProject =
+                async function (...args) {
+                    await ensureStateReady();
+
+                    const allocation =
+                        allocationValues();
+
+                    if (
+                        allocation.total >
+                        100.0001
+                    ) {
+                        window.alert(
+                            'GST Allocation % across milestones cannot exceed 100%. Current total: ' +
+                            allocation.total
+                                .toFixed(2)
+                                .replace(/\.00$/,'') +
+                            '%.'
+                        );
+
+                        return;
+                    }
+
+                    const type =
+                        orderType();
+
+                    const fixedRate =
+                        type ===
+                            'international'
+                            ? 0
+                            : GST_RATE;
+
+                    const originalFetch =
+                        window.fetch;
+
+                    let injected =
+                        false;
+
+                    window.fetch =
+                        function (
+                            input,
+                            init = {}
+                        ) {
+                            const url =
+                                typeof input ===
+                                    'string'
+                                    ? input
+                                    : String(
+                                        input?.url ||
+                                        ''
+                                    );
+
+                            const method =
+                                String(
+                                    init?.method ||
+                                    input?.method ||
+                                    'GET'
+                                )
+                                    .toUpperCase();
+
+                            const projectWrite =
+                                /^\/api\/projects(?:\/[^/?#]+)?(?:\?.*)?$/
+                                    .test(url) &&
+                                (
+                                    method === 'POST' ||
+                                    method === 'PATCH'
+                                );
+
+                            if (
+                                !injected &&
+                                projectWrite &&
+                                typeof init.body ===
+                                    'string'
+                            ) {
+                                try {
+                                    const payload =
+                                        JSON.parse(
+                                            init.body
+                                        );
+
+                                    payload.cashflow_order_type =
+                                        type;
+
+                                    payload.cashflow_gst_percent =
+                                        fixedRate;
+
+                                    if (
+                                        Array.isArray(
+                                            payload.payment_milestones
+                                        )
+                                    ) {
+                                        payload.payment_milestones =
+                                            payload.payment_milestones
+                                                .map(
+                                                    (term,index) => ({
+                                                        ...term,
+                                                        gst_allocation_percent:
+                                                            type ===
+                                                                'international'
+                                                                ? 0
+                                                                : clampPercent(
+                                                                    allocation
+                                                                        .values[
+                                                                            index
+                                                                        ] ??
+                                                                    0
+                                                                )
+                                                    })
+                                                );
+
+                                        payload.payment_terms_version =
+                                            'V76K2';
+
+                                        payload.payment_terms_updated_at =
+                                            new Date()
+                                                .toISOString();
+                                    }
+
+                                    init = {
+                                        ...init,
+                                        body:
+                                            JSON.stringify(
+                                                payload
+                                            )
+                                    };
+
+                                    injected =
+                                        true;
+                                }
+                                catch (error) {
+                                    console.warn(
+                                        '[PMIS V76K2] GST allocation injection failed:',
+                                        error
+                                    );
+                                }
+                            }
+
+                            return originalFetch.call(
+                                this,
+                                input,
+                                init
+                            );
+                        };
+
+                    try {
+                        return await save.apply(
+                            this,
+                            args
+                        );
+                    }
+                    finally {
+                        window.fetch =
+                            originalFetch;
+                    }
+                };
+        }
+    }
+
+    function installListeners() {
+        const modal =
+            document.getElementById(
+                'projModal'
+            );
+
+        if (!modal) return;
+
+        const typeSelect =
+            document.getElementById(
+                'pCashflowOrderType'
+            );
+
+        typeSelect
+            ?.addEventListener(
+                'change',
+                () => {
+                    hideOldProjectGstInput();
+                    scheduleEnhance();
+                }
+            );
+
+        document
+            .getElementById(
+                'pPoValue'
+            )
+            ?.addEventListener(
+                'input',
+                updateSummary
+            );
+
+        modal.addEventListener(
+            'shown.bs.modal',
+            async () => {
+                await ensureStateReady();
+                scheduleEnhance();
+            }
+        );
+
+        /* PMIS V76K2: bounded refresh only; no continuous DOM observer. */
+        modal.addEventListener(
+            'click',
+            event => {
+                const button =
+                    event.target?.closest?.(
+                        'button'
+                    );
+
+                if (!button) return;
+
+                const text =
+                    String(
+                        button.textContent ||
+                        ''
+                    )
+                        .replace(/\s+/g,' ')
+                        .trim();
+
+                if (
+                    /add\s+payment\s+milestone/i
+                        .test(text)
+                ) {
+                    setTimeout(
+                        enhancePaymentTable,
+                        0
+                    );
+
+                    setTimeout(
+                        enhancePaymentTable,
+                        80
+                    );
+                }
+            }
+        );
+    }
+
+    function init() {
+        installFunctionWrappers();
+        installListeners();
+        normalizeOrderOptions();
+        hideOldProjectGstInput();
+    }
+
+    if (
+        document.readyState ===
+        'loading'
+    ) {
+        document.addEventListener(
+            'DOMContentLoaded',
+            init,
+            {
+                once:true
+            }
+        );
+    }
+    else {
+        init();
+    }
+
+    console.log(
+        '[PMIS V76K2] Per-milestone GST allocation active: Domestic total GST = 18% of Net PO; milestone GST allocation distributes that total tax pool.'
+    );
+})();
+</script>
+
+<!-- PMIS_MAIN_PROJECT_SORT_BY_PO_DATE_V76O -->
+<script id="pmis-main-project-sort-po-date-v76o">
+(function () {
+    'use strict';
+
+    if (window.__PMIS_MAIN_PROJECT_SORT_BY_PO_DATE_V76O__) return;
+    window.__PMIS_MAIN_PROJECT_SORT_BY_PO_DATE_V76O__ = true;
+
+    const state = {
+        projects: [],
+        loadedAt: 0,
+        loading: null,
+        observer: null,
+        timer: null,
+        sorting: false
+    };
+
+    function text(value) {
+        return String(value ?? '').replace(/\s+/g,' ').trim();
+    }
+
+    function key(value) {
+        return text(value).toLowerCase();
+    }
+
+    function parseDate(value) {
+        const raw = text(value);
+        if (!raw) return 0;
+
+        let match = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+        if (match) {
+            return Date.UTC(
+                Number(match[1]),
+                Number(match[2]) - 1,
+                Number(match[3])
+            );
+        }
+
+        match = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+        if (match) {
+            return Date.UTC(
+                Number(match[3]),
+                Number(match[2]) - 1,
+                Number(match[1])
+            );
+        }
+
+        const parsed = Date.parse(raw);
+        return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    function projectPoDate(project) {
+        return parseDate(
+            project?.po_date ??
+            project?.poDate ??
+            project?.purchase_order_date ??
+            project?.purchaseOrderDate ??
+            ''
+        );
+    }
+
+    function identifiers(project) {
+        return [
+            project?.tracking_code,
+            project?.trackingCode,
+            project?.code,
+            project?.project_code,
+            project?.projectCode
+        ]
+            .map(key)
+            .filter(Boolean);
+    }
+
+    async function loadProjects(force = false) {
+        const fresh =
+            state.projects.length &&
+            (Date.now() - state.loadedAt) < 30000;
+
+        if (fresh && !force) {
+            return state.projects;
+        }
+
+        const existing =
+            [
+                window.projects,
+                window.allProjects,
+                window.projectList,
+                window.pmisProjects
+            ]
+                .find(value =>
+                    Array.isArray(value) &&
+                    value.length
+                );
+
+        if (existing && !force) {
+            state.projects = existing;
+            state.loadedAt = Date.now();
+            return state.projects;
+        }
+
+        if (state.loading && !force) {
+            return state.loading;
+        }
+
+        state.loading =
+            fetch(
+                '/api/projects?t=' + Date.now(),
+                {
+                    cache: 'no-store',
+                    credentials: 'same-origin'
+                }
+            )
+                .then(async response => {
+                    if (!response.ok) {
+                        throw new Error(
+                            'Projects HTTP ' +
+                            response.status
+                        );
+                    }
+
+                    const payload = await response.json();
+
+                    state.projects =
+                        Array.isArray(payload)
+                            ? payload
+                            : (
+                                Array.isArray(payload?.projects)
+                                    ? payload.projects
+                                    : []
+                            );
+
+                    state.loadedAt = Date.now();
+                    return state.projects;
+                })
+                .finally(() => {
+                    state.loading = null;
+                });
+
+        return state.loading;
+    }
+
+    function rowIdentifiers(row) {
+        return Array.from(row?.cells || [])
+            .slice(0,2)
+            .map(cell => key(cell.textContent))
+            .filter(Boolean);
+    }
+
+    function projectForRow(row, projects) {
+        const rowIds = rowIdentifiers(row);
+        if (!rowIds.length) return null;
+
+        for (const project of projects) {
+            const ids = identifiers(project);
+            if (rowIds.some(rowId => ids.includes(rowId))) {
+                return project;
+            }
+        }
+
+        const rowText = key(row.textContent);
+
+        const matches =
+            projects
+                .flatMap(project =>
+                    identifiers(project)
+                        .filter(id =>
+                            id.length >= 4 &&
+                            rowText.includes(id)
+                        )
+                        .map(id => ({ project, id }))
+                )
+                .sort((a,b) => b.id.length - a.id.length);
+
+        return matches.length
+            ? matches[0].project
+            : null;
+    }
+
+    // PMIS_FINANCEMIS_V77D2: keep S.No aligned to PO-date-sorted row order.
+    function renumberSortedRowsV77D2(tbody) {
+        if (!tbody) return;
+
+        Array.from(
+            tbody.rows ||
+            tbody.querySelectorAll(':scope > tr')
+        ).forEach((row,index) => {
+            if (row.cells?.[0]) {
+                row.cells[0].textContent =
+                    String(index + 1);
+            }
+        });
+    }
+
+    function connectObserver(tbody) {
+        if (!tbody) return;
+
+        if (!state.observer) {
+            state.observer =
+                new MutationObserver(mutations => {
+                    if (
+                        state.sorting ||
+                        !mutations.some(m =>
+                            m.type === 'childList'
+                        )
+                    ) {
+                        return;
+                    }
+
+                    queueSort(40,false);
+                });
+        }
+
+        state.observer.disconnect();
+
+        state.observer.observe(
+            tbody,
+            {
+                childList: true,
+                subtree: false
+            }
+        );
+    }
+
+    async function sortRows(force = false) {
+        if (state.sorting) return;
+
+        const tbody =
+            document.getElementById('projectTableBody');
+
+        if (!tbody) return;
+
+        const rows =
+            Array.from(
+                tbody.rows ||
+                tbody.querySelectorAll(':scope > tr')
+            );
+
+        if (rows.length < 2) {
+            renumberSortedRowsV77D2(tbody);
+            connectObserver(tbody);
+            return;
+        }
+
+        state.sorting = true;
+
+        try {
+            const projects = await loadProjects(force);
+            if (!Array.isArray(projects) || !projects.length) return;
+
+            const mapped =
+                rows.map((row,index) => {
+                    const project =
+                        projectForRow(row,projects);
+
+                    return {
+                        row,
+                        index,
+                        poDate:
+                            project
+                                ? projectPoDate(project)
+                                : 0
+                    };
+                });
+
+            /*
+             * Latest PO Date first.
+             * Missing PO Date goes to the bottom.
+             * Same PO Date keeps the current relative order.
+             */
+            const sorted =
+                [...mapped].sort((a,b) => {
+                    if (b.poDate !== a.poDate) {
+                        return b.poDate - a.poDate;
+                    }
+
+                    return a.index - b.index;
+                });
+
+            const changed =
+                sorted.some(
+                    (item,index) =>
+                        item.row !== rows[index]
+                );
+
+            if (!changed) {
+                renumberSortedRowsV77D2(tbody);
+                return;
+            }
+
+            state.observer?.disconnect();
+
+            const fragment =
+                document.createDocumentFragment();
+
+            sorted.forEach(item => {
+                fragment.appendChild(item.row);
+            });
+
+            tbody.appendChild(fragment);
+            renumberSortedRowsV77D2(tbody);
+        }
+        catch (error) {
+            console.error(
+                '[PMIS V76O] PO-date sorting failed:',
+                error
+            );
+        }
+        finally {
+            state.sorting = false;
+            connectObserver(tbody);
+        }
+    }
+
+    function queueSort(delay = 80, force = false) {
+        clearTimeout(state.timer);
+
+        state.timer =
+            setTimeout(
+                () => sortRows(force),
+                delay
+            );
+    }
+
+    function install() {
+        const tbody =
+            document.getElementById('projectTableBody');
+
+        if (!tbody) return false;
+
+        connectObserver(tbody);
+        queueSort(0,true);
+        return true;
+    }
+
+    let attempts = 0;
+
+    const startup =
+        setInterval(() => {
+            attempts += 1;
+
+            if (
+                install() ||
+                attempts >= 30
+            ) {
+                clearInterval(startup);
+            }
+        },150);
+
+    document.addEventListener(
+        'change',
+        event => {
+            const target = event.target;
+            if (!target) return;
+
+            if (
+                target.closest?.(
+                    '.filter-bar-wrap,' +
+                    '.top-filter-bar,' +
+                    '.ui-card-header'
+                ) ||
+                target.id?.toLowerCase?.().includes('filter') ||
+                target.id?.toLowerCase?.().includes('project')
+            ) {
+                queueSort(120,false);
+            }
+        }
+    );
+
+    document.addEventListener(
+        'input',
+        event => {
+            const target = event.target;
+
+            if (
+                target?.matches?.(
+                    'input[type="search"],' +
+                    'input[placeholder*="Search Project"]'
+                )
+            ) {
+                queueSort(120,false);
+            }
+        }
+    );
+
+    document.addEventListener(
+        'click',
+        event => {
+            const button =
+                event.target?.closest?.('button');
+
+            if (!button) return;
+
+            const label = text(button.textContent);
+
+            if (
+                /clear|all projects|ongoing|closed/i
+                    .test(label)
+            ) {
+                queueSort(180,false);
+            }
+        }
+    );
+
+    window.addEventListener(
+        'pageshow',
+        () => queueSort(120,true)
+    );
+
+    console.log(
+        '[PMIS V76O] Main Project List sorted by PO Date descending.'
+    );
+})();
+</script>
+
+<!-- PMIS_PROJECT_SORT_SERIAL_V77E -->
+<script id="pmis-project-sort-serial-v77e">
+(function(){
+ 'use strict';
+ if(window.__PMIS_PROJECT_SORT_SERIAL_V77E__)return;
+ window.__PMIS_PROJECT_SORT_SERIAL_V77E__=true;
+ let observer=null;
+ function renumber(){
+  const tbody=document.getElementById('projectTableBody');
+  if(!tbody)return false;
+  Array.from(tbody.rows||tbody.querySelectorAll(':scope > tr')).forEach((row,index)=>{
+   if(row.cells?.[0])row.cells[0].textContent=String(index+1);
+  });
+  return true;
+ }
+ function install(){
+  const tbody=document.getElementById('projectTableBody');
+  if(!tbody)return false;
+  renumber();
+  if(observer)observer.disconnect();
+  observer=new MutationObserver(mutations=>{
+   if(mutations.some(m=>m.type==='childList'))queueMicrotask(renumber);
+  });
+  observer.observe(tbody,{childList:true,subtree:false});
+  return true;
+ }
+ let attempts=0;
+ const timer=setInterval(()=>{
+  attempts++;
+  if(install()||attempts>=40)clearInterval(timer);
+ },150);
+ document.addEventListener('DOMContentLoaded',()=>setTimeout(install,0),{once:true});
+})();
+</script>
 </body>
 
 </html>
