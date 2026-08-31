@@ -1245,6 +1245,170 @@ app.get('/api/projects/:id', async (req, res) => {
 });
 
 // 3. Create or Update Project
+// PMIS_VMS_READONLY_INTEGRATION_ROUTE_V1
+// Read-only, sanitized PMIS -> VMS project integration.
+// Does NOT expose PO value and does NOT allow VMS to mutate PMIS.
+app.get('/api/integration/vms/projects', async (req, res) => {
+    try {
+        const expectedKey = String(process.env.VMS_INTEGRATION_KEY || '').trim();
+        const suppliedKey = String(req.get('x-vms-integration-key') || '').trim();
+
+        if (!expectedKey) {
+            return res.status(503).json({
+                error: 'VMS_INTEGRATION_KEY is not configured in PMIS.'
+            });
+        }
+
+        if (!suppliedKey || suppliedKey !== expectedKey) {
+            return res.status(401).json({
+                error: 'Invalid VMS integration key.'
+            });
+        }
+
+        const projects = await Project.find({})
+            .select([
+                '_id',
+                'tracking_code',
+                'code',
+                'name',
+                'customer_name',
+                'project_manager',
+                'project_coordinator',
+                'po_reference',
+                'start_date',
+                'dispatch_date',
+                'mq2_date',
+                'reassign_start_date',
+                'reassign_dispatch_date',
+                'reassign_mq2_date',
+                'status',
+                'current_phase',
+                'detailed_phases',
+                'phases',
+                'updatedAt'
+            ].join(' '))
+            .lean();
+
+        const mapped = projects.map(project => {
+            const purchase = project?.detailed_phases?.purchase || {};
+
+            return {
+                pmisProjectId: String(project._id),
+                trackingCode: String(project.tracking_code || ''),
+                code: String(project.code || ''),
+                name: String(project.name || ''),
+                customer: String(project.customer_name || ''),
+
+                projectManager: String(project.project_manager || ''),
+                projectCoordinator: String(project.project_coordinator || ''),
+
+                status: String(project.status || ''),
+                currentPhase: String(project.current_phase || ''),
+
+                // PO reference only. PO VALUE is intentionally not exposed.
+                customerPO: String(project.po_reference || ''),
+
+                start: String(
+                    project.reassign_start_date ||
+                    project.start_date ||
+                    ''
+                ),
+
+                // Dispatch is the procurement-relevant project completion target.
+                target: String(
+                    project.reassign_dispatch_date ||
+                    project.dispatch_date ||
+                    ''
+                ),
+
+                mq2Target: String(
+                    project.reassign_mq2_date ||
+                    project.mq2_date ||
+                    ''
+                ),
+
+                // Procurement plan comes directly from PMIS Purchase phase.
+                procurementPlanDate: String(
+                    purchase.reassign_start ||
+                    purchase.plan_start ||
+                    ''
+                ),
+
+                procurementPlanEndDate: String(
+                    purchase.reassign_end ||
+                    purchase.plan_end ||
+                    ''
+                ),
+
+                purchaseProgress: Number(
+                    project?.phases?.[2]?.progress || 0
+                ),
+
+                updatedAt: project.updatedAt || null
+            };
+        });
+
+        res.json({
+            source: 'PMIS',
+            readOnly: true,
+            generatedAt: new Date().toISOString(),
+            projects: mapped
+        });
+    } catch (err) {
+        console.error('[PMIS -> VMS INTEGRATION]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// PMIS_VMS_EMPLOYEE_INTEGRATION_ROUTE_V1
+// Read-only, sanitized PMIS -> VMS employee master integration.
+// Used only as the source list for Vendor Chaser assignment.
+// Passwords, login settings and email addresses are intentionally NOT exposed.
+app.get('/api/integration/vms/employees', async (req, res) => {
+    try {
+        const expectedKey = String(process.env.VMS_INTEGRATION_KEY || '').trim();
+        const suppliedKey = String(req.get('x-vms-integration-key') || '').trim();
+
+        if (!expectedKey) {
+            return res.status(503).json({
+                error: 'VMS_INTEGRATION_KEY is not configured in PMIS.'
+            });
+        }
+
+        if (!suppliedKey || suppliedKey !== expectedKey) {
+            return res.status(401).json({
+                error: 'Invalid VMS integration key.'
+            });
+        }
+
+        const employees = await Employee.find({})
+            .select('_id name role employee_id dept updatedAt')
+            .sort({ name: 1 })
+            .lean();
+
+        const mapped = employees
+            .map(employee => ({
+                pmisEmployeeObjectId: String(employee._id || ''),
+                employeeId: String(employee.employee_id || '').trim(),
+                name: String(employee.name || '').trim(),
+                designation: String(employee.role || '').trim(),
+                department: String(employee.dept || '').trim(),
+                updatedAt: employee.updatedAt || null
+            }))
+            .filter(employee => employee.pmisEmployeeObjectId && employee.employeeId && employee.name);
+
+        res.json({
+            source: 'PMIS',
+            readOnly: true,
+            generatedAt: new Date().toISOString(),
+            employees: mapped
+        });
+    } catch (err) {
+        console.error('[PMIS -> VMS EMPLOYEE INTEGRATION]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.post('/api/projects', async (req, res) => {
     console.log('📡 [POST] /api/projects - Payload:', req.body);
     try {

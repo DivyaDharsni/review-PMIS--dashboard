@@ -14663,6 +14663,7 @@ function expectedAmount(term) {
         const totalGstPctV77F = totalStageGstAllocationV77F();
         const received = totalReceived(term);
         const balance = Math.max(0, expected - received);
+        const excessCashInV77M = Math.max(0, received - expected);
         const plannedDate = plannedRealization(term);
         const receiptDate = latestReceiptDate(term);
 
@@ -14696,7 +14697,7 @@ function expectedAmount(term) {
         }
 
         const actionText = fullyRealized
-            ? 'Fully Realized'
+            ? '+ Add Additional Receipt'
             : '+ Add Split Payment';
 
         const collapsedV75G =
@@ -14713,6 +14714,9 @@ function expectedAmount(term) {
                     <div class="pmis-v75g-title-actions">
                         <div class="pmis-v75g-balance">
                             Gross Outstanding: <strong>${esc(money(balance))}</strong>
+                            ${excessCashInV77M>0.5
+                                ? `<span style="margin-left:8px;color:#047857;font-weight:900;">Excess Cash In: ${esc(money(excessCashInV77M))}</span>`
+                                : ''}
                         </div>
                     </div>
                 </div>
@@ -14779,9 +14783,8 @@ function expectedAmount(term) {
                                     type="button"
                                     class="pmis-v75g-add-payment"
                                     data-v75g-payment-index="${index}"
-                                    ${fullyRealized ? 'disabled' : ''}
                                 >
-                                    <i class="bi ${fullyRealized ? 'bi-check2-circle' : 'bi-plus-circle'}"></i>
+                                    <i class="bi bi-plus-circle"></i>
                                     ${esc(actionText)}
                                 </button>
                                 ${
@@ -14833,9 +14836,10 @@ function expectedAmount(term) {
             'click',
             event => {
                 event.stopPropagation();
+                // V77N: receipt history also opens with the Add Receipt pane visible.
                 openReceiptEditor(
                     Number(event.currentTarget.dataset.v75gHistoryIndex),
-                    true
+                    false
                 );
             }
         );
@@ -15148,8 +15152,9 @@ function expectedAmount(term) {
                                         <input type="date" id="pmisReceiptDateV75G" class="form-control">
                                     </div>
                                     <div class="col-md-6">
-                                        <label class="form-label fw-bold">Payment / UTR Reference</label>
-                                        <input type="text" id="pmisReceiptReferenceV75G" class="form-control" maxlength="120">
+                                        <label class="form-label fw-bold">Payment / UTR Reference <span class="text-secondary fw-normal">(Optional)</span></label>
+                                        <input type="text" id="pmisReceiptReferenceV75G" class="form-control" maxlength="120" placeholder="Optional — UTR / cheque / bank reference">
+                                        <!-- PMIS_OPTIONAL_REFERENCE_ALWAYS_ADD_RECEIPT_V77N -->
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label fw-bold">Remarks</label>
@@ -15177,6 +15182,7 @@ function expectedAmount(term) {
             ?.addEventListener('click',saveReceipt);
     }
 
+    /* PMIS_RECEIPT_EDIT_EXCESS_PO_SORT_V77M */
     function receiptHistoryHtml(term) {
         const rows = receipts(term);
 
@@ -15199,7 +15205,7 @@ function expectedAmount(term) {
                             <th>Reference</th>
                             <th>Remarks</th>
                             <th>Recorded By</th>
-                            <th style="width:80px;">Action</th>
+                            <th style="min-width:150px;">Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -15212,14 +15218,16 @@ function expectedAmount(term) {
                                 <td>${esc(row?.remarks || '-')}</td>
                                 <td>${esc(row?.recorded_by || '-')}</td>
                                 <td>
-                                    <button
-                                        type="button"
-                                        class="pmis-v75g-delete-receipt"
-                                        data-v75g-delete-receipt="${index}"
-                                        title="Delete this receipt"
-                                    >
-                                        <i class="bi bi-trash3"></i> Delete
-                                    </button>
+                                    <div class="d-flex gap-1 flex-wrap">
+                                        <button type="button" class="btn btn-sm btn-outline-primary"
+                                            data-v77m-edit-project-receipt="${index}" title="Edit this receipt">
+                                            <i class="bi bi-pencil-square me-1"></i>Edit
+                                        </button>
+                                        <button type="button" class="pmis-v75g-delete-receipt"
+                                            data-v75g-delete-receipt="${index}" title="Delete this receipt">
+                                            <i class="bi bi-trash3"></i> Delete
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         `).join('')}
@@ -15236,12 +15244,8 @@ function expectedAmount(term) {
         const expected = expectedAmount(term);
         const received = totalReceived(term);
         const balance = Math.max(0,expected - received);
-        const eligible = stageComplete(
-            String(term.linked_stage_id || '')
-        );
-        const fullyRealized =
-            expected > 0 &&
-            received + 0.5 >= expected;
+        const excessCashIn = Math.max(0,received - expected);
+        const fullyRealized = expected > 0 && received + 0.5 >= expected;
 
         const history = document.getElementById('pmisReceiptHistoryV75G');
         const count = document.getElementById('pmisReceiptCountV75G');
@@ -15251,22 +15255,21 @@ function expectedAmount(term) {
         if (history) {
             history.innerHTML = receiptHistoryHtml(term);
 
-            history
-                .querySelectorAll('[data-v75g-delete-receipt]')
-                .forEach(button => {
-                    button.addEventListener('click', event => {
-                        event.preventDefault();
-                        event.stopPropagation();
-
-                        deleteReceipt(
-                            index,
-                            Number(
-                                event.currentTarget.dataset
-                                    .v75gDeleteReceipt
-                            )
-                        );
-                    });
+            history.querySelectorAll('[data-v77m-edit-project-receipt]').forEach(button => {
+                button.addEventListener('click',event => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    editReceiptV77M(index,Number(event.currentTarget.dataset.v77mEditProjectReceipt));
                 });
+            });
+
+            history.querySelectorAll('[data-v75g-delete-receipt]').forEach(button => {
+                button.addEventListener('click', event => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    deleteReceipt(index,Number(event.currentTarget.dataset.v75gDeleteReceipt));
+                });
+            });
         }
 
         if (count) {
@@ -15288,29 +15291,30 @@ function expectedAmount(term) {
                     Received (Gross): <strong>${esc(money(received))}</strong>
                     &nbsp; · &nbsp;
                     Gross Outstanding: <strong>${esc(money(balance))}</strong>
+                    ${excessCashIn>0.5
+                        ? `&nbsp; · &nbsp; <strong style="color:#047857;">Excess Cash In: ${esc(money(excessCashIn))}</strong>`
+                        : ''}
                 </div>
             `;
         }
 
-        if (entry) {
-            entry.style.display =
-                historyOnly || fullyRealized
-                    ? 'none'
-                    : '';
-        }
+        // PMIS_OPTIONAL_REFERENCE_ALWAYS_ADD_RECEIPT_V77N
+        // Keep receipt entry available even when the gross milestone is already
+        // fully realized, so legitimate excess receipts can still be documented.
+        if (entry) entry.style.display = '';
 
         const balanceBadge = document.getElementById('pmisReceiptBalanceV75G');
         if (balanceBadge) {
-            balanceBadge.textContent = 'Gross Balance ' + money(balance);
+            balanceBadge.textContent =
+                excessCashIn>0.5
+                    ? 'Excess Cash In ' + money(excessCashIn)
+                    : 'Gross Balance ' + money(balance);
         }
 
         const amount = document.getElementById('pmisReceiptAmountV75G');
         if (amount) {
-            amount.value =
-                balance > 0.5
-                    ? balance.toFixed(2)
-                    : '';
-            amount.max = balance.toFixed(2);
+            amount.value = balance > 0.5 ? balance.toFixed(2) : '';
+            amount.removeAttribute('max');
         }
 
         const date = document.getElementById('pmisReceiptDateV75G');
@@ -15334,11 +15338,15 @@ function expectedAmount(term) {
             error.style.display = 'none';
         }
 
+        activeReceiptV75G = { index, editIndex:null };
+
         const save = document.getElementById('pmisReceiptSaveV75G');
         if (save) {
             save.disabled = false;
             save.innerHTML =
-                '<i class="bi bi-plus-lg me-1"></i>Add Split Payment';
+                balance > 0.5
+                    ? '<i class="bi bi-plus-lg me-1"></i>Add Split Payment'
+                    : '<i class="bi bi-plus-lg me-1"></i>Add Additional Receipt';
         }
 
         if (fullyRealized && context) {
@@ -15346,7 +15354,7 @@ function expectedAmount(term) {
                 'beforeend',
                 `<div class="pmis-v75g-realized-note mt-2">
                     <i class="bi bi-check-circle-fill"></i>
-                    This milestone is fully realized.
+                    This milestone is fully realized.${excessCashIn>0.5 ? ' Excess cash has also been received.' : ''}
                 </div>`
             );
         }
@@ -15354,18 +15362,12 @@ function expectedAmount(term) {
 
     function openReceiptEditor(index,historyOnly = false) {
         ensureReceiptModal();
-
         const term = paymentTerms()[index];
         if (!term) return;
-
-        activeReceiptV75G = { index };
-
+        activeReceiptV75G = { index, editIndex:null };
         renderReceiptModal(index,historyOnly);
-
         bootstrap.Modal
-            .getOrCreateInstance(
-                document.getElementById('pmisReceiptModalV75G')
-            )
+            .getOrCreateInstance(document.getElementById('pmisReceiptModalV75G'))
             .show();
     }
 
@@ -15376,6 +15378,79 @@ function expectedAmount(term) {
         error.style.display = 'block';
     }
 
+    function editReceiptV77M(milestoneIndex,receiptIndex) {
+        const term = paymentTerms()[milestoneIndex];
+        const row = receipts(term)[receiptIndex];
+        if (!term || !row) return;
+
+        activeReceiptV75G = { index:milestoneIndex, editIndex:receiptIndex };
+
+        const entry = document.getElementById('pmisReceiptEntryV75G');
+        if (entry) entry.style.display = '';
+
+        const amount = document.getElementById('pmisReceiptAmountV75G');
+        if (amount) {
+            amount.value = Number(num(row.amount).toFixed(2));
+            amount.removeAttribute('max');
+        }
+
+        const date = document.getElementById('pmisReceiptDateV75G');
+        if (date) date.value = String(row.received_date || '').slice(0,10);
+
+        const reference = document.getElementById('pmisReceiptReferenceV75G');
+        if (reference) reference.value = String(row.reference || '');
+
+        const remarks = document.getElementById('pmisReceiptRemarksV75G');
+        if (remarks) remarks.value = String(row.remarks || '');
+
+        const error = document.getElementById('pmisReceiptErrorV75G');
+        if (error) {
+            error.textContent = '';
+            error.style.display = 'none';
+        }
+
+        const save = document.getElementById('pmisReceiptSaveV75G');
+        if (save) {
+            save.disabled = false;
+            save.innerHTML = '<i class="bi bi-check2-circle me-1"></i>Save Receipt Changes';
+        }
+    }
+
+    async function reconcileReceiptLifecycleV77M() {
+        const status = String(project?.status || '').trim().toLowerCase();
+
+        if (
+            technicalComplete() &&
+            commercialComplete() &&
+            !['closed','completed'].includes(status)
+        ) {
+            const updated = await patchProject({
+                status:'Closed',
+                current_phase:'Project Completed / Closed'
+            });
+
+            project = {
+                ...project,
+                ...(updated && updated._id
+                    ? updated
+                    : { status:'Closed', current_phase:'Project Completed / Closed' })
+            };
+            return;
+        }
+
+        if (['closed','completed'].includes(status) && !commercialComplete()) {
+            const payload = { status:'In Progress' };
+            if (technicalComplete()) {
+                payload.current_phase = 'Technically Completed - Payment Pending';
+            }
+
+            const updated = await patchProject(payload);
+            project = {
+                ...project,
+                ...(updated && updated._id ? updated : payload)
+            };
+        }
+    }
 
     async function deleteReceipt(milestoneIndex,receiptIndex) {
         const term = paymentTerms()[milestoneIndex];
@@ -15388,7 +15463,7 @@ function expectedAmount(term) {
             'Gross Amount: ' + money(row.amount) + '\n' +
             'Received Date: ' + fmtDate(row.received_date) + '\n' +
             'Reference: ' + String(row.reference || '-') + '\n\n' +
-            'This will recalculate Actual Inflow (Gross), Gross Outstanding, payment realization and cashflow.';
+            'This will recalculate Actual Inflow (Gross), Gross Outstanding / Excess Cash In, payment realization and cashflow.';
 
         if (!window.confirm(confirmation)) return;
 
@@ -15404,70 +15479,32 @@ function expectedAmount(term) {
                 actual_receipts:receipts(item).map(receipt => ({ ...receipt }))
             }));
 
-            if (
-                !next[milestoneIndex] ||
-                !Array.isArray(next[milestoneIndex].actual_receipts) ||
-                !next[milestoneIndex].actual_receipts[receiptIndex]
-            ) {
+            if (!next[milestoneIndex]?.actual_receipts?.[receiptIndex]) {
                 throw new Error('Receipt no longer exists. Refresh the page and try again.');
             }
 
-            const deleted =
-                next[milestoneIndex].actual_receipts.splice(
-                    receiptIndex,
-                    1
-                )[0];
+            next[milestoneIndex].actual_receipts.splice(receiptIndex,1);
 
             let updated = await patchProject({
                 payment_milestones:next,
-                payment_terms_version:'V75G1',
+                payment_terms_version:'V77M',
                 payment_terms_updated_at:new Date().toISOString(),
                 payment_terms_updated_by:identityName()
             });
 
             project = {
                 ...project,
-                ...(updated && updated._id
-                    ? updated
-                    : { payment_milestones:next })
+                ...(updated && updated._id ? updated : { payment_milestones:next })
             };
 
-            if (
-                /^(closed|completed)$/i.test(
-                    String(project?.status || '').trim()
-                ) &&
-                !commercialComplete()
-            ) {
-                const reopenPayload = {
-                    status:'In Progress'
-                };
-
-                if (technicalComplete()) {
-                    reopenPayload.current_phase =
-                        'Technically Completed - Payment Pending';
-                }
-
-                updated = await patchProject(reopenPayload);
-
-                project = {
-                    ...project,
-                    ...(updated && updated._id
-                        ? updated
-                        : reopenPayload)
-                };
-            }
-
+            await reconcileReceiptLifecycleV77M();
             renderReceiptModal(milestoneIndex,false);
             scheduleEnhance();
 
-            if (typeof showSuccessToast === 'function') {
-                showSuccessToast();
-            }
+            if (typeof showSuccessToast === 'function') showSuccessToast();
         }
         catch (error) {
-            setReceiptError(
-                error.message || 'Unable to delete payment receipt.'
-            );
+            setReceiptError(error.message || 'Unable to delete payment receipt.');
         }
         finally {
             if (history) {
@@ -15481,52 +15518,27 @@ function expectedAmount(term) {
         if (!activeReceiptV75G) return;
 
         const index = Number(activeReceiptV75G.index);
-        const term = paymentTerms()[index];
+        const editIndex =
+            Number.isInteger(activeReceiptV75G.editIndex)
+                ? activeReceiptV75G.editIndex
+                : null;
 
+        const term = paymentTerms()[index];
         if (!term) return;
 
-        const expected = expectedAmount(term);
-        const received = totalReceived(term);
-        const balance = Math.max(0,expected - received);
+        const amount = num(document.getElementById('pmisReceiptAmountV75G')?.value);
+        const receivedDate = String(document.getElementById('pmisReceiptDateV75G')?.value || '').trim();
+        const reference = String(document.getElementById('pmisReceiptReferenceV75G')?.value || '').trim();
+        const remarks = String(document.getElementById('pmisReceiptRemarksV75G')?.value || '').trim();
 
-        const amount = num(
-            document.getElementById('pmisReceiptAmountV75G')?.value
-        );
-        const receivedDate = String(
-            document.getElementById('pmisReceiptDateV75G')?.value || ''
-        ).trim();
-        const reference = String(
-            document.getElementById('pmisReceiptReferenceV75G')?.value || ''
-        ).trim();
-        const remarks = String(
-            document.getElementById('pmisReceiptRemarksV75G')?.value || ''
-        ).trim();
-
-        if (!(amount > 0)) {
-            return setReceiptError('Enter an amount greater than 0.');
-        }
-
-        if (amount > balance + 0.5) {
-            return setReceiptError(
-                'Split payment cannot exceed the gross outstanding milestone balance of ' +
-                money(balance) +
-                '.'
-            );
-        }
-
-        if (!receivedDate) {
-            return setReceiptError('Received Date is required.');
-        }
-
-        if (!reference) {
-            return setReceiptError('Payment / UTR Reference is required.');
-        }
+        if (!(amount > 0)) return setReceiptError('Enter an amount greater than 0.');
+        if (!receivedDate) return setReceiptError('Received Date is required.');
+        // V77N: Payment / UTR Reference is optional.
 
         const save = document.getElementById('pmisReceiptSaveV75G');
         if (save) {
             save.disabled = true;
-            save.innerHTML =
-                '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+            save.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
         }
 
         try {
@@ -15535,74 +15547,59 @@ function expectedAmount(term) {
                 actual_receipts:receipts(row).map(receipt => ({ ...receipt }))
             }));
 
-            next[index].actual_receipts.push({
-                id:
-                    'rcpt_' +
-                    Date.now() +
-                    '_' +
-                    Math.random().toString(36).slice(2,7),
+            const receiptData = {
                 amount:Number(amount.toFixed(2)),
                 received_date:receivedDate,
                 reference:reference.slice(0,120),
-                remarks:remarks.slice(0,250),
-                recorded_at:new Date().toISOString(),
-                recorded_by:identityName()
-            });
+                remarks:remarks.slice(0,250)
+            };
+
+            if (editIndex !== null) {
+                const existing = next[index]?.actual_receipts?.[editIndex];
+                if (!existing) {
+                    throw new Error('Receipt no longer exists. Refresh the page and try again.');
+                }
+
+                next[index].actual_receipts[editIndex] = {
+                    ...existing,
+                    ...receiptData,
+                    edited_at:new Date().toISOString(),
+                    edited_by:identityName()
+                };
+            }
+            else {
+                next[index].actual_receipts.push({
+                    id:'rcpt_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+                    ...receiptData,
+                    recorded_at:new Date().toISOString(),
+                    recorded_by:identityName()
+                });
+            }
 
             let updated = await patchProject({
                 payment_milestones:next,
-                payment_terms_version:'V75G1',
+                payment_terms_version:'V77M',
                 payment_terms_updated_at:new Date().toISOString(),
                 payment_terms_updated_by:identityName()
             });
 
             project = {
                 ...project,
-                ...(updated && updated._id
-                    ? updated
-                    : { payment_milestones:next })
+                ...(updated && updated._id ? updated : { payment_milestones:next })
             };
 
-            if (
-                technicalComplete() &&
-                commercialComplete() &&
-                !/^(closed|completed)$/i.test(
-                    String(project?.status || '').trim()
-                )
-            ) {
-                updated = await patchProject({
-                    status:'Closed',
-                    current_phase:'Project Completed / Closed'
-                });
-
-                project = {
-                    ...project,
-                    ...(updated && updated._id
-                        ? updated
-                        : {
-                            status:'Closed',
-                            current_phase:'Project Completed / Closed'
-                        })
-                };
-            }
-
+            await reconcileReceiptLifecycleV77M();
             renderReceiptModal(index,false);
             scheduleEnhance();
 
-            if (typeof showSuccessToast === 'function') {
-                showSuccessToast();
-            }
+            if (typeof showSuccessToast === 'function') showSuccessToast();
         }
         catch (error) {
-            setReceiptError(
-                error.message || 'Unable to save payment receipt.'
-            );
+            setReceiptError(error.message || 'Unable to save payment receipt.');
         }
         finally {
             if (save) {
                 save.disabled = false;
-                save.innerHTML =
-                    '<i class="bi bi-plus-lg me-1"></i>Add Split Payment';
             }
         }
     }
@@ -15810,6 +15807,8 @@ function expectedAmount(term) {
     }
 
     function hideReferenceEntryV75N() {
+        // PMIS_OPTIONAL_REFERENCE_ALWAYS_ADD_RECEIPT_V77N
+        // Reference is visible again and intentionally optional.
         const input =
             document.getElementById(
                 'pmisReceiptReferenceV75G'
@@ -15819,27 +15818,14 @@ function expectedAmount(term) {
             input?.closest('.col-md-6');
 
         if (field) {
-            field.classList.add(
+            field.classList.remove(
                 'pmis-v75n-hidden-reference'
-            );
-        }
-
-        const remarks =
-            document.getElementById(
-                'pmisReceiptRemarksV75G'
-            )?.closest('.col-md-6');
-
-        if (remarks) {
-            remarks.classList.remove(
-                'col-md-6'
-            );
-            remarks.classList.add(
-                'col-md-6'
             );
         }
     }
 
     function hideReferenceHistoryV75N() {
+        // V77N: keep the optional reference visible in receipt history.
         const table =
             document.querySelector(
                 '#pmisReceiptHistoryV75G table'
@@ -15847,47 +15833,19 @@ function expectedAmount(term) {
 
         if (!table) return;
 
-        const headers =
-            Array.from(
-                table.querySelectorAll(
-                    'thead th'
-                )
-            );
-
-        const index =
-            headers.findIndex(th =>
-                /reference/i.test(
-                    th.textContent || ''
-                )
-            );
-
-        if (index < 0) return;
-
         table
-            .querySelectorAll('tr')
-            .forEach(row => {
-                const cell = row.children[index];
-                if (cell) {
-                    cell.classList.add(
-                        'pmis-v75n-hidden-reference-col'
-                    );
-                }
-            });
+            .querySelectorAll(
+                '.pmis-v75n-hidden-reference-col'
+            )
+            .forEach(cell =>
+                cell.classList.remove(
+                    'pmis-v75n-hidden-reference-col'
+                )
+            );
     }
 
     function autoFillReferenceV75N() {
-        const input =
-            document.getElementById(
-                'pmisReceiptReferenceV75G'
-            );
-
-        if (
-            input &&
-            !String(input.value || '').trim()
-        ) {
-            input.value =
-                'Handled by finance';
-        }
+        // V77N: no auto-fill. Blank reference is a valid receipt.
     }
 
     function samplePlanRowV75N() {

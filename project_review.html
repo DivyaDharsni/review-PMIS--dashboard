@@ -2502,7 +2502,7 @@
                         <h5 class="modal-title fw-900 mb-1">
                             <i class="bi bi-bell-fill me-2"></i>Customer Feedback Required
                         </h5>
-                        <div class="small opacity-75">A project has been closed. Please request feedback from the customer.</div>
+                        <div class="small opacity-75">Customer feedback can be requested once a project reaches I&amp;C Completed or Payment Received.</div>
                     </div>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
@@ -3557,7 +3557,13 @@
                     return;
                 }
 
-                projects = payload;
+                // PMIS_FINAL_RECEIPT_AND_PORTAL_PO_SORT_V77Q
+                // Canonical project order across the Main Dashboard portal:
+                // latest PO Date first, missing PO Date at the bottom.
+                projects =
+                    typeof pmisSortProjectsByPoDateV77M === 'function'
+                        ? pmisSortProjectsByPoDateV77M(payload)
+                        : payload.slice();
 
                 projects.forEach(project => {
                     project.project_manager =
@@ -3811,6 +3817,31 @@ function formatExportPoValueForCurrentUser(project) {
             return code + ' - ' + name;
         }
 
+        /* PMIS_RECEIPT_EDIT_EXCESS_PO_SORT_V77M */
+        function pmisProjectPoDateValueV77M(project) {
+            const raw = String(project?.po_date || project?.poDate || '').slice(0,10);
+            if (!raw) return 0;
+            const parsed = Date.parse(raw + 'T00:00:00Z');
+            return Number.isFinite(parsed) ? parsed : 0;
+        }
+
+        function pmisCompareProjectsByPoDateV77M(a,b) {
+            const diff = pmisProjectPoDateValueV77M(b) - pmisProjectPoDateValueV77M(a);
+            if (diff) return diff;
+
+            return String(a?.code || a?.tracking_code || a?.name || '')
+                .localeCompare(
+                    String(b?.code || b?.tracking_code || b?.name || ''),
+                    undefined,
+                    { numeric:true, sensitivity:'base' }
+                );
+        }
+
+        function pmisSortProjectsByPoDateV77M(list) {
+            return (Array.isArray(list) ? list.slice() : [])
+                .sort(pmisCompareProjectsByPoDateV77M);
+        }
+
         // PMIS_OVERALL_METRICS_DEFAULT_MY_PROJECT_LIST_V6
         let pmisDefaultManagerFilterApplied = false;
         // PMIS_PROJECT_FILTER_AND_ADMIN_FEEDBACK_V7
@@ -3831,7 +3862,7 @@ function formatExportPoValueForCurrentUser(project) {
             selector.innerHTML = '<option value="All">' + defaultLabel + '</option>';
             allowedProjects
                 .slice()
-                .sort((a, b) => getProjectFilterLabel(a).localeCompare(getProjectFilterLabel(b)))
+                .sort(pmisCompareProjectsByPoDateV77M)
                 .forEach(project => {
                     const option = document.createElement('option');
                     option.value = String(project._id || '');
@@ -3921,6 +3952,27 @@ function formatExportPoValueForCurrentUser(project) {
             goToHomeDashboard();
         }
 
+        /* PMIS_FEEDBACK_LIFECYCLE_VISIBILITY_V77P */
+        function pmisCustomerFeedbackEligibleV77P(projectOrStatus) {
+            const status =
+                typeof projectOrStatus === 'string'
+                    ? String(projectOrStatus || '').trim()
+                    : String(
+                        projectOrStatus?.__pmisDisplayStatus ||
+                        (
+                            typeof pmisProjectLifecycleStatusV77H === 'function'
+                                ? pmisProjectLifecycleStatusV77H(projectOrStatus)
+                                : projectOrStatus?.status
+                        ) ||
+                        ''
+                    ).trim();
+
+            return (
+                status === 'I&C Completed' ||
+                status === 'Payment Received'
+            );
+        }
+
         function getClosedFeedbackPromptKey(project) {
             const identity =
                 localStorage.getItem('danprel_employee_id') ||
@@ -3934,9 +3986,7 @@ function formatExportPoValueForCurrentUser(project) {
 
         function getClosedFeedbackCandidates() {
             return (Array.isArray(projects) ? projects : []).filter(project => {
-                const status = String(project && project.__pmisDisplayStatus || project && project.status || '')
-                    .trim().toLowerCase();
-                if (status !== 'closed') return false;
+                if (!pmisCustomerFeedbackEligibleV77P(project)) return false;
                 if (getProjectCustomerFeedbackRequirement(project) === 'not_required') return false;
                 if (!isAdminDashboardLogin() && !isProjectAssociatedWithCurrentLogin(project)) return false;
 
@@ -3962,7 +4012,7 @@ function formatExportPoValueForCurrentUser(project) {
                     <div class="closed-feedback-notification-card">
                         <div>
                             <div class="closed-feedback-notification-title">${code} - ${name}</div>
-                            <div class="closed-feedback-notification-sub">Status: Closed. Please request customer feedback.</div>
+                            <div class="closed-feedback-notification-sub">Status: ${String(project.__pmisDisplayStatus || pmisProjectLifecycleStatusV77H(project) || '-')}. Please request customer feedback.</div>
                         </div>
                         <button type="button" class="closed-feedback-go-btn"
                             onclick='goToClosedProjectFeedback(${JSON.stringify(projectId)})'>
@@ -4023,8 +4073,10 @@ function formatExportPoValueForCurrentUser(project) {
         }
 
         // Opens the existing Render customer-feedback request form.
-        // The action is exposed only for Closed projects and, for non-admin users,
-        // only when the logged-in person is associated with that project.
+        // PMIS_FEEDBACK_LIFECYCLE_VISIBILITY_V77P
+        // The action is exposed for I&C Completed and Payment Received projects.
+        // For non-admin users, the logged-in person must still be associated
+        // with the project.
         // PMIS_REPORT_LAYOUT_FEEDBACK_NA_V19
         function getProjectCustomerFeedbackRequirement(project) {
             return String(project?.customer_feedback_requirement || 'required')
@@ -4498,12 +4550,14 @@ function formatExportPoValueForCurrentUser(project) {
 
                     <td style="text-align:center; border-left:1px solid #e2e8f0; vertical-align:middle;">
                         ${(() => {
-                            const isClosedProject = String(displayStatus || '').trim().toLowerCase() === 'closed';
+                            const isFeedbackEligible =
+                                pmisCustomerFeedbackEligibleV77P(displayStatus);
+
                             const isAuthorizedForFeedback =
                                 isAdminDashboardLogin() ||
                                 isProjectAssociatedWithCurrentLogin(p);
 
-                            if (!isClosedProject || !isAuthorizedForFeedback) {
+                            if (!isFeedbackEligible || !isAuthorizedForFeedback) {
                                 return `<span class="customer-feedback-unavailable">-</span>`;
                             }
 
@@ -5056,7 +5110,7 @@ function openAddProjectModal() {
                 list.innerHTML = '<div class="pmis-view-only-note-v24">No project assigned to this login is available for ' + mode + '.</div>';
             }
 
-            selectableProjectsV24.forEach(p => {
+            pmisSortProjectsByPoDateV77M(selectableProjectsV24).forEach(p => {
                 const item = document.createElement('div');
                 item.className = 'hub-btn';
                 item.style.cursor = 'pointer';
@@ -5836,7 +5890,7 @@ function openAddProjectModal() {
             const current = document.getElementById('roleProjectSelector')?.value || '';
             select.innerHTML = '<option value="">Select a project...</option>' + allowedProjects
                 .slice()
-                .sort((a, b) => String(a.name || a.code || '').localeCompare(String(b.name || b.code || '')))
+                .sort(pmisCompareProjectsByPoDateV77M)
                 .map(p => `<option value="${String(p._id || '')}">${masterReportEscape(p.name || p.code || p.tracking_code || 'Unnamed Project')}</option>`)
                 .join('');
 
@@ -6746,6 +6800,13 @@ function openAddProjectModal() {
                                 received
                             );
 
+                        const excessCashIn =
+                            Math.max(
+                                0,
+                                received -
+                                expected
+                            );
+
                         const stagePlan =
                             masterReportPaymentStageDateV76B2(
                                 project,
@@ -6811,6 +6872,7 @@ function openAddProjectModal() {
                             lastReceipt,
                             receivedPercent,
                             outstanding,
+                            excessCashIn,
                             status
                         };
                     }
@@ -6926,7 +6988,9 @@ function openAddProjectModal() {
                                 masterReportMoney(item.received),
                                 masterReportDate(item.lastReceipt),
                                 pctTextV77K(item.receivedPercent),
-                                masterReportMoney(item.outstanding),
+                                item.excessCashIn > 0.5
+                                    ? masterReportMoney(item.outstanding) + '\nExcess Cash In: ' + masterReportMoney(item.excessCashIn)
+                                    : masterReportMoney(item.outstanding),
                                 item.status
                             ])
                             : [[
@@ -8516,7 +8580,7 @@ if (options.has('phases')) {
     });
 
     const scopedProjects = Array.isArray(projects)
-        ? projects.filter(p => {
+        ? pmisSortProjectsByPoDateV77M(projects.filter(p => {
             // PMIS_ACTION_POINT_EXPORT_DECOUPLE_DASHBOARD_FILTER_V53
             // IMPORTANT:
             // Action Point report scope is based ONLY on login access.
@@ -8564,7 +8628,7 @@ if (options.has('phases')) {
 
             // Fail closed if the current-login association helper is unavailable.
             return false;
-        })
+        }))
         : [];
 
     if (scopedProjects.length === 0) {
@@ -9191,7 +9255,7 @@ if (options.has('phases')) {
         }
 
         async function apExportPDF(selectedProjects) {
-            const bundles = selectedProjects
+            const bundles = pmisSortProjectsByPoDateV77M(selectedProjects)
                 .map(project => ({ project, meetings: pmisV26VisibleActionRows(project) }))
                 .filter(bundle => bundle.meetings.length > 0);
 
@@ -9393,7 +9457,7 @@ if (options.has('phases')) {
             const genDate = new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
             let exportedSheets = 0;
 
-            selectedProjects.forEach((project,projectIndex) => {
+            pmisSortProjectsByPoDateV77M(selectedProjects).forEach((project,projectIndex) => {
                 const meetings =
                     typeof window.pmisV73ApplyPointSelection === 'function'
                         ? window.pmisV73ApplyPointSelection(
@@ -10156,11 +10220,14 @@ function getFilteredProjects() {
 
         if (projectSelect) {
             const previous = projectSelect.value;
-            const sortedProjects = [...allProjects].sort((a, b) => {
-                const aCode = cleanText(a.code || a.tracking_code || a.name || '').trim();
-                const bCode = cleanText(b.code || b.tracking_code || b.name || '').trim();
-                return aCode.localeCompare(bCode, undefined, { numeric: true, sensitivity: 'base' });
-            });
+            const sortedProjects =
+                typeof pmisSortProjectsByPoDateV77M === 'function'
+                    ? pmisSortProjectsByPoDateV77M(allProjects)
+                    : [...allProjects].sort((a, b) => {
+                        const aCode = cleanText(a.code || a.tracking_code || a.name || '').trim();
+                        const bCode = cleanText(b.code || b.tracking_code || b.name || '').trim();
+                        return aCode.localeCompare(bCode, undefined, { numeric: true, sensitivity: 'base' });
+                    });
 
             projectSelect.innerHTML =
                 '<option value="All">All Projects</option>' +
@@ -10273,8 +10340,14 @@ function getFilteredProjects() {
             const date = addDays(gridStart, i);
             const dateIso = isoDate(date);
             const outside = date.getMonth() !== cursor.getMonth();
-            const dayEvents = allEvents.filter(event => isoDate(event.date) === dateIso)
-                .sort((a, b) => String(a.project.code || '').localeCompare(String(b.project.code || '')));
+            const dayEvents = allEvents
+                .filter(event => isoDate(event.date) === dateIso)
+                .sort((a,b) =>
+                    pmisCompareProjectsByPoDateV77M(
+                        a.project,
+                        b.project
+                    )
+                );
             const activeProjects = selectedDayProjects(projectList, date);
             html += `<div class="pcv34-day${outside ? ' outside' : ''}${dateIso === state.selectedDate ? ' selected' : ''}${dateIso === todayIso ? ' today' : ''}" data-date="${dateIso}" onclick="selectCalendarDayV34('${dateIso}')">
                 <div class="pcv34-day-top"><span class="pcv34-day-num">${date.getDate()}</span><span class="pcv34-active-count">${activeProjects.length ? `${activeProjects.length} active` : ''}</span></div>
@@ -10335,7 +10408,13 @@ function getFilteredProjects() {
 
     function renderSelectedDay(projectList) {
         const selected = parseDate(state.selectedDate) || new Date();
-        const dayProjects = selectedDayProjects(projectList, selected).sort((a, b) => String(a.code || '').localeCompare(String(b.code || '')));
+        const dayProjects =
+            pmisSortProjectsByPoDateV77M(
+                selectedDayProjects(
+                    projectList,
+                    selected
+                )
+            );
         el('pcv34DetailDate').textContent = formatLongDate(selected);
         el('pcv34DetailCount').textContent = `${dayProjects.length} active project${dayProjects.length === 1 ? '' : 's'}`;
         if (!dayProjects.length) {
@@ -11834,11 +11913,7 @@ function getFilteredProjects() {
         selector.innerHTML =
             '<option value="All">All Projects</option>';
 
-        projects
-            .slice()
-            .sort((a, b) =>
-                getLabel(a).localeCompare(getLabel(b))
-            )
+        pmisSortProjectsByPoDateV77M(projects)
             .forEach(project => {
                 const option =
                     document.createElement('option');

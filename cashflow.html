@@ -263,7 +263,8 @@
                     <div class="row g-3">
                         <div class="col-md-6"><label class="form-label">Amount Received (₹)</label><input id="rAmount" type="number" min="0.01" step="0.01" class="form-control"></div>
                         <div class="col-md-6"><label class="form-label">Received Date</label><input id="rDate" type="date" class="form-control"></div>
-                        <div class="col-12"><label class="form-label">Payment / UTR Reference</label><input id="rReference" maxlength="120" class="form-control" placeholder="UTR / cheque / bank reference"></div>
+                        <div class="col-12"><label class="form-label">Payment / UTR Reference <span class="text-secondary fw-normal">(Optional)</span></label><input id="rReference" maxlength="120" class="form-control" placeholder="Optional — UTR / cheque / bank reference"></div>
+                    <!-- PMIS_OPTIONAL_REFERENCE_ALWAYS_ADD_RECEIPT_V77N -->
                         <div class="col-12"><label class="form-label">Remarks</label><textarea id="rRemarks" maxlength="250" rows="2" class="form-control" placeholder="Optional receipt note"></textarea></div>
                     </div>
                     <div id="receiptError" class="text-danger small fw-bold mt-3" style="display:none"></div>
@@ -981,21 +982,35 @@ function milestoneStatus(p,term){
 }
 function fyOf(date){if(!date)return '';const p=String(date).slice(0,10).split('-').map(Number);if(p.length!==3||p.some(Number.isNaN))return '';const y=p[0],m=p[1],start=m>=4?y:y-1;return `FY ${start}-${String(start+1).slice(-2)}`}
 function latestReceiptDate(term){return maxIso(receipts(term).map(r=>r?.received_date))}
+
+/* PMIS_RECEIPT_EDIT_EXCESS_PO_SORT_V77M */
+function projectPoDateValueV77M(p){
+ const raw=String(p?.po_date||p?.poDate||'').slice(0,10);
+ if(!raw)return 0;
+ const parsed=Date.parse(raw+'T00:00:00Z');
+ return Number.isFinite(parsed)?parsed:0;
+}
+function compareProjectsByPoDateV77M(a,b){
+ const diff=projectPoDateValueV77M(b)-projectPoDateValueV77M(a);
+ if(diff)return diff;
+ return String(a?.code||a?.tracking_code||a?.name||'')
+  .localeCompare(String(b?.code||b?.tracking_code||b?.name||''),undefined,{numeric:true,sensitivity:'base'});
+}
 function buildRows(){
- rows=[];projects.forEach(p=>{
+ rows=[];[...projects].sort(compareProjectsByPoDateV77M).forEach(p=>{
   const terms=Array.isArray(p?.payment_milestones)?p.payment_milestones:[];
   terms.forEach((term,index)=>{
    const stage=String(term?.linked_stage_id||'').trim(),pct=num(term?.percentage);
    if(!stage||!(pct>0))return;
    const exp=expected(p,term),got=received(term),pd=plannedDate(p,term);
-   rows.push({project:p,term,index,expected:exp,received:got,balance:Math.max(0,exp-got),planned:pd,actual:latestReceiptDate(term),status:milestoneStatus(p,term),eligible:stageComplete(p,stage)});
+   rows.push({project:p,term,index,expected:exp,received:got,balance:Math.max(0,exp-got),excess:Math.max(0,got-exp),planned:pd,actual:latestReceiptDate(term),status:milestoneStatus(p,term),eligible:stageComplete(p,stage)});
   });
  });
 }
 function fillSelect(id,values,label){const el=$(id);const current=el.value;el.innerHTML=`<option value="">${label}</option>`+[...new Set(values.filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b))).map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');if([...el.options].some(o=>o.value===current))el.value=current}
 function populateFilters(){
  fillSelect('fProject',projects.map(p=>String(p._id||'')),'All Projects');
- const fp=$('fProject');fp.innerHTML='<option value="">All Projects</option>'+projects.slice().sort((a,b)=>String(a.code||a.name).localeCompare(String(b.code||b.name))).map(p=>`<option value="${esc(p._id)}">${esc((p.code||p.tracking_code||'Project')+' — '+(p.name||''))}</option>`).join('');
+ const fp=$('fProject');fp.innerHTML='<option value="">All Projects</option>'+projects.slice().sort(compareProjectsByPoDateV77M).map(p=>`<option value="${esc(p._id)}">${esc((p.code||p.tracking_code||'Project')+' — '+(p.name||''))}</option>`).join('');
  fillSelect('fCustomer',projects.map(p=>p.customer_name),'All Customers');fillSelect('fManager',projects.map(p=>p.project_manager),'All Expeditors');
  const fys=[];rows.forEach(r=>{if(r.planned)fys.push(fyOf(r.planned));receipts(r.term).forEach(x=>{if(x?.received_date)fys.push(fyOf(x.received_date))})});fillSelect('fFy',fys,'All FY');
 }
@@ -1411,21 +1426,7 @@ function renderTable(){
  });
 
  const grouped=[...groups.values()]
-  .sort((a,b)=>
-   String(
-    a.project?.tracking_code||
-    a.project?.code||
-    a.project?.name||
-    ''
-   ).localeCompare(
-    String(
-     b.project?.tracking_code||
-     b.project?.code||
-     b.project?.name||
-     ''
-    )
-   )
-  );
+  .sort((a,b)=>compareProjectsByPoDateV77M(a.project,b.project));
 
  const validKeys=new Set(
   grouped.map(group=>group.key)
@@ -1527,6 +1528,9 @@ function renderTable(){
 
      <td class="money pmis-v75y-actual-cell">
       ${money(r.balance)}
+      ${r.excess>0.5
+       ?`<div style="margin-top:3px;color:#047857;font-size:.66rem;font-weight:900;white-space:nowrap;">Excess Cash In: ${money(r.excess)}</div>`
+       :''}
      </td>
 
      <td class="pmis-v75y-actual-cell">
@@ -1614,10 +1618,41 @@ function renderTable(){
       grossPoValue-projectReceived
      );
 
+    const projectExcessCashIn=
+     Math.max(
+      0,
+      projectReceived-grossPoValue
+     );
+
     const totalReceivedPct=
      grossPoValue>0
       ?projectReceived/grossPoValue*100
       :0;
+
+    // PMIS_PROJECT_HEADER_PAYMENT_COLOR_V77O
+    // Header payment state is based on the total project Gross Value:
+    // - 0 received                -> mild red
+    // - some received, not full   -> mild yellow
+    // - received >= Gross Value   -> light green
+    // PMIS_FINAL_RECEIPT_AND_PORTAL_PO_SORT_V77Q
+    // Compare currency at paise precision. A single receipt that exactly
+    // tallies with Total Gross immediately becomes Total Received (green).
+    // Any over-receipt remains Total Received (green).
+    const projectReceivedPaiseV77Q=
+     Math.round(projectReceived*100);
+
+    const grossPoPaiseV77Q=
+     Math.round(grossPoValue*100);
+
+    const projectPaymentHeaderClassV77O=
+     projectReceivedPaiseV77Q<=0
+      ?'pmis-v77o-payment-none'
+      :(
+       grossPoPaiseV77Q>0 &&
+       projectReceivedPaiseV77Q>=grossPoPaiseV77Q
+        ?'pmis-v77o-payment-total'
+        :'pmis-v77o-payment-partial'
+      );
 
     return `
      <div
@@ -1631,7 +1666,7 @@ function renderTable(){
      >
       <button
        type="button"
-       class="pmis-v75y-project-head"
+       class="pmis-v75y-project-head ${projectPaymentHeaderClassV77O}"
        data-project-toggle="${esc(group.key)}"
       >
        <div class="pmis-v75y-project-left">
@@ -1700,6 +1735,14 @@ function renderTable(){
           <strong>Total Gross Outstanding:</strong>
           ${money(grossOutstanding)}
          </span>
+
+         ${projectExcessCashIn>0.5
+          ?`<span class="pmis-v76r-kpi" style="background:#ecfdf5;border-color:#a7f3d0;color:#047857;">
+              <i class="bi bi-graph-up-arrow"></i>
+              <strong>Excess Cash In:</strong>
+              ${money(projectExcessCashIn)}
+             </span>`
+          :''}
 
          <span class="pmis-v76r-kpi pmis-v76s-kpi-received">
           <strong>Total Received %:</strong>
@@ -2080,48 +2123,133 @@ function renderReceiptHistory(term){
  if(badge)badge.textContent=list.length+' receipt'+(list.length===1?'':'s');
  if(!box)return;
  if(!list.length){box.innerHTML='<div class="p-3 text-secondary small">No receipts recorded yet. Add the first payment below.</div>';return}
- box.innerHTML=`<div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th>#</th><th>Date</th><th>Amount</th><th>Reference</th><th>Remarks</th><th>Recorded By</th></tr></thead><tbody>${list.map((r,i)=>`<tr><td><strong>${i+1}</strong></td><td>${fmtDate(r?.received_date)}</td><td class="money">${money(r?.amount)}</td><td>${esc(r?.reference||'-')}</td><td>${esc(r?.remarks||'-')}</td><td>${esc(r?.recorded_by||'-')}</td></tr>`).join('')}</tbody></table></div>`;
+ box.innerHTML=`<div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th>#</th><th>Date</th><th>Amount</th><th>Reference</th><th>Remarks</th><th>Recorded By</th><th style="min-width:150px;">Action</th></tr></thead><tbody>${list.map((r,i)=>`<tr><td><strong>${i+1}</strong></td><td>${fmtDate(r?.received_date)}</td><td class="money">${money(r?.amount)}</td><td>${esc(r?.reference||'-')}</td><td>${esc(r?.remarks||'-')}</td><td>${esc(r?.recorded_by||'-')}</td><td><div class="d-flex gap-1 flex-wrap"><button type="button" class="btn btn-sm btn-outline-primary" data-v77m-edit-receipt="${i}"><i class="bi bi-pencil-square me-1"></i>Edit</button><button type="button" class="btn btn-sm btn-outline-danger" data-v77m-delete-receipt="${i}"><i class="bi bi-trash3 me-1"></i>Delete</button></div></td></tr>`).join('')}</tbody></table></div>`;
+}
+function receiptSummaryV77M(p,term,index){
+ const exp=expected(p,term),got=received(term);
+ return{
+  exp,got,
+  balance:Math.max(0,exp-got),
+  excess:Math.max(0,got-exp),
+  html:`<strong>${esc(p.code||p.name)} — Milestone M${index+1}</strong><br>${esc(stageLabel(p,term.linked_stage_id))}<br><span class="text-secondary">Planned Gross: ${money(exp)} &nbsp;•&nbsp; Received: ${money(got)} &nbsp;•&nbsp; Outstanding: ${money(Math.max(0,exp-got))}${got-exp>0.5?` &nbsp;•&nbsp; <strong style="color:#047857;">Excess Cash In: ${money(got-exp)}</strong>`:''}</span>`
+ };
+}
+function resetReceiptEntryV77M(p,term,index){
+ const summary=receiptSummaryV77M(p,term,index);
+ activeReceipt={projectId:String(p._id),index,editIndex:null};
+ $('receiptContext').innerHTML=summary.html;
+ renderReceiptHistory(term);
+ $('rAmount').value=summary.balance>0.5?summary.balance.toFixed(2):'';
+ $('rAmount').removeAttribute('max');
+ $('rDate').value=isoToday();
+ $('rReference').value='';
+ $('rRemarks').value='';
+ $('receiptError').style.display='none';
+ const btn=$('btnSaveReceipt');
+ if(btn){
+  btn.disabled=false;
+  btn.innerHTML=summary.balance>0.5
+   ?'<i class="bi bi-plus-lg me-1"></i>Add Split Payment'
+   :'<i class="bi bi-plus-lg me-1"></i>Add Additional Receipt';
+ }
 }
 function openReceipt(token){
  const found=findProjectAndTerm(token);if(!found)return;
  const {p,term,index}=found;
  if(!stageComplete(p,String(term.linked_stage_id||''))){alert('The linked project stage is not 100% complete yet. Actual payment input remains locked.');return}
- const exp=expected(p,term),got=received(term),balance=Math.max(0,exp-got),excess=Math.max(0,got-exp);
- activeReceipt={projectId:String(p._id),index};
- $('receiptContext').innerHTML=`<strong>${esc(p.code||p.name)} — Milestone M${index+1}</strong><br>${esc(stageLabel(p,term.linked_stage_id))}<br><span class="text-secondary">Planned Gross: ${money(exp)} &nbsp;•&nbsp; Received: ${money(got)} &nbsp;•&nbsp; Outstanding: ${money(balance)}${excess>0?` &nbsp;•&nbsp; <strong>Excess Received: ${money(excess)}</strong>`:''}</span>`;
- renderReceiptHistory(term);
- $('rAmount').value=balance>0.5?balance.toFixed(2):'';
- $('rAmount').removeAttribute('max');
- $('rDate').value=isoToday();$('rReference').value='';$('rRemarks').value='';$('receiptError').style.display='none';
- const btn=$('btnSaveReceipt');if(btn){btn.disabled=false;btn.innerHTML=balance>0.5?'<i class="bi bi-plus-lg me-1"></i>Add Split Payment':'<i class="bi bi-plus-lg me-1"></i>Add Additional Receipt';}
+ resetReceiptEntryV77M(p,term,index);
  bootstrap.Modal.getOrCreateInstance($('receiptModal')).show();
 }
 function setReceiptError(msg){$('receiptError').textContent=msg;$('receiptError').style.display='block'}
 async function patchProject(id,payload){const res=await fetch('/api/projects/'+encodeURIComponent(id),{method:'PATCH',headers:headers(true),cache:'no-store',body:JSON.stringify(payload)});const data=await res.json().catch(()=>({}));if(!res.ok)throw new Error(data.error||data.message||('Project update failed (HTTP '+res.status+')'));return data}
+function cloneMilestonesV77M(p){
+ return (Array.isArray(p?.payment_milestones)?p.payment_milestones:[]).map(x=>({...x,actual_receipts:receipts(x).map(r=>({...r}))}));
+}
+async function reconcilePaymentLifecycleV77M(p){
+ const status=String(p?.status||'').trim().toLowerCase();
+ if(technicalComplete(p)&&commercialComplete(p)&&!['closed','completed'].includes(status)){
+  const updated=await patchProject(p._id,{status:'Closed',current_phase:'Project Completed / Closed'});
+  Object.assign(p,updated&&updated._id?updated:{status:'Closed',current_phase:'Project Completed / Closed'});
+  return;
+ }
+ if(['closed','completed'].includes(status)&&!commercialComplete(p)){
+  const payload={status:'In Progress'};
+  if(technicalComplete(p))payload.current_phase='Technically Completed - Payment Pending';
+  const updated=await patchProject(p._id,payload);
+  Object.assign(p,updated&&updated._id?updated:payload);
+ }
+}
+function editReceiptV77M(receiptIndex){
+ if(!activeReceipt)return;
+ const p=projects.find(x=>String(x._id)===activeReceipt.projectId);
+ const term=p?.payment_milestones?.[activeReceipt.index];
+ const row=term?receipts(term)[receiptIndex]:null;
+ if(!p||!term||!row)return;
+ activeReceipt={projectId:String(p._id),index:activeReceipt.index,editIndex:receiptIndex};
+ $('rAmount').value=Number(num(row.amount).toFixed(2));
+ $('rAmount').removeAttribute('max');
+ $('rDate').value=String(row.received_date||'').slice(0,10)||isoToday();
+ $('rReference').value=String(row.reference||'');
+ $('rRemarks').value=String(row.remarks||'');
+ $('receiptError').style.display='none';
+ const btn=$('btnSaveReceipt');
+ if(btn){btn.disabled=false;btn.innerHTML='<i class="bi bi-check2-circle me-1"></i>Save Receipt Changes';}
+}
+async function deleteReceiptV77M(receiptIndex){
+ if(!activeReceipt)return;
+ const p=projects.find(x=>String(x._id)===activeReceipt.projectId),index=activeReceipt.index,term=p?.payment_milestones?.[index];
+ const row=term?receipts(term)[receiptIndex]:null;
+ if(!p||!term||!row)return;
+ if(!window.confirm('Delete this payment receipt?\n\nAmount: '+money(row.amount)+'\nReceived Date: '+fmtDate(row.received_date)+'\nReference: '+String(row.reference||'-')+'\n\nThis will recalculate Actual Received, Gross Outstanding / Excess Cash In and payment realization.'))return;
+ const box=$('receiptHistory');if(box){box.style.pointerEvents='none';box.style.opacity='.65';}
+ try{
+  const next=cloneMilestonesV77M(p);
+  if(!next[index]?.actual_receipts?.[receiptIndex])throw new Error('Receipt no longer exists. Refresh and try again.');
+  next[index].actual_receipts.splice(receiptIndex,1);
+  let updated=await patchProject(p._id,{payment_milestones:next,payment_terms_version:'V77M',payment_terms_updated_at:new Date().toISOString()});
+  Object.assign(p,updated&&updated._id?updated:{payment_milestones:next});
+  await reconcilePaymentLifecycleV77M(p);
+  buildRows();populateFilters();applyFilters();
+  const refreshed=p?.payment_milestones?.[index];if(refreshed)resetReceiptEntryV77M(p,refreshed,index);
+ }catch(error){setReceiptError(error.message||'Unable to delete payment receipt.');}
+ finally{if(box){box.style.pointerEvents='';box.style.opacity='';}}
+}
 async function saveReceipt(){
  if(!activeReceipt)return;
  const p=projects.find(x=>String(x._id)===activeReceipt.projectId),index=activeReceipt.index,term=p?.payment_milestones?.[index];if(!p||!term)return;
+ const editIndex=Number.isInteger(activeReceipt.editIndex)?activeReceipt.editIndex:null;
  const amount=num($('rAmount').value),date=$('rDate').value,reference=$('rReference').value.trim(),remarks=$('rRemarks').value.trim();
  if(!(amount>0))return setReceiptError('Enter an amount greater than 0.');
  if(!date)return setReceiptError('Received Date is required.');
- if(!reference)return setReceiptError('Payment / UTR Reference is required.');
- if(!stageComplete(p,String(term.linked_stage_id||'')))return setReceiptError('The linked stage is no longer complete. Receipt entry is locked.');
- const next=p.payment_milestones.map(x=>({...x,actual_receipts:receipts(x).map(r=>({...r}))}));
- next[index].actual_receipts.push({id:'rcpt_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),amount:Number(amount.toFixed(2)),received_date:date,reference:reference.slice(0,120),remarks:remarks.slice(0,250),recorded_at:new Date().toISOString(),recorded_by:localStorage.getItem('danprel_display_name')||localStorage.getItem('danprel_employee_id')||localStorage.getItem('danprel_username')||'PMIS User'});
+ // V77N: Payment / UTR Reference is optional.
+ if(editIndex===null&&!stageComplete(p,String(term.linked_stage_id||'')))return setReceiptError('The linked stage is no longer complete. Receipt entry is locked.');
+ const next=cloneMilestonesV77M(p);
+ const identity=localStorage.getItem('danprel_display_name')||localStorage.getItem('danprel_employee_id')||localStorage.getItem('danprel_username')||'PMIS User';
+ const receipt={amount:Number(amount.toFixed(2)),received_date:date,reference:reference.slice(0,120),remarks:remarks.slice(0,250)};
+ if(editIndex!==null){
+  const existing=next[index]?.actual_receipts?.[editIndex];
+  if(!existing)return setReceiptError('Receipt no longer exists. Refresh and try again.');
+  next[index].actual_receipts[editIndex]={...existing,...receipt,edited_at:new Date().toISOString(),edited_by:identity};
+ }else{
+  next[index].actual_receipts.push({id:'rcpt_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),...receipt,recorded_at:new Date().toISOString(),recorded_by:identity});
+ }
  const btn=$('btnSaveReceipt');btn.disabled=true;
  try{
-  let updated=await patchProject(p._id,{payment_milestones:next,payment_terms_version:'V76F4',payment_terms_updated_at:new Date().toISOString()});
+  let updated=await patchProject(p._id,{payment_milestones:next,payment_terms_version:'V77M',payment_terms_updated_at:new Date().toISOString()});
   Object.assign(p,updated&&updated._id?updated:{payment_milestones:next});
-  if(technicalComplete(p)&&commercialComplete(p)&&String(p.status||'').toLowerCase()!=='closed'){
-   updated=await patchProject(p._id,{status:'Closed',current_phase:'Project Completed / Closed'});Object.assign(p,updated&&updated._id?updated:{status:'Closed',current_phase:'Project Completed / Closed'});
-  }
+  await reconcilePaymentLifecycleV77M(p);
   buildRows();populateFilters();applyFilters();
-  const refreshed=p?.payment_milestones?.[index],newExpected=expected(p,refreshed),newGot=received(refreshed),newBalance=Math.max(0,newExpected-newGot),newExcess=Math.max(0,newGot-newExpected);
-  $('receiptContext').innerHTML=`<strong>${esc(p.code||p.name)} — Milestone M${index+1}</strong><br>${esc(stageLabel(p,refreshed.linked_stage_id))}<br><span class="text-secondary">Planned Gross: ${money(newExpected)} &nbsp;•&nbsp; Received: ${money(newGot)} &nbsp;•&nbsp; Outstanding: ${money(newBalance)}${newExcess>0?` &nbsp;•&nbsp; <strong>Excess Received: ${money(newExcess)}</strong>`:''}</span>`;
-  renderReceiptHistory(refreshed);
-  $('rAmount').value=newBalance>0.5?newBalance.toFixed(2):'';$('rAmount').removeAttribute('max');$('rDate').value=isoToday();$('rReference').value='';$('rRemarks').value='';$('receiptError').style.display='none';
-  btn.disabled=false;btn.innerHTML=newBalance>0.5?'<i class="bi bi-plus-lg me-1"></i>Add Split Payment':'<i class="bi bi-plus-lg me-1"></i>Add Additional Receipt';
+  const refreshed=p?.payment_milestones?.[index];if(refreshed)resetReceiptEntryV77M(p,refreshed,index);
  }catch(error){setReceiptError(error.message||'Unable to save receipt.');btn.disabled=false;}
+}
+if(!window.__PMIS_V77M_CASHFLOW_RECEIPT_ACTIONS__){
+ window.__PMIS_V77M_CASHFLOW_RECEIPT_ACTIONS__=true;
+ $('receiptHistory')?.addEventListener('click',event=>{
+  const edit=event.target.closest('[data-v77m-edit-receipt]');
+  if(edit){event.preventDefault();event.stopPropagation();editReceiptV77M(Number(edit.dataset.v77mEditReceipt));return;}
+  const del=event.target.closest('[data-v77m-delete-receipt]');
+  if(del){event.preventDefault();event.stopPropagation();deleteReceiptV77M(Number(del.dataset.v77mDeleteReceipt));}
+ });
 }
 async function load(){
  $('tableArea').className='loading';$('tableArea').innerHTML='<span class="spinner-border spinner-border-sm me-2"></span>Loading payment data…';
@@ -2153,6 +2281,33 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 .pmis-v75y-project-card{background:#fff;border:1px solid #dbe5ef;border-radius:18px;overflow:hidden}
 .pmis-v75y-project-head{width:100%;border:0;background:#f8fbff;color:#0b2b4a;padding:15px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;text-align:left;cursor:pointer}
 .pmis-v75y-project-head:hover{background:#f3f8fd}
+
+/* PMIS_PROJECT_HEADER_PAYMENT_COLOR_V77O */
+/* Whole project header pane — commercial receipt status */
+#tableArea .pmis-v75y-project-head.pmis-v77o-payment-total{
+ background:#ecfdf5!important;
+ box-shadow:inset 4px 0 0 #34d399;
+}
+#tableArea .pmis-v75y-project-head.pmis-v77o-payment-total:hover{
+ background:#e2f9ee!important;
+}
+
+#tableArea .pmis-v75y-project-head.pmis-v77o-payment-partial{
+ background:#fffbeb!important;
+ box-shadow:inset 4px 0 0 #fbbf24;
+}
+#tableArea .pmis-v75y-project-head.pmis-v77o-payment-partial:hover{
+ background:#fff6d6!important;
+}
+
+#tableArea .pmis-v75y-project-head.pmis-v77o-payment-none{
+ background:#fef2f2!important;
+ box-shadow:inset 4px 0 0 #f87171;
+}
+#tableArea .pmis-v75y-project-head.pmis-v77o-payment-none:hover{
+ background:#fde8e8!important;
+}
+
 .pmis-v75y-project-left{min-width:0}
 .pmis-v75y-project-title{font-size:1rem;font-weight:900;line-height:1.2}
 .pmis-v75y-project-sub{color:#64748b;font-size:.78rem;margin-top:4px}
