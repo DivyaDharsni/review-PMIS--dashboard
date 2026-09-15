@@ -19,6 +19,20 @@ const ALLOW_LOCAL_FEEDBACK_WRITES =
 const ALLOW_LOCAL_FEEDBACK_REQUIREMENT_WRITES =
     process.env.ALLOW_LOCAL_FEEDBACK_REQUIREMENT_WRITES === 'true';
 
+// PMIS_CUSTOMER_FEEDBACK_LIFECYCLE_INTEGRATION_V77Z
+// Shared secret must match the Customer Feedback backend environment.
+// CUSTOMER_FEEDBACK_BASE_URL should point to the origin that serves
+// /api/integration/pmis/status-batch.
+const PMIS_INTEGRATION_SECRET =
+    String(process.env.PMIS_INTEGRATION_SECRET || process.env.FEEDBACK_INTEGRATION_SECRET || '').trim();
+const CUSTOMER_FEEDBACK_BASE_URL =
+    String(
+        process.env.CUSTOMER_FEEDBACK_BASE_URL ||
+        'https://danprel-customer-feedback-netlify.netlify.app'
+    ).replace(/\/$/, '');
+const ALLOW_LOCAL_CUSTOMER_FEEDBACK_INTEGRATION_WRITES =
+    process.env.ALLOW_LOCAL_CUSTOMER_FEEDBACK_INTEGRATION_WRITES === 'true';
+
 // PMIS_CUSTOMER_REPORT_SMTP_EMAIL_V72B
 // Set true only in local .env when intentionally testing real report email.
 const ALLOW_LOCAL_CUSTOMER_REPORT_EMAILS =
@@ -47,6 +61,17 @@ app.use('/api', (req, res, next) => {
         req.method === 'PATCH' &&
         /^\/api\/projects\/[^/]+\/customer-feedback-requirement$/.test(requestPath);
 
+    // PMIS_CUSTOMER_FEEDBACK_LIFECYCLE_INTEGRATION_V77Z
+    // The dashboard sync endpoint is safe in LOCAL_SAFE_MODE because the route
+    // itself returns a live projection without persisting unless explicitly
+    // enabled. The server-to-server callback is writable only when enabled.
+    const isCustomerFeedbackStatusSync =
+        req.method === 'POST' &&
+        requestPath === '/api/customer-feedback/sync';
+    const isCustomerFeedbackCallback =
+        req.method === 'POST' &&
+        requestPath === '/api/integration/customer-feedback/status';
+
     // PMIS_CUSTOMER_REPORT_SMTP_EMAIL_V72B
     const isCustomerReportEmail =
         req.method === 'POST' &&
@@ -59,6 +84,11 @@ app.use('/api', (req, res, next) => {
         isLoginRequest ||
         (ALLOW_LOCAL_FEEDBACK_WRITES && isFeedbackWrite) ||
         isCustomerFeedbackRequirementWrite ||
+        isCustomerFeedbackStatusSync ||
+        (
+            ALLOW_LOCAL_CUSTOMER_FEEDBACK_INTEGRATION_WRITES &&
+            isCustomerFeedbackCallback
+        ) ||
         (ALLOW_LOCAL_CUSTOMER_REPORT_EMAILS && isCustomerReportEmail) ||
         (ALLOW_LOCAL_EDIT_WRITES && isExistingRecordEdit);
 
@@ -221,6 +251,20 @@ const ProjectSchema = new mongoose.Schema({
     },
     customer_feedback_requirement_updated_at: Date,
     customer_feedback_requirement_updated_by: { type: String, default: '' },
+    // PMIS_CUSTOMER_FEEDBACK_LIFECYCLE_INTEGRATION_V77Z
+    customer_feedback_status: {
+        type: String,
+        enum: ['not_started', 'sent_waiting_reply', 'received'],
+        default: 'not_started'
+    },
+    customer_feedback_request_id: { type: String, default: '' },
+    customer_feedback_feedback_id: { type: String, default: '' },
+    customer_feedback_sent_at: Date,
+    customer_feedback_received_at: Date,
+    customer_feedback_customer_email: { type: String, default: '' },
+    customer_feedback_csi: Number,
+    customer_feedback_category: { type: String, default: '' },
+    customer_feedback_sync_updated_at: Date,
     detailed_phases: { type: mongoose.Schema.Types.Mixed, default: {} },
     // PMIS_PAYMENT_MILESTONES_CASHFLOW_V75A
     payment_milestones: { type: [mongoose.Schema.Types.Mixed], default: [] },
@@ -1503,6 +1547,725 @@ app.patch('/api/projects/:id/customer-feedback-requirement', async (req, res) =>
         res.status(500).json({ error: err.message });
     }
 });
+
+
+// PMIS_CUSTOMER_FEEDBACK_LIFECYCLE_INTEGRATION_V77Z
+function pmisV77ZSafeEqualText(actual, expected) {
+    const a = Buffer.from(String(actual || ''), 'utf8');
+    const b = Buffer.from(String(expected || ''), 'utf8');
+    return (
+        a.length > 0 &&
+        a.length === b.length &&
+        crypto.timingSafeEqual(a, b)
+    );
+}
+
+function pmisV77ZNumber(value) {
+    const n = Number(String(value ?? '').replace(/,/g, ''));
+    return Number.isFinite(n) ? n : 0;
+}
+
+function pmisV77ZReceiptsTotal(term) {
+    return (
+        Array.isArray(term?.actual_receipts)
+            ? term.actual_receipts
+            : []
+    ).reduce(
+        (sum,row) =>
+            sum +
+            Math.max(
+                0,
+                pmisV77ZNumber(row?.amount)
+            ),
+        0
+    );
+}
+
+function pmisV77ZCommercialComplete(project) {
+    const terms =
+        Array.isArray(project?.payment_milestones)
+            ? project.payment_milestones
+            : [];
+
+    const meaningful = terms.filter((term,index) => {
+        const stage =
+            String(term?.linked_stage_id || '').trim();
+
+        const hasReceipts =
+            Array.isArray(term?.actual_receipts) &&
+            term.actual_receipts.length > 0;
+
+        return (
+            hasReceipts ||
+            pmisV77ZNumber(term?.percentage) > 0 ||
+            !!stage ||
+            (
+                index > 0 &&
+                !!String(term?.remarks || '').trim()
+            )
+        );
+    });
+
+    // Preserve PMIS legacy commercial behaviour.
+    if (!meaningful.length) return true;
+
+    const configured = meaningful.filter(term => {
+        const pct =
+            pmisV77ZNumber(term?.percentage);
+
+        return (
+            !!String(
+                term?.linked_stage_id || ''
+            ).trim() &&
+            pct > 0 &&
+            pct <= 100
+        );
+    });
+
+    const totalPct = configured.reduce(
+        (sum,term) =>
+            sum +
+            pmisV77ZNumber(term?.percentage),
+        0
+    );
+
+    if (
+        configured.length !== meaningful.length ||
+        Math.abs(totalPct - 100) > 0.001
+    ) {
+        return false;
+    }
+
+    const netPo =
+        Math.max(
+            0,
+            pmisV77ZNumber(project?.po_value)
+        );
+
+    if (!(netPo > 0)) return false;
+
+    const international =
+        String(
+            project?.cashflow_order_type ||
+            project?.order_type ||
+            'domestic'
+        )
+            .trim()
+            .toLowerCase() ===
+        'international';
+
+    const totalGst =
+        international
+            ? 0
+            : netPo *
+              Math.max(
+                  0,
+                  pmisV77ZNumber(
+                      project?.cashflow_gst_percent ?? 18
+                  )
+              ) /
+              100;
+
+    return configured.every(term => {
+        const pct =
+            Math.max(
+                0,
+                pmisV77ZNumber(term?.percentage)
+            );
+
+        const gstPct =
+            international
+                ? 0
+                : Math.max(
+                    0,
+                    pmisV77ZNumber(
+                        term?.gst_allocation_percent ??
+                        term?.gstAllocationPercent ??
+                        term?.gst_percent_allocation ??
+                        0
+                    )
+                );
+
+        const expectedGross =
+            netPo * pct / 100 +
+            totalGst * gstPct / 100;
+
+        return (
+            expectedGross > 0 &&
+            pmisV77ZReceiptsTotal(term) + 0.5 >=
+                expectedGross
+        );
+    });
+}
+
+function pmisV77ZFeedbackEligibleProject(project) {
+    const status =
+        String(project?.status || '')
+            .trim()
+            .toLowerCase();
+
+    return (
+        ['closed','completed'].includes(status) &&
+        pmisV77ZCommercialComplete(project)
+    );
+}
+
+function pmisV77ZFeedbackRank(status) {
+    return ({
+        not_started:0,
+        sent_waiting_reply:1,
+        received:2
+    })[
+        String(status || '')
+            .trim()
+            .toLowerCase()
+    ] ?? 0;
+}
+
+function pmisV77ZDate(value) {
+    const raw =
+        String(value || '').trim();
+
+    if (!raw) return null;
+
+    const timestamp =
+        Date.parse(raw);
+
+    return Number.isFinite(timestamp)
+        ? new Date(timestamp)
+        : null;
+}
+
+function pmisV77ZFeedbackSnapshot(project) {
+    return {
+        _id:String(project?._id || ''),
+        customer_feedback_status:
+            String(
+                project?.customer_feedback_status ||
+                'not_started'
+            ),
+        customer_feedback_request_id:
+            String(
+                project?.customer_feedback_request_id ||
+                ''
+            ),
+        customer_feedback_feedback_id:
+            String(
+                project?.customer_feedback_feedback_id ||
+                ''
+            ),
+        customer_feedback_sent_at:
+            project?.customer_feedback_sent_at || null,
+        customer_feedback_received_at:
+            project?.customer_feedback_received_at || null,
+        customer_feedback_customer_email:
+            String(
+                project?.customer_feedback_customer_email ||
+                ''
+            ),
+        customer_feedback_csi:
+            Number.isFinite(
+                Number(project?.customer_feedback_csi)
+            )
+                ? Number(project.customer_feedback_csi)
+                : null,
+        customer_feedback_category:
+            String(
+                project?.customer_feedback_category ||
+                ''
+            ),
+        customer_feedback_sync_updated_at:
+            project?.customer_feedback_sync_updated_at || null
+    };
+}
+
+function pmisV77ZApplyFeedbackStatus(project, payload) {
+    const requested =
+        String(
+            payload?.status ||
+            (
+                payload?.event === 'feedback_received'
+                    ? 'received'
+                    : payload?.event === 'invitation_sent'
+                        ? 'sent_waiting_reply'
+                        : ''
+            )
+        )
+            .trim()
+            .toLowerCase();
+
+    if (
+        ![
+            'not_started',
+            'sent_waiting_reply',
+            'received'
+        ].includes(requested)
+    ) {
+        return false;
+    }
+
+    const current =
+        String(
+            project?.customer_feedback_status ||
+            'not_started'
+        )
+            .trim()
+            .toLowerCase();
+
+    // Never allow a later sync to downgrade Received -> Waiting
+    // or Waiting -> Not Started.
+    if (
+        pmisV77ZFeedbackRank(requested) <
+        pmisV77ZFeedbackRank(current)
+    ) {
+        return false;
+    }
+
+    let changed = false;
+
+    function assign(field, value) {
+        if (
+            value !== undefined &&
+            value !== null &&
+            String(value) !== '' &&
+            String(project[field] ?? '') !== String(value)
+        ) {
+            project[field] = value;
+            changed = true;
+        }
+    }
+
+    if (current !== requested) {
+        project.customer_feedback_status =
+            requested;
+        changed = true;
+    }
+
+    assign(
+        'customer_feedback_request_id',
+        String(payload?.requestId || '')
+    );
+
+    assign(
+        'customer_feedback_feedback_id',
+        String(payload?.feedbackId || '')
+    );
+
+    assign(
+        'customer_feedback_customer_email',
+        String(payload?.customerEmail || '')
+    );
+
+    assign(
+        'customer_feedback_category',
+        String(payload?.category || '')
+    );
+
+    if (
+        payload?.csi !== undefined &&
+        payload?.csi !== null &&
+        Number.isFinite(Number(payload.csi))
+    ) {
+        const csi =
+            Number(payload.csi);
+
+        if (
+            Number(project.customer_feedback_csi) !==
+            csi
+        ) {
+            project.customer_feedback_csi =
+                csi;
+            changed = true;
+        }
+    }
+
+    const sentAt =
+        pmisV77ZDate(payload?.sentAt);
+
+    if (
+        sentAt &&
+        (
+            !project.customer_feedback_sent_at ||
+            String(
+                project.customer_feedback_sent_at
+            ) !== String(sentAt)
+        )
+    ) {
+        project.customer_feedback_sent_at =
+            sentAt;
+        changed = true;
+    }
+
+    const receivedAt =
+        pmisV77ZDate(payload?.receivedAt);
+
+    if (
+        receivedAt &&
+        (
+            !project.customer_feedback_received_at ||
+            String(
+                project.customer_feedback_received_at
+            ) !== String(receivedAt)
+        )
+    ) {
+        project.customer_feedback_received_at =
+            receivedAt;
+        changed = true;
+    }
+
+    if (changed) {
+        project.customer_feedback_sync_updated_at =
+            new Date();
+    }
+
+    return changed;
+}
+
+async function pmisV77ZFetchFeedbackStatuses(
+    projectCodes
+) {
+    if (
+        !PMIS_INTEGRATION_SECRET ||
+        !CUSTOMER_FEEDBACK_BASE_URL
+    ) {
+        const error =
+            new Error(
+                'Customer Feedback integration is not configured.'
+            );
+        error.status = 503;
+        throw error;
+    }
+
+    const controller =
+        new AbortController();
+
+    const timer =
+        setTimeout(
+            () => controller.abort(),
+            10000
+        );
+
+    try {
+        const response =
+            await fetch(
+                CUSTOMER_FEEDBACK_BASE_URL +
+                '/api/integration/pmis/status-batch',
+                {
+                    method:'POST',
+                    headers:{
+                        'Content-Type':'application/json',
+                        'x-pmis-integration-secret':
+                            PMIS_INTEGRATION_SECRET
+                    },
+                    body:JSON.stringify({
+                        projectCodes
+                    }),
+                    signal:controller.signal
+                }
+            );
+
+        const payload =
+            await response
+                .json()
+                .catch(() => ({}));
+
+        if (!response.ok) {
+            const error =
+                new Error(
+                    payload.error ||
+                    (
+                        'Customer Feedback status sync failed with HTTP ' +
+                        response.status
+                    )
+                );
+
+            error.status =
+                response.status;
+
+            throw error;
+        }
+
+        return Array.isArray(payload.projects)
+            ? payload.projects
+            : [];
+    }
+    finally {
+        clearTimeout(timer);
+    }
+}
+
+app.post(
+    '/api/integration/customer-feedback/status',
+    async (req,res) => {
+        try {
+            if (!PMIS_INTEGRATION_SECRET) {
+                return res.status(503).json({
+                    error:'PMIS feedback integration secret is not configured.'
+                });
+            }
+
+            const supplied =
+                String(
+                    req.get(
+                        'x-pmis-integration-secret'
+                    ) ||
+                    ''
+                );
+
+            if (
+                !pmisV77ZSafeEqualText(
+                    supplied,
+                    PMIS_INTEGRATION_SECRET
+                )
+            ) {
+                return res.status(401).json({
+                    error:'Customer Feedback integration authentication failed.'
+                });
+            }
+
+            const projectCode =
+                String(
+                    req.body?.projectCode || ''
+                ).trim();
+
+            if (!projectCode) {
+                return res.status(400).json({
+                    error:'Project code is required.'
+                });
+            }
+
+            const exact =
+                new RegExp(
+                    '^' +
+                    escapeRegex(projectCode) +
+                    '$',
+                    'i'
+                );
+
+            const project =
+                await Project.findOne({
+                    $or:[
+                        { code:exact },
+                        { tracking_code:exact }
+                    ]
+                });
+
+            if (!project) {
+                return res.status(404).json({
+                    error:'PMIS project was not found for the supplied project code.'
+                });
+            }
+
+            if (
+                !pmisV77ZFeedbackEligibleProject(
+                    project
+                )
+            ) {
+                return res.status(409).json({
+                    error:'PMIS project is not yet Closed with commercial payment completion.'
+                });
+            }
+
+            const changed =
+                pmisV77ZApplyFeedbackStatus(
+                    project,
+                    req.body || {}
+                );
+
+            if (changed) {
+                await project.save();
+            }
+
+            return res.json({
+                ok:true,
+                changed,
+                project:
+                    pmisV77ZFeedbackSnapshot(
+                        project
+                    )
+            });
+        }
+        catch (error) {
+            console.error(
+                '[PMIS CUSTOMER FEEDBACK CALLBACK]',
+                error
+            );
+
+            return res
+                .status(
+                    Number(error?.status) || 500
+                )
+                .json({
+                    error:
+                        error?.message ||
+                        'Unable to update PMIS feedback lifecycle.'
+                });
+        }
+    }
+);
+
+app.post(
+    '/api/customer-feedback/sync',
+    async (req,res) => {
+        try {
+            if (
+                !PMIS_INTEGRATION_SECRET ||
+                !CUSTOMER_FEEDBACK_BASE_URL
+            ) {
+                return res.status(503).json({
+                    error:'Customer Feedback lifecycle integration is not configured.'
+                });
+            }
+
+            const ids =
+                Array.from(
+                    new Set(
+                        (
+                            Array.isArray(
+                                req.body?.projectIds
+                            )
+                                ? req.body.projectIds
+                                : []
+                        )
+                            .map(value =>
+                                String(value || '').trim()
+                            )
+                            .filter(Boolean)
+                    )
+                )
+                    .slice(0,100);
+
+            if (!ids.length) {
+                return res.json({
+                    ok:true,
+                    persisted:
+                        !LOCAL_SAFE_MODE ||
+                        ALLOW_LOCAL_CUSTOMER_FEEDBACK_INTEGRATION_WRITES,
+                    projects:[]
+                });
+            }
+
+            const candidates =
+                await Project.find({
+                    _id:{ $in:ids }
+                });
+
+            const eligible =
+                candidates.filter(project =>
+                    project.customer_feedback_requirement !==
+                        'not_required' &&
+                    pmisV77ZFeedbackEligibleProject(
+                        project
+                    ) &&
+                    !!String(
+                        project.code ||
+                        project.tracking_code ||
+                        ''
+                    ).trim()
+                );
+
+            if (!eligible.length) {
+                return res.json({
+                    ok:true,
+                    persisted:
+                        !LOCAL_SAFE_MODE ||
+                        ALLOW_LOCAL_CUSTOMER_FEEDBACK_INTEGRATION_WRITES,
+                    projects:[]
+                });
+            }
+
+            const codeToProject =
+                new Map();
+
+            eligible.forEach(project => {
+                const code =
+                    String(
+                        project.code ||
+                        project.tracking_code ||
+                        ''
+                    ).trim();
+
+                codeToProject.set(
+                    code.toLowerCase(),
+                    project
+                );
+            });
+
+            const remoteStatuses =
+                await pmisV77ZFetchFeedbackStatuses(
+                    Array.from(codeToProject.values())
+                        .map(project =>
+                            String(
+                                project.code ||
+                                project.tracking_code ||
+                                ''
+                            ).trim()
+                        )
+                );
+
+            const persist =
+                !LOCAL_SAFE_MODE ||
+                ALLOW_LOCAL_CUSTOMER_FEEDBACK_INTEGRATION_WRITES;
+
+            const changedProjects = [];
+
+            for (const remote of remoteStatuses) {
+                const project =
+                    codeToProject.get(
+                        String(
+                            remote?.projectCode ||
+                            ''
+                        )
+                            .trim()
+                            .toLowerCase()
+                    );
+
+                if (!project) continue;
+
+                const changed =
+                    pmisV77ZApplyFeedbackStatus(
+                        project,
+                        remote
+                    );
+
+                if (
+                    changed &&
+                    persist
+                ) {
+                    await project.save();
+                }
+
+                changedProjects.push(
+                    pmisV77ZFeedbackSnapshot(
+                        project
+                    )
+                );
+            }
+
+            return res.json({
+                ok:true,
+                persisted:persist,
+                projects:changedProjects
+            });
+        }
+        catch (error) {
+            console.error(
+                '[PMIS CUSTOMER FEEDBACK SYNC]',
+                error
+            );
+
+            return res
+                .status(
+                    Number(error?.status) || 502
+                )
+                .json({
+                    error:
+                        error?.message ||
+                        'Unable to synchronize Customer Feedback status.'
+                });
+        }
+    }
+);
 
 // 5. Delete Project
 app.delete('/api/projects/:id', async (req, res) => {

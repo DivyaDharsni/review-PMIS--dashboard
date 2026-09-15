@@ -2003,6 +2003,32 @@
         }
         .customer-feedback-reset-btn { padding:6px 8px; color:#0369a1; border-color:#bae6fd; }
         .customer-feedback-reset-btn:hover { background:#e0f2fe; }
+
+        /* PMIS_CUSTOMER_FEEDBACK_LIFECYCLE_INTEGRATION_V77Z */
+        .customer-feedback-state-badge {
+            display:inline-flex;
+            align-items:center;
+            justify-content:center;
+            gap:6px;
+            min-height:34px;
+            padding:7px 12px;
+            border-radius:999px;
+            font-size:.69rem;
+            font-weight:900;
+            line-height:1.1;
+            white-space:nowrap;
+            border:1px solid transparent;
+        }
+        .customer-feedback-state-badge.waiting {
+            color:#92400e;
+            background:#fef3c7;
+            border-color:#fcd34d;
+        }
+        .customer-feedback-state-badge.received {
+            color:#047857;
+            background:#d1fae5;
+            border-color:#6ee7b7;
+        }
     </style>
 
     <script>
@@ -2502,7 +2528,7 @@
                         <h5 class="modal-title fw-900 mb-1">
                             <i class="bi bi-bell-fill me-2"></i>Customer Feedback Required
                         </h5>
-                        <div class="small opacity-75">Customer feedback can be requested once a project reaches I&amp;C Completed or Payment Received.</div>
+                        <div class="small opacity-75">Customer feedback becomes available only after the project is Closed and payment is fully received.</div>
                     </div>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
@@ -3581,6 +3607,19 @@
                 renderProjects();
                 renderRevisions();
 
+                // PMIS_CUSTOMER_FEEDBACK_LIFECYCLE_INTEGRATION_V77Z
+                if (!pmisV77ZFeedbackInitialSyncStarted) {
+                    pmisV77ZFeedbackInitialSyncStarted = true;
+                    window.setTimeout(
+                        () =>
+                            pmisSyncCustomerFeedbackLifecycleV77Z(
+                                false,
+                                true
+                            ),
+                        0
+                    );
+                }
+
                 const renderedAtV55E =
                     typeof performance !== 'undefined'
                         ? performance.now()
@@ -3953,23 +3992,38 @@ function formatExportPoValueForCurrentUser(project) {
         }
 
         /* PMIS_FEEDBACK_LIFECYCLE_VISIBILITY_V77P */
+        /* PMIS_CUSTOMER_FEEDBACK_LIFECYCLE_INTEGRATION_V77Z */
         function pmisCustomerFeedbackEligibleV77P(projectOrStatus) {
-            const status =
-                typeof projectOrStatus === 'string'
-                    ? String(projectOrStatus || '').trim()
-                    : String(
-                        projectOrStatus?.__pmisDisplayStatus ||
-                        (
-                            typeof pmisProjectLifecycleStatusV77H === 'function'
-                                ? pmisProjectLifecycleStatusV77H(projectOrStatus)
-                                : projectOrStatus?.status
-                        ) ||
-                        ''
-                    ).trim();
+            if (typeof projectOrStatus === 'string') {
+                return String(projectOrStatus || '').trim() === 'Payment Received';
+            }
+
+            const project = projectOrStatus || {};
+            const lifecycleStatus =
+                String(
+                    project?.__pmisDisplayStatus ||
+                    (
+                        typeof pmisProjectLifecycleStatusV77H === 'function'
+                            ? pmisProjectLifecycleStatusV77H(project)
+                            : ''
+                    ) ||
+                    ''
+                ).trim();
+
+            const projectStatus =
+                String(project?.status || '')
+                    .trim()
+                    .toLowerCase();
+
+            const paymentReceived =
+                typeof pmisV77HGrossCommercialComplete === 'function'
+                    ? !!pmisV77HGrossCommercialComplete(project)
+                    : lifecycleStatus === 'Payment Received';
 
             return (
-                status === 'I&C Completed' ||
-                status === 'Payment Received'
+                ['closed','completed'].includes(projectStatus) &&
+                paymentReceived &&
+                lifecycleStatus === 'Payment Received'
             );
         }
 
@@ -3988,6 +4042,7 @@ function formatExportPoValueForCurrentUser(project) {
             return (Array.isArray(projects) ? projects : []).filter(project => {
                 if (!pmisCustomerFeedbackEligibleV77P(project)) return false;
                 if (getProjectCustomerFeedbackRequirement(project) === 'not_required') return false;
+                if (getProjectCustomerFeedbackStatus(project) !== 'not_started') return false;
                 if (!isAdminDashboardLogin() && !isProjectAssociatedWithCurrentLogin(project)) return false;
 
                 try {
@@ -3999,6 +4054,16 @@ function formatExportPoValueForCurrentUser(project) {
         }
 
         function showClosedProjectFeedbackNotification() {
+            // PMIS_CUSTOMER_FEEDBACK_LIFECYCLE_INTEGRATION_V77Z
+            // On first load, wait for one server-to-server reconciliation so
+            // previously received feedback does not flash a stale prompt.
+            if (
+                typeof pmisV77ZFeedbackInitialSyncDone !== 'undefined' &&
+                !pmisV77ZFeedbackInitialSyncDone
+            ) {
+                return;
+            }
+
             const candidates = getClosedFeedbackCandidates();
             const list = document.getElementById('closedFeedbackNotificationList');
             const modalElement = document.getElementById('closedFeedbackNotificationModal');
@@ -4085,6 +4150,24 @@ function formatExportPoValueForCurrentUser(project) {
                 : 'required';
         }
 
+        // PMIS_CUSTOMER_FEEDBACK_LIFECYCLE_INTEGRATION_V77Z
+        function getProjectCustomerFeedbackStatus(project) {
+            const status =
+                String(
+                    project?.customer_feedback_status ||
+                    'not_started'
+                )
+                    .trim()
+                    .toLowerCase();
+
+            return [
+                'sent_waiting_reply',
+                'received'
+            ].includes(status)
+                ? status
+                : 'not_started';
+        }
+
         async function setCustomerFeedbackRequirement(projectId, requirement) {
             const project = projects.find(item => String(item._id || '') === String(projectId || ''));
             if (!project) { showToast('Project was not found.', true); return; }
@@ -4136,6 +4219,7 @@ function formatExportPoValueForCurrentUser(project) {
 
             feedbackUrl.searchParams.set('projectCode', projectCode || '');
             feedbackUrl.searchParams.set('projectName', projectName || '');
+            feedbackUrl.searchParams.set('pmisSource', '1');
             feedbackUrl.searchParams.set('pmisReturn', window.location.href);
             feedbackUrl.searchParams.set('pmisHome', new URL('project_review.html', window.location.href).href);
 
@@ -4156,6 +4240,188 @@ function formatExportPoValueForCurrentUser(project) {
                 window.location.href = feedbackUrl.toString();
             }
         }
+
+        // PMIS_CUSTOMER_FEEDBACK_LIFECYCLE_INTEGRATION_V77Z
+        let pmisV77ZFeedbackInitialSyncDone = false;
+        let pmisV77ZFeedbackInitialSyncStarted = false;
+        let pmisV77ZFeedbackSyncInFlight = false;
+        let pmisV77ZFeedbackLastSyncAt = 0;
+
+        async function pmisSyncCustomerFeedbackLifecycleV77Z(
+            force = false,
+            initial = false
+        ) {
+            if (pmisV77ZFeedbackSyncInFlight) return;
+
+            const now = Date.now();
+
+            if (
+                !force &&
+                now - pmisV77ZFeedbackLastSyncAt < 5000
+            ) {
+                if (initial) {
+                    pmisV77ZFeedbackInitialSyncDone = true;
+                    showClosedProjectFeedbackNotification();
+                }
+                return;
+            }
+
+            const eligible =
+                (Array.isArray(projects) ? projects : [])
+                    .filter(project =>
+                        pmisCustomerFeedbackEligibleV77P(project) &&
+                        getProjectCustomerFeedbackRequirement(project) !==
+                            'not_required' &&
+                        (
+                            isAdminDashboardLogin() ||
+                            isProjectAssociatedWithCurrentLogin(project)
+                        )
+                    );
+
+            if (!eligible.length) {
+                pmisV77ZFeedbackLastSyncAt = now;
+
+                if (initial) {
+                    pmisV77ZFeedbackInitialSyncDone = true;
+                    showClosedProjectFeedbackNotification();
+                }
+
+                return;
+            }
+
+            pmisV77ZFeedbackSyncInFlight = true;
+
+            let changed = false;
+
+            try {
+                const response =
+                    await fetch(
+                        '/api/customer-feedback/sync',
+                        {
+                            method:'POST',
+                            headers:
+                                typeof pmisIdentityHeaders === 'function'
+                                    ? pmisIdentityHeaders()
+                                    : {
+                                        'Content-Type':
+                                            'application/json'
+                                    },
+                            cache:'no-store',
+                            body:JSON.stringify({
+                                projectIds:
+                                    eligible.map(project =>
+                                        String(project._id || '')
+                                    )
+                            })
+                        }
+                    );
+
+                const payload =
+                    await response
+                        .json()
+                        .catch(() => ({}));
+
+                if (!response.ok) {
+                    throw new Error(
+                        payload.error ||
+                        (
+                            'Customer Feedback sync failed with HTTP ' +
+                            response.status
+                        )
+                    );
+                }
+
+                const updates =
+                    Array.isArray(payload.projects)
+                        ? payload.projects
+                        : [];
+
+                updates.forEach(update => {
+                    const project =
+                        projects.find(item =>
+                            String(item?._id || '') ===
+                            String(update?._id || '')
+                        );
+
+                    if (!project) return;
+
+                    const before =
+                        JSON.stringify({
+                            s:project.customer_feedback_status,
+                            r:project.customer_feedback_request_id,
+                            f:project.customer_feedback_feedback_id,
+                            sent:project.customer_feedback_sent_at,
+                            received:project.customer_feedback_received_at,
+                            csi:project.customer_feedback_csi,
+                            cat:project.customer_feedback_category
+                        });
+
+                    Object.assign(
+                        project,
+                        update
+                    );
+
+                    const after =
+                        JSON.stringify({
+                            s:project.customer_feedback_status,
+                            r:project.customer_feedback_request_id,
+                            f:project.customer_feedback_feedback_id,
+                            sent:project.customer_feedback_sent_at,
+                            received:project.customer_feedback_received_at,
+                            csi:project.customer_feedback_csi,
+                            cat:project.customer_feedback_category
+                        });
+
+                    if (before !== after) {
+                        changed = true;
+                    }
+                });
+
+                pmisV77ZFeedbackLastSyncAt =
+                    Date.now();
+            }
+            catch (error) {
+                console.warn(
+                    '[PMIS V77Z] Customer Feedback lifecycle sync:',
+                    error.message || error
+                );
+            }
+            finally {
+                pmisV77ZFeedbackSyncInFlight = false;
+
+                if (initial) {
+                    pmisV77ZFeedbackInitialSyncDone = true;
+                }
+
+                if (changed) {
+                    renderProjects();
+                }
+                else if (initial) {
+                    showClosedProjectFeedbackNotification();
+                }
+            }
+        }
+
+        window.addEventListener(
+            'focus',
+            () =>
+                pmisSyncCustomerFeedbackLifecycleV77Z(
+                    true,
+                    false
+                )
+        );
+
+        document.addEventListener(
+            'visibilitychange',
+            () => {
+                if (!document.hidden) {
+                    pmisSyncCustomerFeedbackLifecycleV77Z(
+                        false,
+                        false
+                    );
+                }
+            }
+        );
 
         // PMIS_ALL_PO_ASSOCIATED_EDIT_GUARD_V24
         function pmisNormalizeIdentityV24(value) {
@@ -4551,7 +4817,7 @@ function formatExportPoValueForCurrentUser(project) {
                     <td style="text-align:center; border-left:1px solid #e2e8f0; vertical-align:middle;">
                         ${(() => {
                             const isFeedbackEligible =
-                                pmisCustomerFeedbackEligibleV77P(displayStatus);
+                                pmisCustomerFeedbackEligibleV77P(p);
 
                             const isAuthorizedForFeedback =
                                 isAdminDashboardLogin() ||
@@ -4576,6 +4842,61 @@ function formatExportPoValueForCurrentUser(project) {
                                         <i class="bi bi-arrow-counterclockwise"></i>
                                     </button>
                                 </div>`;
+                            }
+
+                            const feedbackStatus =
+                                getProjectCustomerFeedbackStatus(p);
+
+                            if (feedbackStatus === 'received') {
+                                const feedbackId =
+                                    String(
+                                        p.customer_feedback_feedback_id ||
+                                        ''
+                                    ).trim();
+
+                                const csi =
+                                    Number.isFinite(
+                                        Number(
+                                            p.customer_feedback_csi
+                                        )
+                                    )
+                                        ? Number(
+                                            p.customer_feedback_csi
+                                        ).toFixed(1) + '%'
+                                        : '';
+
+                                const detail =
+                                    [
+                                        feedbackId
+                                            ? 'Feedback ' + feedbackId
+                                            : '',
+                                        csi
+                                            ? 'CSI ' + csi
+                                            : '',
+                                        String(
+                                            p.customer_feedback_category ||
+                                            ''
+                                        ).trim()
+                                    ]
+                                        .filter(Boolean)
+                                        .join(' | ')
+                                        .replace(/"/g, '&quot;');
+
+                                return `<span
+                                    class="customer-feedback-state-badge received"
+                                    title="${detail || 'Customer feedback received'}">
+                                    <i class="bi bi-check-circle-fill"></i>
+                                    Feedback Received
+                                </span>`;
+                            }
+
+                            if (feedbackStatus === 'sent_waiting_reply') {
+                                return `<span
+                                    class="customer-feedback-state-badge waiting"
+                                    title="The customer feedback request was sent successfully and is waiting for the customer response.">
+                                    <i class="bi bi-hourglass-split"></i>
+                                    Feedback Sent - Waiting for Reply
+                                </span>`;
                             }
 
                             const codeArg = JSON.stringify(String(p.code || p.tracking_code || ''));
