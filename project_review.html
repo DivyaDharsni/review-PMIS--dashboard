@@ -4899,7 +4899,7 @@ function formatExportPoValueForCurrentUser(project) {
                                 </span>`;
                             }
 
-                            const codeArg = JSON.stringify(String(p.code || p.tracking_code || ''));
+                            const codeArg = JSON.stringify(String(p.tracking_code || p.code || ''));
                             const nameArg = JSON.stringify(String(p.name || ''));
 
                             return `<div class="customer-feedback-choice-wrap">

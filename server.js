@@ -2154,12 +2154,12 @@ app.post(
                 candidates.filter(project =>
                     project.customer_feedback_requirement !==
                         'not_required' &&
-                    pmisV77ZFeedbackEligibleProject(
-                        project
+                    ['closed','completed'].includes(
+                        String(project?.status || '').trim().toLowerCase()
                     ) &&
                     !!String(
-                        project.code ||
                         project.tracking_code ||
+                        project.code ||
                         ''
                     ).trim()
                 );
@@ -2180,8 +2180,8 @@ app.post(
             eligible.forEach(project => {
                 const code =
                     String(
-                        project.code ||
                         project.tracking_code ||
+                        project.code ||
                         ''
                     ).trim();
 
@@ -2196,8 +2196,8 @@ app.post(
                     Array.from(codeToProject.values())
                         .map(project =>
                             String(
-                                project.code ||
                                 project.tracking_code ||
+                                project.code ||
                                 ''
                             ).trim()
                         )
