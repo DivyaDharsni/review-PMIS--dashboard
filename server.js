@@ -2135,7 +2135,23 @@ app.post(
                 )
                     .slice(0,100);
 
-            if (!ids.length) {
+            const projectCodes =
+                Array.from(
+                    new Set(
+                        (
+                            Array.isArray(req.body?.projectCodes)
+                                ? req.body.projectCodes
+                                : []
+                        )
+                            .map(value =>
+                                String(value || '').trim()
+                            )
+                            .filter(Boolean)
+                    )
+                )
+                    .slice(0,100);
+
+            if (!ids.length && !projectCodes.length) {
                 return res.json({
                     ok:true,
                     persisted:
@@ -2145,9 +2161,30 @@ app.post(
                 });
             }
 
+            const lookup = [];
+
+            if (ids.length) {
+                lookup.push({
+                    _id:{ $in:ids }
+                });
+            }
+
+            projectCodes.forEach(code => {
+                const exact =
+                    new RegExp(
+                        '^' + escapeRegex(code) + '$',
+                        'i'
+                    );
+
+                lookup.push(
+                    { tracking_code:exact },
+                    { code:exact }
+                );
+            });
+
             const candidates =
                 await Project.find({
-                    _id:{ $in:ids }
+                    $or:lookup
                 });
 
             const eligible =
