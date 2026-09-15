@@ -2154,9 +2154,6 @@ app.post(
                 candidates.filter(project =>
                     project.customer_feedback_requirement !==
                         'not_required' &&
-                    ['closed','completed'].includes(
-                        String(project?.status || '').trim().toLowerCase()
-                    ) &&
                     !!String(
                         project.tracking_code ||
                         project.code ||
