@@ -2159,6 +2159,50 @@
             }
         }
     </style>
+
+    <link rel="stylesheet" href="pmis-finance-menu-access-v41.css">
+
+    <style id="PMIS_MANUAL_FEEDBACK_STATUS_V3_STYLE">
+        /* PMIS_MANUAL_FEEDBACK_STATUS_V3 */
+        .customer-feedback-manual-stack-v3 {
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            justify-content:center;
+            gap:6px;
+        }
+
+        .customer-feedback-manual-select-v3 {
+            min-height:32px;
+            min-width:132px;
+            max-width:178px;
+            padding:5px 28px 5px 9px;
+            border:1px solid #cbd5e1;
+            border-radius:9px;
+            background:#ffffff;
+            color:#334155;
+            font-size:.68rem;
+            font-weight:900;
+            line-height:1.1;
+            outline:none;
+            cursor:pointer;
+        }
+
+        .customer-feedback-manual-select-v3:hover {
+            border-color:#94a3b8;
+        }
+
+        .customer-feedback-manual-select-v3:focus {
+            border-color:#14b8a6;
+            box-shadow:0 0 0 3px rgba(20,184,166,.12);
+        }
+
+        .customer-feedback-manual-select-v3:disabled {
+            opacity:.62;
+            cursor:wait;
+        }
+    </style>
+
 </head>
 
 <body>
@@ -4168,6 +4212,239 @@ function formatExportPoValueForCurrentUser(project) {
                 : 'not_started';
         }
 
+        // PMIS_MANUAL_FEEDBACK_STATUS_V3
+        function renderCustomerFeedbackManualStatusV3(project) {
+            if (!project) return '';
+
+            const canEdit =
+                isAdminDashboardLogin() ||
+                isProjectAssociatedWithCurrentLogin(project);
+
+            if (!canEdit) return '';
+
+            const projectId =
+                String(project._id || '');
+
+            if (!projectId) return '';
+
+            const currentStatus =
+                getProjectCustomerFeedbackStatus(project);
+
+            const idArg =
+                JSON.stringify(projectId);
+
+            const placeholderSelected =
+                currentStatus === 'not_started'
+                    ? ' selected'
+                    : '';
+
+            const sentSelected =
+                currentStatus === 'sent_waiting_reply'
+                    ? ' selected'
+                    : '';
+
+            const receivedSelected =
+                currentStatus === 'received'
+                    ? ' selected'
+                    : '';
+
+            return `
+                <select
+                    class="customer-feedback-manual-select-v3"
+                    title="Manually mark customer feedback status"
+                    onclick="event.stopPropagation()"
+                    onchange='event.stopPropagation(); setCustomerFeedbackStatusManualV3(${idArg}, this.value, this)'>
+                    <option value="" disabled>
+                        Mark Status
+                    </option>
+                    <option value="not_started"${placeholderSelected}>
+                        Not Sent / Reset
+                    </option>
+                    <option value="sent_waiting_reply"${sentSelected}>
+                        Feedback Sent
+                    </option>
+                    <option value="received"${receivedSelected}>
+                        Feedback Received
+                    </option>
+                </select>
+            `;
+        }
+
+        async function setCustomerFeedbackStatusManualV3(
+            projectId,
+            status,
+            selectElement
+        ) {
+            const project =
+                projects.find(item =>
+                    String(item?._id || '') ===
+                    String(projectId || '')
+                );
+
+            if (!project) {
+                showToast('Project was not found.', true);
+                return;
+            }
+
+            if (
+                !isAdminDashboardLogin() &&
+                !isProjectAssociatedWithCurrentLogin(project)
+            ) {
+                showToast(
+                    'This project is not associated with your login.',
+                    true
+                );
+                renderProjects();
+                return;
+            }
+
+            const normalized =
+                String(status || '')
+                    .trim()
+                    .toLowerCase();
+
+            if (
+                ![
+                    'not_started',
+                    'sent_waiting_reply',
+                    'received'
+                ].includes(normalized)
+            ) {
+                renderProjects();
+                return;
+            }
+
+            const previousStatus =
+                getProjectCustomerFeedbackStatus(project);
+
+            // PMIS_MANUAL_FEEDBACK_STATUS_V31_RESET
+            if (
+                normalized === 'not_started' &&
+                previousStatus !== 'not_started'
+            ) {
+                const confirmed =
+                    window.confirm(
+                        'Reset this project feedback status to Not Sent?\n\nThis will let you mark Feedback Sent / Feedback Received again.'
+                    );
+
+                if (!confirmed) {
+                    if (selectElement) {
+                        selectElement.value = previousStatus;
+                    }
+                    return;
+                }
+            }
+
+            if (
+                previousStatus === 'received' &&
+                normalized === 'sent_waiting_reply'
+            ) {
+                const confirmed =
+                    window.confirm(
+                        'Change this project from Feedback Received back to Feedback Sent?'
+                    );
+
+                if (!confirmed) {
+                    if (selectElement) {
+                        selectElement.value = previousStatus;
+                    }
+                    return;
+                }
+            }
+
+            if (selectElement) {
+                selectElement.disabled = true;
+            }
+
+            try {
+                const response =
+                    await fetch(
+                        '/api/projects/' +
+                        encodeURIComponent(projectId) +
+                        '/customer-feedback-status',
+                        {
+                            method:'PATCH',
+                            headers:
+                                typeof pmisIdentityHeaders === 'function'
+                                    ? pmisIdentityHeaders()
+                                    : {
+                                        'Content-Type':'application/json',
+                                        'x-pmis-role':
+                                            localStorage.getItem('danprel_role') ||
+                                            '',
+                                        'x-pmis-username':
+                                            localStorage.getItem('danprel_username') ||
+                                            '',
+                                        'x-pmis-employee-id':
+                                            localStorage.getItem('danprel_employee_id') ||
+                                            '',
+                                        'x-pmis-display-name':
+                                            localStorage.getItem('danprel_display_name') ||
+                                            ''
+                                    },
+                            body:JSON.stringify({
+                                status:normalized
+                            })
+                        }
+                    );
+
+                const payload =
+                    await response
+                        .json()
+                        .catch(() => ({}));
+
+                if (!response.ok) {
+                    throw new Error(
+                        payload.error ||
+                        'Unable to update customer feedback status.'
+                    );
+                }
+
+                if (payload.project) {
+                    Object.assign(
+                        project,
+                        payload.project
+                    );
+                }
+                else {
+                    project.customer_feedback_status =
+                        normalized;
+                }
+
+                showToast(
+                    payload.message ||
+                    (
+                        normalized === 'not_started'
+                            ? 'Customer feedback reset to Not Sent.'
+                            : normalized === 'received'
+                                ? 'Customer feedback marked as Feedback Received.'
+                                : 'Customer feedback marked as Feedback Sent.'
+                    )
+                );
+
+                renderProjects();
+
+                if (
+                    typeof showClosedProjectFeedbackNotification ===
+                    'function'
+                ) {
+                    showClosedProjectFeedbackNotification();
+                }
+            }
+            catch (error) {
+                project.customer_feedback_status =
+                    previousStatus;
+
+                showToast(
+                    error.message ||
+                    'Unable to update customer feedback status.',
+                    true
+                );
+
+                renderProjects();
+            }
+        }
+
         async function setCustomerFeedbackRequirement(projectId, requirement) {
             const project = projects.find(item => String(item._id || '') === String(projectId || ''));
             if (!project) { showToast('Project was not found.', true); return; }
@@ -4882,21 +5159,27 @@ function formatExportPoValueForCurrentUser(project) {
                                         .join(' | ')
                                         .replace(/"/g, '&quot;');
 
-                                return `<span
-                                    class="customer-feedback-state-badge received"
-                                    title="${detail || 'Customer feedback received'}">
-                                    <i class="bi bi-check-circle-fill"></i>
-                                    Feedback Received
-                                </span>`;
+                                return `<div class="customer-feedback-manual-stack-v3">
+                                    <span
+                                        class="customer-feedback-state-badge received"
+                                        title="${detail || 'Customer feedback received'}">
+                                        <i class="bi bi-check-circle-fill"></i>
+                                        Feedback Received
+                                    </span>
+                                    ${renderCustomerFeedbackManualStatusV3(p)}
+                                </div>`;
                             }
 
                             if (feedbackStatus === 'sent_waiting_reply') {
-                                return `<span
-                                    class="customer-feedback-state-badge waiting"
-                                    title="The customer feedback request was sent successfully and is waiting for the customer response.">
-                                    <i class="bi bi-hourglass-split"></i>
-                                    Feedback Sent - Waiting for Reply
-                                </span>`;
+                                return `<div class="customer-feedback-manual-stack-v3">
+                                    <span
+                                        class="customer-feedback-state-badge waiting"
+                                        title="The customer feedback request was sent successfully and is waiting for the customer response.">
+                                        <i class="bi bi-hourglass-split"></i>
+                                        Feedback Sent - Waiting for Reply
+                                    </span>
+                                    ${renderCustomerFeedbackManualStatusV3(p)}
+                                </div>`;
                             }
 
                             const codeArg = JSON.stringify(String(p.tracking_code || p.code || ''));
@@ -4916,6 +5199,7 @@ function formatExportPoValueForCurrentUser(project) {
                                     onclick='event.stopPropagation(); setCustomerFeedbackRequirement(${projectIdArg}, "not_required")'>
                                     N/A
                                 </button>
+                                ${renderCustomerFeedbackManualStatusV3(p)}
                             </div>`
                         })()}
                     </td>
@@ -24111,6 +24395,8 @@ async function sendReport(payload,button,originalHtml) {
  document.addEventListener('DOMContentLoaded',()=>setTimeout(install,0),{once:true});
 })();
 </script>
+<script src="pmis-nav-fix-v3.js"></script>
+<script src="pmis-finance-menu-access-v41.js"></script>
 </body>
 
 </html>

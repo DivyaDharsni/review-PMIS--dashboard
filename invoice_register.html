@@ -27,7 +27,7 @@
 </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PMIS - Cashflow / Payments</title>
+    <title>PMIS - Invoice Register</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
@@ -311,11 +311,11 @@
         </section>
 
         <div class="charts">
-            <section class="panel chart-card"><h3>Monthly Cashflow — Planned vs Invoiced vs Actual</h3><p>Planned realization vs invoiced realization (Invoice Date + Credit Days) vs actual receipt month.</p><div class="chart-wrap"><canvas id="cashflowChart"></canvas></div></section>
+            <section class="panel chart-card"><h3>Monthly Cashflow — Planned vs Actual</h3><p>Planned realization month compared with actual receipt month.</p><div class="chart-wrap"><canvas id="cashflowChart"></canvas></div></section>
             <section class="panel chart-card"><h3>Payment Amount Mix</h3><p>Received and outstanding value split for the current filtered scope.</p><div class="chart-wrap"><canvas id="statusChart"></canvas></div></section>
         </div>
         <div class="charts second">
-            <section class="panel chart-card"><h3>Cumulative Cashflow</h3><p>Cumulative planned, invoiced and actual customer collections.</p><div class="chart-wrap"><canvas id="cumulativeChart"></canvas></div></section>
+            <section class="panel chart-card"><h3>Cumulative Cashflow</h3><p>Cumulative planned and actual customer collections.</p><div class="chart-wrap"><canvas id="cumulativeChart"></canvas></div></section>
             <section class="panel chart-card"><h3>Outstanding by Project</h3><p>Largest commercial balance in the filtered scope.</p><div class="chart-wrap"><canvas id="outstandingChart"></canvas></div></section>
         </div>
 
@@ -2013,97 +2013,16 @@ function renderTable(){
   });
 }
 
-/* PMIS_INVOICED_CASHFLOW_CHARTS_V77V2 */
-function cashflowInvoiceDocsV77V2(row){
- const project=row?.project;
-
- const docs=
-  Array.isArray(project?.finance_invoices)
-   ? project.finance_invoices
-   : [];
-
- const stage=
-  String(row?.term?.linked_stage_id||'').trim();
-
- return docs.filter(invoice=>{
-  if(
-   String(invoice?.document_type||'')
-    .trim()
-    .toLowerCase()!=='invoice'
-  ){
-   return false;
-  }
-
-  const rawIndex=
-   invoice?.milestone_index;
-
-  if(
-   rawIndex!==undefined &&
-   rawIndex!==null &&
-   String(rawIndex).trim()!==''
-  ){
-   return Number(rawIndex)===Number(row?.index);
-  }
-
-  return (
-   !!stage &&
-   String(invoice?.milestone_stage_id||'').trim()===stage
-  );
- });
-}
-
-function cashflowInvoiceGrossV77V2(invoice){
- const explicit=
-  Number(invoice?.invoice_gross);
-
- if(
-  Number.isFinite(explicit) &&
-  explicit>0
- ){
-  return explicit;
- }
-
- return Math.max(
-  0,
-  num(invoice?.invoice_amount)+
-  num(invoice?.invoice_gst)
- );
-}
-
-function cashflowInvoiceRealizationDateV77V2(row,invoice){
- const invoiceDate=
-  String(invoice?.invoice_date||'').slice(0,10);
-
- if(
-  !/^\d{4}-\d{2}-\d{2}$/.test(invoiceDate)
- ){
-  return '';
- }
-
- return addDays(
-  invoiceDate,
-  row?.term?.credit_days ??
-  row?.term?.creditDays ??
-  0
- );
-}
-
 function monthKey(date){return date?String(date).slice(0,7):''}
 function monthLabel(key){if(!/^\d{4}-\d{2}$/.test(key))return key;const [y,m]=key.split('-').map(Number);return new Date(y,m-1,1).toLocaleDateString('en-IN',{month:'short',year:'2-digit'})}
 function monthRange(keys){const valid=keys.filter(k=>/^\d{4}-\d{2}$/.test(k)).sort();if(!valid.length)return[];let [y,m]=valid[0].split('-').map(Number),[ey,em]=valid[valid.length-1].split('-').map(Number),out=[];for(let guard=0;guard<120;guard++){const k=`${y}-${String(m).padStart(2,'0')}`;out.push(k);if(y===ey&&m===em)break;m++;if(m===13){m=1;y++}}return out}
 function destroyChart(name){if(charts[name]){charts[name].destroy();charts[name]=null}}
 function renderCharts(){
- /* PMIS_CASHFLOW_SERIES_COLORS_V77V3
-  * Planned = Blue
-  * Invoiced Cashflow = Amber / Orange
-  * Actual Received = Green
-  */
  if(typeof Chart!=='function')return;
 
  registerV75ZChartPlugin();
 
  const plannedMap={};
- const invoicedMap={};
  const actualMap={};
 
  filtered.forEach(r=>{
@@ -2111,36 +2030,6 @@ function renderCharts(){
    const key=monthKey(r.planned);
    plannedMap[key]=(plannedMap[key]||0)+r.expected;
   }
-
-  /*
-
-   * PMIS_INVOICED_CASHFLOW_CHARTS_V77V2
-
-   * Invoiced realization date = Invoice Date + Credit Days.
-
-   * Invoiced value = Tax Invoice Gross.
-
-   */
-
-  cashflowInvoiceDocsV77V2(r).forEach(invoice=>{
-
-   const realizationDate=
-
-    cashflowInvoiceRealizationDateV77V2(r,invoice);
-
-   const gross=
-
-    cashflowInvoiceGrossV77V2(invoice);
-
-   if(!realizationDate||!(gross>0))return;
-
-   const key=monthKey(realizationDate);
-
-   invoicedMap[key]=(invoicedMap[key]||0)+gross;
-
-  });
-
-  
 
   receipts(r.term).forEach(receipt=>{
    if(!receipt?.received_date)return;
@@ -2151,13 +2040,11 @@ function renderCharts(){
 
  const months=monthRange([
   ...Object.keys(plannedMap),
-  ...Object.keys(invoicedMap),
   ...Object.keys(actualMap)
  ]);
 
  const labels=months.map(monthLabel);
  const planned=months.map(key=>plannedMap[key]||0);
- const invoiced=months.map(key=>invoicedMap[key]||0);
  const actual=months.map(key=>actualMap[key]||0);
 
  destroyChart('cash');
@@ -2168,30 +2055,8 @@ function renderCharts(){
    data:{
     labels,
     datasets:[
-     {
-      label:'Planned',
-      data:planned,
-      backgroundColor:'rgba(59,130,246,.72)',
-      borderColor:'rgba(37,99,235,1)',
-      borderWidth:1,
-      pmisShowAllPositiveLabels:true
-     },
-     {
-      label:'Invoiced Cashflow',
-      data:invoiced,
-      backgroundColor:'rgba(245,158,11,.76)',
-      borderColor:'rgba(217,119,6,1)',
-      borderWidth:1,
-      pmisShowAllPositiveLabels:true
-     },
-     {
-      label:'Actual Received',
-      data:actual,
-      backgroundColor:'rgba(16,185,129,.72)',
-      borderColor:'rgba(5,150,105,1)',
-      borderWidth:1,
-      pmisShowAllPositiveLabels:true
-     }
+     {label:'Planned',data:planned,pmisShowAllPositiveLabels:true},
+     {label:'Actual Received',data:actual,pmisShowAllPositiveLabels:true}
     ]
    },
    options:{
@@ -2222,7 +2087,6 @@ function renderCharts(){
  );
 
  let cumulativePlanned=0;
- let cumulativeInvoiced=0;
  let cumulativeActual=0;
 
  destroyChart('cum');
@@ -2239,25 +2103,7 @@ function renderCharts(){
       tension:.25,
       pointRadius:3.5,
       pointHoverRadius:4.5,
-      pmisShowAllLabels:true,
-      borderColor:'rgba(37,99,235,1)',
-      backgroundColor:'rgba(59,130,246,.12)',
-      pointBackgroundColor:'rgba(37,99,235,1)',
-      pointBorderColor:'rgba(37,99,235,1)',
-      borderWidth:2.2
-     },
-     {
-      label:'Cumulative Invoiced',
-      data:invoiced.map(v=>cumulativeInvoiced+=v),
-      tension:.25,
-      pointRadius:3.5,
-      pointHoverRadius:4.5,
-      borderColor:'rgba(217,119,6,1)',
-      backgroundColor:'rgba(245,158,11,.12)',
-      pointBackgroundColor:'rgba(217,119,6,1)',
-      pmisShowAllLabels:true,
-      pointBorderColor:'rgba(217,119,6,1)',
-      borderWidth:2.2
+      pmisShowAllLabels:true
      },
      {
       label:'Cumulative Actual',
@@ -2265,12 +2111,7 @@ function renderCharts(){
       tension:.25,
       pointRadius:3.5,
       pointHoverRadius:4.5,
-      pmisShowAllLabels:true,
-      borderColor:'rgba(5,150,105,1)',
-      backgroundColor:'rgba(16,185,129,.12)',
-      pointBackgroundColor:'rgba(5,150,105,1)',
-      pointBorderColor:'rgba(5,150,105,1)',
-      borderWidth:2.2
+      pmisShowAllLabels:true
      }
     ]
    },
@@ -4725,7 +4566,7 @@ async function exportPdf() {
 
             addChartPanel(
                 doc,
-                'Monthly Cashflow - Planned vs Invoiced vs Actual',
+                'Monthly Cashflow - Planned vs Actual',
                 images.monthly,
                 10,
                 y,
@@ -6476,166 +6317,1539 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 
 
 <!-- PMIS_INVOICE_REGISTER_SEPARATE_PAGE_V77U -->
-<style id="pmis-invoice-register-hide-v77u">
-#pmisFinanceInvoicePaneV77T {
+<style id="pmis-invoice-register-separate-page-v77u-style">
+body.pmis-invoice-page-v77u .charts,
+body.pmis-invoice-page-v77u .kpis {
     display:none !important;
+}
+body.pmis-invoice-page-v77u #pmisFinanceInvoicePaneV77T {
+    display:block !important;
+    margin-top:14px !important;
+}
+body.pmis-invoice-page-v77u .cashflow-main {
+    max-width:1750px !important;
 }
 </style>
 
-<script id="pmis-invoice-register-menu-v77u-cashflow">
+<script id="pmis-invoice-register-separate-page-v77u-script">
 (function () {
     'use strict';
 
-    function ensureInvoiceMenuV77U() {
-        const sidebar =
-            document.getElementById('sidebar');
+    if (window.__PMIS_INVOICE_REGISTER_SEPARATE_PAGE_V77U__) return;
+    window.__PMIS_INVOICE_REGISTER_SEPARATE_PAGE_V77U__ = true;
 
-        if (
-            !sidebar ||
+    function hideFilterField(id, filterBox) {
+        const input = document.getElementById(id);
+        if (!input || !filterBox) return;
+
+        let wrapper = input.parentElement;
+
+        while (
+            wrapper &&
+            wrapper.parentElement &&
+            wrapper.parentElement !== filterBox
+        ) {
+            wrapper = wrapper.parentElement;
+        }
+
+        if (wrapper && wrapper !== filterBox) {
+            wrapper.style.display = 'none';
+        }
+    }
+
+    function setInvoiceNavigation() {
+        const sidebar = document.getElementById('sidebar');
+        if (!sidebar) return;
+
+        const cashLink = sidebar.querySelector(
+            'a[href="cashflow.html"], a[href="./cashflow.html"]'
+        );
+
+        if (cashLink) {
+            cashLink.classList.remove('active');
+        }
+
+        let invoiceLink =
             document.getElementById(
                 'pmisInvoiceRegisterMenuV77U'
-            )
-        ) {
+            );
+
+        if (!invoiceLink) {
+            invoiceLink = document.createElement('a');
+            invoiceLink.id =
+                'pmisInvoiceRegisterMenuV77U';
+            invoiceLink.href =
+                'invoice_register.html';
+            invoiceLink.className =
+                'sidebar-btn';
+            invoiceLink.innerHTML =
+                '<div class="sb-icon">' +
+                '<i class="bi bi-receipt-cutoff"></i>' +
+                '</div>Invoice Register';
+
+            if (cashLink) {
+                cashLink.insertAdjacentElement(
+                    'afterend',
+                    invoiceLink
+                );
+            }
+            else {
+                sidebar.appendChild(invoiceLink);
+            }
+        }
+
+        invoiceLink.classList.add('active');
+    }
+
+    function simplifyPage() {
+        document.body.classList.add(
+            'pmis-invoice-page-v77u'
+        );
+
+        const pane =
+            document.getElementById(
+                'pmisFinanceInvoicePaneV77T'
+            );
+
+        if (!pane) {
+            console.error(
+                '[PMIS V77U] Invoice pane was not found.'
+            );
             return;
         }
 
-        const cashLink =
-            sidebar.querySelector(
-                'a[href="cashflow.html"],' +
-                'a[href="./cashflow.html"]'
+        pane.style.display = 'block';
+
+        const main =
+            pane.closest('.cashflow-main') ||
+            pane.parentElement;
+
+        if (main) {
+            Array.from(main.children).forEach(child => {
+                const containsInvoice =
+                    child === pane ||
+                    child.contains?.(pane);
+
+                const containsProjectFilter =
+                    child.querySelector?.('#fProject');
+
+                const isTitle =
+                    child.classList?.contains(
+                        'title-row'
+                    );
+
+                if (
+                    !containsInvoice &&
+                    !containsProjectFilter &&
+                    !isTitle
+                ) {
+                    child.style.display = 'none';
+                }
+            });
+        }
+
+        const titleRow =
+            document.querySelector('.title-row');
+
+        if (titleRow) {
+            const title = titleRow.querySelector('h1');
+            const subtitle = titleRow.querySelector('p');
+
+            if (title) {
+                title.textContent =
+                    'Invoice Register';
+            }
+
+            if (subtitle) {
+                subtitle.textContent =
+                    'Finance billing control against ' +
+                    'the existing PO payment milestones.';
+            }
+
+            titleRow
+                .querySelectorAll(
+                    '.dropdown, [data-bs-toggle="dropdown"]'
+                )
+                .forEach(node => {
+                    const wrapper =
+                        node.closest('.dropdown') ||
+                        node;
+                    wrapper.style.display = 'none';
+                });
+        }
+
+        const headerTitle =
+            document.querySelector(
+                '.header-center-title'
             );
 
-        if (!cashLink) return;
+        if (headerTitle) {
+            headerTitle.textContent =
+                'FINANCE - INVOICE REGISTER';
+        }
 
-        const link =
-            document.createElement('a');
+        const projectFilter =
+            document.getElementById('fProject');
 
-        link.id =
-            'pmisInvoiceRegisterMenuV77U';
-        link.href =
-            'invoice_register.html';
-        link.className =
-            'sidebar-btn';
-        link.innerHTML =
-            '<div class="sb-icon">' +
-            '<i class="bi bi-receipt-cutoff"></i>' +
-            '</div>Invoice Register';
+        const filterBox =
+            projectFilter?.closest('.filters') ||
+            projectFilter?.closest('.panel');
 
-        cashLink.insertAdjacentElement(
-            'afterend',
-            link
+        if (filterBox) {
+            hideFilterField(
+                'fStatus',
+                filterBox
+            );
+            hideFilterField(
+                'fFrom',
+                filterBox
+            );
+            hideFilterField(
+                'fTo',
+                filterBox
+            );
+
+            filterBox
+                .querySelectorAll(
+                    '[data-pmis-cashflow-export], ' +
+                    '#btnExportPDF, #btnExportExcel'
+                )
+                .forEach(node => {
+                    const wrapper =
+                        node.closest('.dropdown') ||
+                        node;
+                    wrapper.style.display = 'none';
+                });
+        }
+
+        setInvoiceNavigation();
+    }
+
+    function start() {
+        simplifyPage();
+
+        setTimeout(
+            simplifyPage,
+            100
+        );
+
+        setTimeout(
+            simplifyPage,
+            500
         );
     }
 
     if (document.readyState === 'loading') {
         document.addEventListener(
             'DOMContentLoaded',
-            ensureInvoiceMenuV77U,
+            start,
             { once:true }
         );
     }
     else {
-        ensureInvoiceMenuV77U();
+        start();
     }
 
     window.addEventListener(
         'pageshow',
-        ensureInvoiceMenuV77U
+        simplifyPage
     );
 })();
 </script>
 
 
-<!-- PMIS_EXPORT_BUTTON_PLACEMENT_V77W1 -->
-<style id="pmis-export-button-placement-v77w1-cashflow-style">
-/*
- * Keep the Cashflow export action inside the filter action row:
- * Clear Filters | Export PDF | Refresh
- */
-#pmisCashflowExportControlsV76A{
-  margin-left:0 !important;
-  margin-top:0 !important;
-  width:auto !important;
-  display:inline-flex !important;
-  align-items:center !important;
+<!-- PMIS_INVOICE_REGISTER_DATA_EXPORT_GUARD_V77U2A -->
+<style id="pmis-invoice-register-data-export-v77u2a-style">
+#pmisInvoiceDataStatusV77U2A{
+    margin:10px 0 0;
+    padding:9px 12px;
+    border-radius:11px;
+    border:1px solid #dbe5ef;
+    background:#f8fafc;
+    color:#475569;
+    font-size:.69rem;
+    font-weight:750;
+    display:flex;
+    align-items:center;
+    gap:8px;
 }
-#pmisCashflowExportControlsV76A .pmis-v75s2-export-btn{
-  margin-left:0 !important;
-  padding:7px 14px !important;
-  min-height:34px !important;
-  box-shadow:none !important;
+#pmisInvoiceDataStatusV77U2A.ok{
+    background:#ecfdf5;
+    border-color:#a7f3d0;
+    color:#047857;
+}
+#pmisInvoiceDataStatusV77U2A.error{
+    background:#fff1f2;
+    border-color:#fecdd3;
+    color:#be123c;
+}
+#pmisInvoiceDataStatusV77U2A.loading{
+    background:#eff6ff;
+    border-color:#bfdbfe;
+    color:#1d4ed8;
+}
+#pmisInvoiceExportActionsV77U2A{
+    display:flex;
+    gap:8px;
+    align-items:center;
+}
+#pmisInvoiceExportActionsV77U2A .btn{
+    border-radius:999px;
+    font-size:.72rem;
+    font-weight:850;
+    padding:7px 13px;
 }
 </style>
 
-<script id="pmis-export-button-placement-v77w1-cashflow">
+<script id="pmis-invoice-register-data-export-v77u2a">
 (function(){
 'use strict';
 
-if(window.__PMIS_EXPORT_BUTTON_PLACEMENT_V77W1_CASHFLOW__)return;
-window.__PMIS_EXPORT_BUTTON_PLACEMENT_V77W1_CASHFLOW__=true;
+if(window.__PMIS_INVOICE_REGISTER_DATA_EXPORT_GUARD_V77U2A__)return;
+window.__PMIS_INVOICE_REGISTER_DATA_EXPORT_GUARD_V77U2A__=true;
 
-function placeCashflowExportV77W1(){
-  const controls=
+const $=id=>document.getElementById(id);
+const num=v=>{const n=Number(v);return Number.isFinite(n)?n:0;};
+const norm=v=>String(v??'').trim().toLowerCase();
+
+function headers(){
+    const h={
+        'x-pmis-role':localStorage.getItem('danprel_role')||'',
+        'x-pmis-username':localStorage.getItem('danprel_username')||'',
+        'x-pmis-employee-id':localStorage.getItem('danprel_employee_id')||'',
+        'x-pmis-display-name':localStorage.getItem('danprel_display_name')||''
+    };
+    const token=localStorage.getItem('danprel_access_token')||'';
+    if(token)h.Authorization='Bearer '+token;
+    return h;
+}
+
+function identities(){
+    return [
+        localStorage.getItem('danprel_display_name'),
+        localStorage.getItem('danprel_employee_id'),
+        localStorage.getItem('danprel_username')
+    ]
+    .map(v=>String(v||'').toUpperCase().replace(/[^A-Z0-9]+/g,' ').replace(/\s+/g,' ').trim())
+    .filter(Boolean);
+}
+
+function isAdmin(){
+    return norm(localStorage.getItem('danprel_role')).includes('admin');
+}
+function isFinance(){
+    const role=norm(localStorage.getItem('danprel_auth_role'));
+    const designation=norm(localStorage.getItem('danprel_designation'));
+    return ['finance','accounts','account'].includes(role) ||
+        /(^|[^a-z])(finance|accounts?)([^a-z]|$)/i.test(designation);
+}
+function canViewProject(p){
+    if(isAdmin()||isFinance())return true;
+    const assignment=String(p?.project_manager||'').toUpperCase()
+        .replace(/[^A-Z0-9]+/g,' ').replace(/\s+/g,' ').trim();
+    return !!assignment && identities().some(id=>assignment.includes(id)||id.includes(assignment));
+}
+function comparePo(a,b){
+    const av=Date.parse(String(a?.po_date||a?.poDate||'').slice(0,10))||0;
+    const bv=Date.parse(String(b?.po_date||b?.poDate||'').slice(0,10))||0;
+    if(bv!==av)return bv-av;
+    return String(a?.code||a?.name||'').localeCompare(String(b?.code||b?.name||''),undefined,{sensitivity:'base'});
+}
+function gstRate(p){
+    const explicit=Number(p?.cashflow_gst_percent);
+    if(Number.isFinite(explicit)&&explicit>=0)return explicit;
+    return norm(p?.cashflow_order_type||p?.order_type||'domestic')==='international'?0:18;
+}
+function plannedGross(p,term){
+    const po=Math.max(0,num(p?.po_value));
+    const pct=Math.max(0,num(term?.percentage));
+    const alloc=Math.max(0,Math.min(100,num(
+        term?.gst_allocation_percent ??
+        term?.gstAllocationPercent ??
+        term?.gst_percent_allocation ??
+        term?.gstAllocation ??
+        0
+    )));
+    return po*pct/100 + po*gstRate(p)/100*alloc/100;
+}
+function receipts(term){
+    return Array.isArray(term?.actual_receipts)?term.actual_receipts:[];
+}
+function received(term){
+    return receipts(term).reduce((s,r)=>s+Math.max(0,num(r?.amount)),0);
+}
+function financeRows(p){
+    return Array.isArray(p?.finance_invoices)?p.finance_invoices:[];
+}
+function milestoneInvoices(p,index){
+    return financeRows(p).filter(r=>Number(r?.milestone_index)===Number(index));
+}
+function grossOf(r){
+    const explicit=Number(r?.invoice_gross);
+    return Number.isFinite(explicit)&&explicit>=0
+        ? explicit
+        : Math.max(0,num(r?.invoice_amount)+num(r?.invoice_gst));
+}
+function taxGross(p,index){
+    return milestoneInvoices(p,index)
+        .filter(r=>norm(r?.document_type)==='invoice')
+        .reduce((s,r)=>s+grossOf(r),0);
+}
+function proformaGross(p,index){
+    return milestoneInvoices(p,index)
+        .filter(r=>norm(r?.document_type)==='proforma')
+        .reduce((s,r)=>s+grossOf(r),0);
+}
+function billingStatus(p,term,index){
+    const planned=plannedGross(p,term);
+    const inv=taxGross(p,index);
+    const pro=proformaGross(p,index);
+    if(inv>0){
+        if(planned>0&&Math.round(inv*100)>=Math.round(planned*100)){
+            return {key:'full',label:'Fully Invoiced'};
+        }
+        return {key:'partial',label:'Partially Invoiced'};
+    }
+    if(pro>0)return {key:'proforma',label:'Proforma Raised'};
+    return {key:'not_invoiced',label:'Not Invoiced'};
+}
+function stageLabel(p,id){
+    const known={
+        po_date:'PO Date / Advance Payment',
+        kickoff:'Project Kick Off',
+        kickoff_1:'PO receipt & acknowledgement',
+        kickoff_2:'Kickoff / handover',
+        design:'Design',
+        design_1:'Design',
+        design_2:'Design review',
+        procurement:'Procurement',
+        procurement_1:'Procurement',
+        assembly:'Assembly',
+        assembly_1:'Assembly',
+        programming:'Programming',
+        programming_1:'Programming',
+        tryout:'Tryout',
+        tryout_1:'Tryout',
+        dispatch:'Dispatch',
+        dispatch_1:'Dispatch',
+        inc:'I&C',
+        inc_1:'Installation & Commissioning'
+    };
+    if(known[id])return known[id];
+    const custom=Array.isArray(p?.detailed_phases?.__custom_substages_v74q)
+        ? p.detailed_phases.__custom_substages_v74q : [];
+    return custom.find(x=>String(x?.id)===String(id))?.name || String(id||'-');
+}
+
+function repairFilterVisibility(){
+    const grid=$('fProject')?.closest('.filter-grid');
+    if(!grid)return;
+
+    grid.style.display='grid';
+    grid.style.visibility='visible';
+    grid.style.opacity='1';
+
+    ['fProject','fCustomer','fManager'].forEach(id=>{
+        const el=$(id);
+        if(!el)return;
+        const field=el.closest('.filter-grid > div')||el.parentElement;
+        if(field){
+            field.style.display='';
+            field.style.visibility='visible';
+            field.style.opacity='1';
+        }
+    });
+
+    ['fStatus','fFy','fDateBasis','fFrom','fTo'].forEach(id=>{
+        const el=$(id);
+        if(!el)return;
+        const field=el.closest('.filter-grid > div')||el.parentElement;
+        if(field)field.style.display='none';
+    });
+
+    const managerLabel=$('fManager')?.parentElement?.querySelector('label');
+    if(managerLabel)managerLabel.textContent='Project Expeditor';
+}
+
+function populateScope(projects){
+    const project=$('fProject'),customer=$('fCustomer'),manager=$('fManager');
+    if(!project||!customer||!manager)return;
+
+    const keep={p:project.value,c:customer.value,m:manager.value};
+
+    project.innerHTML='<option value="">All Projects</option>'+
+        projects.slice().sort(comparePo).map(p=>{
+            const id=String(p?._id||'');
+            const label=[p?.code||p?.tracking_code||'',p?.name||''].filter(Boolean).join(' - ')||'Project';
+            return '<option value="'+escapeHtml(id)+'">'+escapeHtml(label)+'</option>';
+        }).join('');
+
+    const customers=[...new Set(projects.map(p=>String(p?.customer_name||'').trim()).filter(Boolean))]
+        .sort((a,b)=>a.localeCompare(b,undefined,{sensitivity:'base'}));
+    customer.innerHTML='<option value="">All Customers</option>'+
+        customers.map(v=>'<option value="'+escapeHtml(v)+'">'+escapeHtml(v)+'</option>').join('');
+
+    const managers=[...new Set(projects.map(p=>String(p?.project_manager||'').trim()).filter(Boolean))]
+        .sort((a,b)=>a.localeCompare(b,undefined,{sensitivity:'base'}));
+    manager.innerHTML='<option value="">All Project Expeditors</option>'+
+        managers.map(v=>'<option value="'+escapeHtml(v)+'">'+escapeHtml(v)+'</option>').join('');
+
+    if([...project.options].some(o=>o.value===keep.p))project.value=keep.p;
+    if([...customer.options].some(o=>o.value===keep.c))customer.value=keep.c;
+    if([...manager.options].some(o=>o.value===keep.m))manager.value=keep.m;
+}
+function escapeHtml(v){
+    return String(v??'').replace(/[&<>"']/g,c=>({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    }[c]));
+}
+function setStatus(kind,text){
+    const el=$('pmisInvoiceDataStatusV77U2A');
+    if(!el)return;
+    el.className=kind||'';
+    const icon=kind==='ok'?'bi-database-check':kind==='error'?'bi-database-x':'bi-arrow-repeat';
+    el.innerHTML='<i class="bi '+icon+'"></i><span>'+escapeHtml(text)+'</span>';
+}
+function setExportsEnabled(enabled){
+    ['pmisInvoiceExportPdfV77U2A','pmisInvoiceExportExcelV77U2A'].forEach(id=>{
+        const el=$(id);if(el)el.disabled=!enabled;
+    });
+}
+function invalidateKpis(){
+    ['pmisInvPlannedV77T','pmisInvTaxV77T','pmisInvYetV77T','pmisInvReceivedV77T','pmisInvReceivableV77T']
+        .forEach(id=>{const el=$(id);if(el)el.textContent='--';});
+}
+async function fetchFreshProjects(){
+    const res=await fetch('/api/projects?t='+Date.now(),{
+        headers:headers(),
+        cache:'no-store'
+    });
+    const data=await res.json().catch(()=>null);
+    if(!res.ok){
+        throw new Error(data?.error||data?.message||('Project data fetch failed (HTTP '+res.status+')'));
+    }
+    if(!Array.isArray(data)){
+        throw new Error('Project API returned an invalid response.');
+    }
+    return data.filter(canViewProject).sort(comparePo);
+}
+async function verifyData(){
+    setStatus('loading','Fetching fresh PMIS database data...');
+    setExportsEnabled(false);
+    try{
+        const projects=await fetchFreshProjects();
+        window.__PMIS_INVOICE_FRESH_DATA_V77U2A__=projects;
+        populateScope(projects);
+        repairFilterVisibility();
+
+        const invoiceCount=projects.reduce((sum,p)=>sum+financeRows(p).length,0);
+        setStatus(
+            'ok',
+            'Database connected. '+projects.length+' accessible project'+
+            (projects.length===1?'':'s')+' loaded. '+invoiceCount+' billing record'+
+            (invoiceCount===1?'':'s')+' loaded. Frontend and exports use live API data.'
+        );
+        setExportsEnabled(true);
+        return projects;
+    }catch(error){
+        window.__PMIS_INVOICE_FRESH_DATA_V77U2A__=null;
+        invalidateKpis();
+        setStatus(
+            'error',
+            'Database data was NOT loaded: '+(error?.message||error)+
+            '. Values are shown as -- instead of false zeroes.'
+        );
+        setExportsEnabled(false);
+        throw error;
+    }
+}
+function ensureStatus(){
+    if($('pmisInvoiceDataStatusV77U2A'))return;
+    const panel=$('fProject')?.closest('.filters');
+    if(!panel)return;
+    const el=document.createElement('div');
+    el.id='pmisInvoiceDataStatusV77U2A';
+    el.className='loading';
+    el.innerHTML='<i class="bi bi-arrow-repeat"></i><span>Checking live PMIS data...</span>';
+    panel.appendChild(el);
+}
+function ensureExportButtons(){
+    if($('pmisInvoiceExportActionsV77U2A'))return;
+    const refresh=$('btnRefresh');
+    if(!refresh||!refresh.parentElement)return;
+
+    const wrap=document.createElement('div');
+    wrap.id='pmisInvoiceExportActionsV77U2A';
+    wrap.innerHTML=
+        '<button type="button" class="btn btn-sm btn-outline-danger" id="pmisInvoiceExportPdfV77U2A">'+
+        '<i class="bi bi-file-earmark-pdf me-1"></i>Export PDF</button>'+
+        '<button type="button" class="btn btn-sm btn-outline-success" id="pmisInvoiceExportExcelV77U2A">'+
+        '<i class="bi bi-file-earmark-excel me-1"></i>Export Excel</button>';
+    refresh.parentElement.insertBefore(wrap,refresh);
+
+    $('pmisInvoiceExportPdfV77U2A')?.addEventListener('click',exportPdf);
+    $('pmisInvoiceExportExcelV77U2A')?.addEventListener('click',exportExcel);
+    setExportsEnabled(false);
+}
+function currentFilterRows(projects){
+    const projectFilter=$('fProject')?.value||'';
+    const customerFilter=$('fCustomer')?.value||'';
+    const managerFilter=$('fManager')?.value||'';
+    const billingFilter=$('pmisInvStatusV77T')?.value||'';
+    const typeFilter=$('pmisInvTypeV77T')?.value||'';
+    const search=norm($('pmisInvSearchV77T')?.value||'');
+
+    const out=[];
+    projects.forEach(p=>{
+        if(projectFilter && ![p?._id,p?.code,p?.tracking_code,p?.name].map(v=>String(v||'')).includes(projectFilter))return;
+        if(customerFilter && String(p?.customer_name||'')!==customerFilter)return;
+        if(managerFilter && String(p?.project_manager||'')!==managerFilter)return;
+
+        const terms=Array.isArray(p?.payment_milestones)?p.payment_milestones:[];
+        terms.forEach((term,index)=>{
+            const status=billingStatus(p,term,index);
+            if(billingFilter&&status.key!==billingFilter)return;
+
+            const docs=milestoneInvoices(p,index);
+            const base={
+                projectCode:p?.code||p?.tracking_code||'',
+                projectName:p?.name||'',
+                customer:p?.customer_name||'',
+                expeditor:p?.project_manager||'',
+                poReference:p?.po_reference||'',
+                poDate:p?.po_date||'',
+                milestone:'M'+(index+1),
+                linkedStage:stageLabel(p,term?.linked_stage_id),
+                milestoneDescription:term?.remarks||'',
+                plannedGross:plannedGross(p,term),
+                billingStatus:status.label,
+                milestoneTaxInvoiced:taxGross(p,index),
+                actualReceived:received(term),
+                yetToInvoice:Math.max(0,plannedGross(p,term)-taxGross(p,index)),
+                invoiceReceivable:Math.max(0,taxGross(p,index)-received(term))
+            };
+
+            if(!docs.length){
+                if(typeFilter)return;
+                const row={...base,documentType:'',invoiceDate:'',invoiceNumber:'',submittedDate:'',
+                    invoiceAmount:0,invoiceGst:0,invoiceGross:0,remarks:'',createdBy:'',createdAt:'',editedBy:'',editedAt:''};
+                if(!search||norm(Object.values(row).join(' ')).includes(search))out.push(row);
+                return;
+            }
+
+            docs.forEach(doc=>{
+                const type=norm(doc?.document_type);
+                if(typeFilter&&type!==typeFilter)return;
+                const row={
+                    ...base,
+                    documentType:type==='invoice'?'Invoice':'Proforma',
+                    invoiceDate:doc?.invoice_date||'',
+                    invoiceNumber:doc?.invoice_number||'',
+                    submittedDate:doc?.submitted_date||'',
+                    invoiceAmount:num(doc?.invoice_amount),
+                    invoiceGst:num(doc?.invoice_gst),
+                    invoiceGross:grossOf(doc),
+                    remarks:doc?.remarks||'',
+                    createdBy:doc?.recorded_by||'',
+                    createdAt:doc?.recorded_at||'',
+                    editedBy:doc?.edited_by||'',
+                    editedAt:doc?.edited_at||''
+                };
+                if(!search||norm(Object.values(row).join(' ')).includes(search))out.push(row);
+            });
+        });
+    });
+    return out;
+}
+function exportColumns(){
+    return [
+        ['Project Code','projectCode'],['Project Name','projectName'],['Customer','customer'],
+        ['Project Expeditor','expeditor'],['PO Reference','poReference'],['PO Date','poDate'],
+        ['Milestone','milestone'],['Linked Stage','linkedStage'],['Milestone Description','milestoneDescription'],
+        ['Planned Gross','plannedGross'],['Billing Status','billingStatus'],['Document Type','documentType'],
+        ['Invoice Date','invoiceDate'],['Invoice / Proforma Number','invoiceNumber'],
+        ['Submitted / Sent Date','submittedDate'],['Invoice Amount (Net)','invoiceAmount'],
+        ['Invoice GST','invoiceGst'],['Invoice Gross','invoiceGross'],
+        ['Milestone Tax Invoiced','milestoneTaxInvoiced'],['Actual Received','actualReceived'],
+        ['Yet to Invoice','yetToInvoice'],['Invoice Receivable','invoiceReceivable'],
+        ['Remarks','remarks'],['Created By','createdBy'],['Created At','createdAt'],
+        ['Edited By','editedBy'],['Edited At','editedAt']
+    ];
+}
+function fileStamp(){
+    const d=new Date(),pad=v=>String(v).padStart(2,'0');
+    return d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'_'+pad(d.getHours())+pad(d.getMinutes());
+}
+function loadScript(url,test){
+    return new Promise((resolve,reject)=>{
+        if(test())return resolve();
+        const s=document.createElement('script');
+        s.src=url;
+        s.onload=()=>test()?resolve():reject(new Error('Export library unavailable.'));
+        s.onerror=()=>reject(new Error('Could not load export library.'));
+        document.head.appendChild(s);
+    });
+}
+async function ensureXlsx(){
+    if(window.XLSX)return;
+    await loadScript(
+        'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+        ()=>!!window.XLSX
+    );
+}
+async function ensurePdf(){
+    if(!window.jspdf?.jsPDF&&!window.jsPDF){
+        await loadScript(
+            'https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js',
+            ()=>!!window.jspdf?.jsPDF||!!window.jsPDF
+        );
+    }
+    const JsPDF=window.jspdf?.jsPDF||window.jsPDF;
+    if(!JsPDF)throw new Error('jsPDF is unavailable.');
+    if(typeof new JsPDF().autoTable!=='function'){
+        await loadScript(
+            'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js',
+            ()=>typeof new JsPDF().autoTable==='function'
+        );
+    }
+    return JsPDF;
+}
+async function rowsForExport(){
+    const projects=await verifyData();
+    const rows=currentFilterRows(projects);
+    if(!rows.length)throw new Error('No Invoice Register data matches the active filters.');
+    return rows;
+}
+
+/* PMIS_INVOICE_EXPORT_BRANDING_V77W */
+const PMIS_COMPANY_NAME_V77W =
+ 'DANPREL ENGINEERING AUTOMATION PVT LTD';
+
+function pmisExportDateTimeV77W(){
+ return new Date().toLocaleString(
+  'en-IN',
+  {
+   day:'2-digit',
+   month:'short',
+   year:'numeric',
+   hour:'2-digit',
+   minute:'2-digit'
+  }
+ );
+}
+
+function pmisInvoiceFilterSummaryV77W(){
+ const text=(id,fallback)=>{
+  const el=$(id);
+
+  if(!el)return fallback;
+
+  if(el.tagName==='SELECT'){
+   return (
+    el.selectedOptions?.[0]?.text ||
+    fallback
+   );
+  }
+
+  return (
+   String(el.value||'').trim() ||
+   fallback
+  );
+ };
+
+ return [
+  'Project: '+text('fProject','All Projects'),
+  'Customer: '+text('fCustomer','All Customers'),
+  'Project Expeditor: '+text('fManager','All Project Expeditors'),
+  'Billing Status: '+text('pmisInvStatusV77T','All Billing Status'),
+  'Document Type: '+text('pmisInvTypeV77T','All Documents')
+ ].join(' | ');
+}
+
+function pmisDataUrlFromBlobV77W(blob){
+ return new Promise((resolve,reject)=>{
+  const reader=new FileReader();
+  reader.onload=()=>resolve(String(reader.result||''));
+  reader.onerror=()=>reject(
+   new Error('Unable to read company logo.')
+  );
+  reader.readAsDataURL(blob);
+ });
+}
+
+async function pmisGetCompanyLogoV77W(){
+ const candidates=[
+  document
+   .querySelector(
+    'img[src*="asset/"], img[src*="logo"], img[src*="image"]'
+   )
+   ?.getAttribute('src'),
+  'asset/image.png',
+  'asset/logo.png',
+  'logo.png'
+ ]
+ .filter(Boolean);
+
+ const tried=new Set();
+
+ for(const source of candidates){
+  const src=String(source||'').trim();
+
+  if(!src||tried.has(src))continue;
+
+  tried.add(src);
+
+  try{
+   const response=await fetch(
+    src,
+    {
+     cache:'no-store'
+    }
+   );
+
+   if(!response.ok)continue;
+
+   const blob=await response.blob();
+
+   if(!blob.type.startsWith('image/')){
+    continue;
+   }
+
+   const dataUrl=
+    await pmisDataUrlFromBlobV77W(blob);
+
+   if(dataUrl){
+    return {
+     dataUrl,
+     extension:
+      blob.type.includes('jpeg') ||
+      blob.type.includes('jpg')
+       ? 'jpeg'
+       : 'png'
+    };
+   }
+  }
+  catch(_){
+   // Try the next known logo source.
+  }
+ }
+
+ return {
+  dataUrl:'',
+  extension:'png'
+ };
+}
+
+async function ensureExcelJsV77W(){
+ if(window.ExcelJS)return;
+
+ await loadScript(
+  'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js',
+  ()=>!!window.ExcelJS
+ );
+
+ if(!window.ExcelJS){
+  throw new Error(
+   'ExcelJS is unavailable.'
+  );
+ }
+}
+
+function pmisDownloadBlobV77W(
+ blob,
+ filename
+){
+ const url=URL.createObjectURL(blob);
+ const anchor=document.createElement('a');
+
+ anchor.href=url;
+ anchor.download=filename;
+
+ document.body.appendChild(anchor);
+ anchor.click();
+ anchor.remove();
+
+ setTimeout(
+  ()=>URL.revokeObjectURL(url),
+  1000
+ );
+}
+
+function pmisExcelNumberFormatV77W(key){
+ return [
+  'plannedGross',
+  'invoiceAmount',
+  'invoiceGst',
+  'invoiceGross',
+  'milestoneTaxInvoiced',
+  'actualReceived',
+  'yetToInvoice',
+  'invoiceReceivable'
+ ].includes(key);
+}
+
+
+async function exportExcel(){
+ const btn=$('pmisInvoiceExportExcelV77U2A');
+
+ if(btn)btn.disabled=true;
+
+ try{
+  const rows=await rowsForExport();
+
+  await ensureExcelJsV77W();
+
+  const logo=
+   await pmisGetCompanyLogoV77W();
+
+  const workbook=
+   new ExcelJS.Workbook();
+
+  workbook.creator=
+   PMIS_COMPANY_NAME_V77W;
+
+  workbook.company=
+   PMIS_COMPANY_NAME_V77W;
+
+  workbook.created=
+   new Date();
+
+  const sheet=
+   workbook.addWorksheet(
+    'Invoice Register',
+    {
+     views:[
+      {
+       state:'frozen',
+       ySplit:6
+      }
+     ]
+    }
+   );
+
+  const cols=
+   exportColumns();
+
+  sheet.mergeCells(
+   1,
+   2,
+   1,
+   Math.max(8,cols.length)
+  );
+
+  sheet.mergeCells(
+   2,
+   2,
+   2,
+   Math.max(8,cols.length)
+  );
+
+  sheet.mergeCells(
+   3,
+   2,
+   3,
+   Math.max(8,cols.length)
+  );
+
+  sheet.mergeCells(
+   4,
+   2,
+   4,
+   Math.max(8,cols.length)
+  );
+
+  sheet.getCell('B1').value=
+   PMIS_COMPANY_NAME_V77W;
+
+  sheet.getCell('B2').value=
+   'PROJECT INVOICE REGISTER';
+
+  sheet.getCell('B3').value=
+   'Exported On: '+
+   pmisExportDateTimeV77W();
+
+  sheet.getCell('B4').value=
+   pmisInvoiceFilterSummaryV77W();
+
+  sheet.getCell('B1').font={
+   bold:true,
+   size:16,
+   color:{argb:'FF003B70'}
+  };
+
+  sheet.getCell('B2').font={
+   bold:true,
+   size:13,
+   color:{argb:'FF0F172A'}
+  };
+
+  sheet.getCell('B3').font={
+   size:10,
+   color:{argb:'FF475569'}
+  };
+
+  sheet.getCell('B4').font={
+   size:9,
+   italic:true,
+   color:{argb:'FF64748B'}
+  };
+
+  sheet.getRow(1).height=22;
+  sheet.getRow(2).height=20;
+  sheet.getRow(3).height=18;
+  sheet.getRow(4).height=26;
+  sheet.getRow(5).height=8;
+
+  if(logo.dataUrl){
+   try{
+    const imageId=
+     workbook.addImage({
+      base64:logo.dataUrl,
+      extension:
+       logo.extension==='jpeg'
+        ? 'jpeg'
+        : 'png'
+     });
+
+    sheet.addImage(
+     imageId,
+     {
+      tl:{
+       col:0,
+       row:0
+      },
+      ext:{
+       width:72,
+       height:54
+      }
+     }
+    );
+   }
+   catch(error){
+    console.warn(
+     '[PMIS V77W] Excel logo could not be embedded:',
+     error?.message||error
+    );
+   }
+  }
+
+  const headerRow=6;
+
+  cols.forEach((col,index)=>{
+   const cell=
+    sheet.getCell(
+     headerRow,
+     index+1
+    );
+
+   cell.value=col[0];
+
+   cell.font={
+    bold:true,
+    color:{argb:'FFFFFFFF'}
+   };
+
+   cell.fill={
+    type:'pattern',
+    pattern:'solid',
+    fgColor:{argb:'FF003B70'}
+   };
+
+   cell.alignment={
+    horizontal:'center',
+    vertical:'middle',
+    wrapText:true
+   };
+
+   cell.border={
+    top:{style:'thin',color:{argb:'FFD1D5DB'}},
+    left:{style:'thin',color:{argb:'FFD1D5DB'}},
+    bottom:{style:'thin',color:{argb:'FFD1D5DB'}},
+    right:{style:'thin',color:{argb:'FFD1D5DB'}}
+   };
+  });
+
+  rows.forEach((row,rowIndex)=>{
+   cols.forEach((col,colIndex)=>{
+    const cell=
+     sheet.getCell(
+      headerRow+1+rowIndex,
+      colIndex+1
+     );
+
+    const key=col[1];
+    const value=row[key];
+
+    if(pmisExcelNumberFormatV77W(key)){
+     cell.value=
+      Number(value)||0;
+
+     cell.numFmt=
+      '#,##0.00';
+    }
+    else{
+     cell.value=
+      String(value??'');
+    }
+
+    cell.alignment={
+     vertical:'top',
+     wrapText:true
+    };
+
+    cell.border={
+     bottom:{
+      style:'hair',
+      color:{argb:'FFE5E7EB'}
+     }
+    };
+   });
+  });
+
+  cols.forEach((col,index)=>{
+   const wide=[
+    'Project Name',
+    'Customer',
+    'Linked Stage',
+    'Milestone Description',
+    'Remarks'
+   ].includes(col[0]);
+
+   sheet.getColumn(index+1).width=
+    wide
+     ? 30
+     : 18;
+  });
+
+  sheet.autoFilter={
+   from:{
+    row:headerRow,
+    column:1
+   },
+   to:{
+    row:headerRow,
+    column:cols.length
+   }
+  };
+
+  sheet.pageSetup={
+   orientation:'landscape',
+   fitToPage:true,
+   fitToWidth:1,
+   fitToHeight:0,
+   paperSize:9,
+   margins:{
+    left:0.25,
+    right:0.25,
+    top:0.5,
+    bottom:0.5,
+    header:0.2,
+    footer:0.2
+   }
+  };
+
+  sheet.headerFooter={
+   oddFooter:
+    '&L'+
+    PMIS_COMPANY_NAME_V77W+
+    '&CInvoice Register&RPage &P of &N'
+  };
+
+  const buffer=
+   await workbook.xlsx.writeBuffer();
+
+  pmisDownloadBlobV77W(
+   new Blob(
+    [buffer],
+    {
+     type:
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    }
+   ),
+   'PROJECT_INVOICE_REGISTER_'+
+   fileStamp()+
+   '.xlsx'
+  );
+ }
+ catch(error){
+  alert(
+   error?.message||
+   'Unable to export Invoice Register.'
+  );
+ }
+ finally{
+  if(btn)btn.disabled=false;
+ }
+}
+
+async function exportPdf(){
+ const btn=$('pmisInvoiceExportPdfV77U2A');
+
+ if(btn)btn.disabled=true;
+
+ try{
+  const rows=await rowsForExport();
+
+  const JsPDF=
+   await ensurePdf();
+
+  const logo=
+   await pmisGetCompanyLogoV77W();
+
+  const doc=
+   new JsPDF({
+    orientation:'landscape',
+    unit:'mm',
+    format:'a3'
+   });
+
+  const pageWidth=
+   doc.internal.pageSize.getWidth();
+
+  if(logo.dataUrl){
+   try{
+    doc.addImage(
+     logo.dataUrl,
+     logo.extension==='jpeg'
+      ? 'JPEG'
+      : 'PNG',
+     14,
+     8,
+     18,
+     18
+    );
+   }
+   catch(error){
+    console.warn(
+     '[PMIS V77W] PDF logo could not be embedded:',
+     error?.message||error
+    );
+   }
+  }
+
+  doc.setFont(
+   'helvetica',
+   'bold'
+  );
+
+  doc.setFontSize(15);
+  doc.setTextColor(
+   0,
+   59,
+   112
+  );
+
+  doc.text(
+   PMIS_COMPANY_NAME_V77W,
+   38,
+   14
+  );
+
+  doc.setFontSize(12);
+  doc.setTextColor(
+   15,
+   23,
+   42
+  );
+
+  doc.text(
+   'PROJECT INVOICE REGISTER',
+   38,
+   21
+  );
+
+  doc.setFont(
+   'helvetica',
+   'normal'
+  );
+
+  doc.setFontSize(8);
+  doc.setTextColor(
+   90
+  );
+
+  doc.text(
+   'Exported On: '+
+   pmisExportDateTimeV77W(),
+   38,
+   27
+  );
+
+  const scope=
+   pmisInvoiceFilterSummaryV77W();
+
+  const scopeLines=
+   doc.splitTextToSize(
+    scope,
+    pageWidth-28
+   );
+
+  doc.text(
+   scopeLines,
+   14,
+   34
+  );
+
+  const startY=
+   39+
+   Math.max(
+    0,
+    (scopeLines.length-1)*3
+   );
+
+  const cols=[
+   ['Project','projectCode'],
+   ['Customer','customer'],
+   ['Milestone','milestone'],
+   ['Stage','linkedStage'],
+   ['Planned Gross','plannedGross'],
+   ['Billing Status','billingStatus'],
+   ['Type','documentType'],
+   ['Invoice Date','invoiceDate'],
+   ['Invoice No.','invoiceNumber'],
+   ['Sent Date','submittedDate'],
+   ['Net','invoiceAmount'],
+   ['GST','invoiceGst'],
+   ['Gross','invoiceGross'],
+   ['Received','actualReceived'],
+   ['Receivable','invoiceReceivable']
+  ];
+
+  const currencyKeys=
+   new Set([
+    'plannedGross',
+    'invoiceAmount',
+    'invoiceGst',
+    'invoiceGross',
+    'actualReceived',
+    'invoiceReceivable'
+   ]);
+
+  doc.autoTable({
+   startY,
+   head:[
+    cols.map(col=>col[0])
+   ],
+   body:
+    rows.map(row=>
+     cols.map(col=>{
+      const key=col[1];
+      const value=row[key];
+
+      if(currencyKeys.has(key)){
+       return new Intl.NumberFormat(
+        'en-IN',
+        {
+         maximumFractionDigits:2
+        }
+       ).format(
+        num(value)
+       );
+      }
+
+      return String(
+       value??''
+      );
+     })
+    ),
+   theme:'grid',
+   styles:{
+    fontSize:6.5,
+    cellPadding:1.6,
+    overflow:'linebreak'
+   },
+   headStyles:{
+    fillColor:[
+     0,
+     59,
+     112
+    ],
+    textColor:255,
+    fontStyle:'bold'
+   },
+   margin:{
+    left:10,
+    right:10,
+    bottom:12
+   },
+   didDrawPage:()=>{
+    const page=
+     doc.internal.getCurrentPageInfo().pageNumber;
+
+    doc.setDrawColor(
+     203,
+     213,
+     225
+    );
+
+    doc.line(
+     10,
+     doc.internal.pageSize.getHeight()-10,
+     pageWidth-10,
+     doc.internal.pageSize.getHeight()-10
+    );
+
+    doc.setFontSize(7);
+    doc.setTextColor(100);
+
+    doc.text(
+     PMIS_COMPANY_NAME_V77W,
+     10,
+     doc.internal.pageSize.getHeight()-5
+    );
+
+    doc.text(
+     'Exported On: '+
+     pmisExportDateTimeV77W(),
+     pageWidth/2,
+     doc.internal.pageSize.getHeight()-5,
+     {
+      align:'center'
+     }
+    );
+
+    doc.text(
+     'Page '+page,
+     pageWidth-10,
+     doc.internal.pageSize.getHeight()-5,
+     {
+      align:'right'
+     }
+    );
+   }
+  });
+
+  const pages=
+   doc.getNumberOfPages();
+
+  for(
+   let page=1;
+   page<=pages;
+   page++
+  ){
+   doc.setPage(page);
+
+   doc.setFontSize(7);
+   doc.setTextColor(100);
+
+   doc.text(
+    'Page '+
+    page+
+    ' of '+
+    pages,
+    pageWidth-10,
+    doc.internal.pageSize.getHeight()-5,
+    {
+     align:'right'
+    }
+   );
+  }
+
+  doc.save(
+   'PROJECT_INVOICE_REGISTER_'+
+   fileStamp()+
+   '.pdf'
+  );
+ }
+ catch(error){
+  alert(
+   error?.message||
+   'Unable to export Invoice Register.'
+  );
+ }
+ finally{
+  if(btn)btn.disabled=false;
+ }
+}
+
+function install(){
+    repairFilterVisibility();
+    ensureStatus();
+    ensureExportButtons();
+
+    $('btnRefresh')?.addEventListener('click',()=>{
+        setTimeout(()=>verifyData().catch(()=>{}),150);
+    });
+
+    setTimeout(()=>{
+        repairFilterVisibility();
+        verifyData().catch(()=>{});
+    },200);
+
+    setTimeout(repairFilterVisibility,700);
+}
+
+if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',install,{once:true});
+}else{
+    install();
+}
+window.addEventListener('pageshow',()=>{
+    repairFilterVisibility();
+    verifyData().catch(()=>{});
+});
+
+})();
+</script>
+
+
+
+<!-- PMIS_EXPORT_BUTTON_PLACEMENT_V77W1 -->
+<style id="pmis-export-button-placement-v77w1-invoice-style">
+/*
+ * invoice_register.html is cloned from Cashflow and still carries the
+ * legacy Cashflow Export PDF control under the page title.
+ *
+ * The proper Invoice Register actions already exist in the filter area:
+ * Export PDF + Export Excel.
+ *
+ * Hide ONLY the cloned Cashflow export control.
+ */
+#pmisCashflowExportControlsV76A{
+  display:none !important;
+}
+</style>
+
+<script id="pmis-export-button-placement-v77w1-invoice">
+(function(){
+'use strict';
+
+if(window.__PMIS_EXPORT_BUTTON_PLACEMENT_V77W1_INVOICE__)return;
+window.__PMIS_EXPORT_BUTTON_PLACEMENT_V77W1_INVOICE__=true;
+
+function removeLegacyInvoiceTopExportV77W1(){
+  const oldControls=
     document.getElementById(
       'pmisCashflowExportControlsV76A'
     );
 
-  const clear=
-    document.getElementById('btnClear');
-
-  const refresh=
-    document.getElementById('btnRefresh');
-
-  const actionRow=
-    refresh?.parentElement ||
-    clear?.parentElement;
-
-  if(!controls||!actionRow)return;
-
-  /*
-   * Move the EXISTING export controls rather than creating another
-   * button. This preserves the existing exportPdf click handler and
-   * all current PDF/export logic.
-   */
-  if(controls.parentElement!==actionRow){
-    actionRow.insertBefore(
-      controls,
-      refresh||null
+  if(oldControls){
+    oldControls.style.display='none';
+    oldControls.setAttribute(
+      'aria-hidden',
+      'true'
     );
   }
 
-  controls.dataset.pmisV77W1Placed='1';
+  /*
+   * Do not touch:
+   *   pmisInvoiceExportPdfV77U2A
+   *   pmisInvoiceExportExcelV77U2A
+   * Those are the correct Invoice Register export buttons.
+   */
 }
 
 function startV77W1(){
-  placeCashflowExportV77W1();
+  removeLegacyInvoiceTopExportV77W1();
 
   setTimeout(
-    placeCashflowExportV77W1,
-    80
+    removeLegacyInvoiceTopExportV77W1,
+    100
   );
 
   setTimeout(
-    placeCashflowExportV77W1,
-    350
-  );
-
-  setTimeout(
-    placeCashflowExportV77W1,
-    900
-  );
-
-  const observer=
-    new MutationObserver(
-      placeCashflowExportV77W1
-    );
-
-  observer.observe(
-    document.body,
-    {
-      childList:true,
-      subtree:true
-    }
+    removeLegacyInvoiceTopExportV77W1,
+    500
   );
 }
 
@@ -6652,7 +7866,7 @@ else{
 
 window.addEventListener(
   'pageshow',
-  placeCashflowExportV77W1
+  removeLegacyInvoiceTopExportV77W1
 );
 
 })();

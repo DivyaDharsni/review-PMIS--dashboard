@@ -1,0 +1,211 @@
+/* PMIS_MENU_EXACT_DASHBOARD_V4
+   Exact sidebar rules copied from the native Project Dashboard.
+   Scoped to finance pages by being loaded only there.
+*/
+
+:root {
+    --navy-dark:#001f3f;
+    --navy-mid:#003366;
+    --teal-bright:#14b8a6;
+}
+
+.sidebar {
+    position:fixed !important;
+    top:0 !important;
+    left:-320px !important;
+    width:320px !important;
+    height:100% !important;
+    background:linear-gradient(
+        180deg,
+        var(--navy-dark) 0%,
+        var(--navy-mid) 100%
+    ) !important;
+    z-index:1100 !important;
+    transition:all .4s cubic-bezier(.4,0,.2,1) !important;
+    padding:30px !important;
+    display:flex !important;
+    flex-direction:column !important;
+    box-shadow:20px 0 60px rgba(0,31,63,.3) !important;
+    overflow-y:auto !important;
+    box-sizing:border-box !important;
+}
+
+.sidebar.active {
+    left:0 !important;
+}
+
+.sidebar-header {
+    display:flex !important;
+    justify-content:space-between !important;
+    align-items:center !important;
+    margin-bottom:30px !important;
+    padding-bottom:20px !important;
+    border-bottom:1px solid rgba(255,255,255,.1) !important;
+}
+
+.sidebar-section-title {
+    font-size:.6rem !important;
+    font-weight:800 !important;
+    text-transform:uppercase !important;
+    letter-spacing:1.5px !important;
+    color:rgba(255,255,255,.35) !important;
+    margin:20px 0 8px 0 !important;
+    padding:0 5px !important;
+}
+
+.sidebar-btn {
+    display:flex !important;
+    align-items:center !important;
+    gap:15px !important;
+    padding:14px 20px !important;
+    color:rgba(255,255,255,.7) !important;
+    text-decoration:none !important;
+    font-weight:700 !important;
+    font-size:.9rem !important;
+    border-radius:16px !important;
+    margin:0 0 6px 0 !important;
+    transition:all .25s !important;
+    cursor:pointer !important;
+    border:none !important;
+    background:none !important;
+    width:100% !important;
+    min-height:unset !important;
+    justify-content:flex-start !important;
+    text-align:left !important;
+    box-shadow:none !important;
+    font-family:inherit !important;
+    line-height:normal !important;
+}
+
+.sidebar-btn:hover {
+    background:rgba(255,255,255,.08) !important;
+    color:white !important;
+    transform:translateX(5px) !important;
+}
+
+.sidebar-btn.active {
+    background:var(--teal-bright) !important;
+    color:white !important;
+    box-shadow:0 8px 16px rgba(20,184,166,.3) !important;
+}
+
+.sidebar-btn .sb-icon {
+    width:36px !important;
+    height:36px !important;
+    border-radius:10px !important;
+    background:rgba(255,255,255,.1);
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    font-size:1rem !important;
+    flex-shrink:0 !important;
+    box-sizing:border-box !important;
+}
+
+.sidebar-btn.active .sb-icon {
+    background:rgba(255,255,255,.25) !important;
+}
+
+.sidebar-overlay {
+    position:fixed !important;
+    top:0 !important;
+    left:0 !important;
+    width:100% !important;
+    height:100% !important;
+    background:rgba(0,31,63,.6) !important;
+    backdrop-filter:blur(4px) !important;
+    display:none !important;
+    z-index:1090 !important;
+}
+
+.sidebar-overlay.active {
+    display:block !important;
+}
+
+.sidebar .brand-logo-wrap {
+    background:white !important;
+    border-radius:12px !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    padding:4px !important;
+    box-sizing:border-box !important;
+    flex:0 0 auto !important;
+}
+
+.sidebar .brand-logo-wrap img {
+    width:100% !important;
+    height:100% !important;
+    object-fit:contain !important;
+}
+
+.sidebar .pmis-home-brand {
+    cursor:pointer !important;
+}
+
+body.role-pm .admin-only {
+    display:none !important;
+}
+
+body.role-admin .employee-only {
+    display:none !important;
+}
+
+.pmis-feedback-management-v35 {
+    padding-top:0 !important;
+    margin-top:-8px !important;
+}
+
+.pmis-feedback-management-v35 .sidebar-btn {
+    width:100% !important;
+    margin:0 !important;
+    min-height:52px !important;
+    justify-content:flex-start !important;
+    border:1px solid rgba(255,255,255,.10) !important;
+    background:rgba(255,255,255,.06) !important;
+    border-radius:16px !important;
+}
+
+.pmis-feedback-management-v35 .sidebar-btn:hover {
+    background:rgba(20,184,166,.16) !important;
+    border-color:rgba(45,212,191,.34) !important;
+}
+
+.pmis-my-feedback-v37 {
+    padding-top:0 !important;
+    padding-bottom:10px !important;
+    margin-top:-4px !important;
+}
+
+.pmis-my-feedback-v37 .sidebar-btn {
+    width:100% !important;
+    margin:0 !important;
+    min-height:52px !important;
+    justify-content:flex-start !important;
+    border:1px solid rgba(255,255,255,.10) !important;
+    background:rgba(255,255,255,.06) !important;
+    border-radius:16px !important;
+}
+
+.pmis-my-feedback-v37 .sidebar-btn:hover {
+    background:rgba(20,184,166,.16) !important;
+    border-color:rgba(45,212,191,.34) !important;
+}
+
+/* Analytics originally uses #side/#shade. V4 normalizes those elements. */
+#side,
+#shade {
+    all:unset;
+}
+
+@media (max-width:768px) {
+    .sidebar {
+        width:min(320px,90vw) !important;
+        left:-100vw !important;
+        padding:30px !important;
+    }
+
+    .sidebar.active {
+        left:0 !important;
+    }
+}

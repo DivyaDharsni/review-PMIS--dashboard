@@ -1,0 +1,762 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PMIS - Financial Analytics</title>
+<link rel="icon" href="asset/image.png">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<script>
+(function(){
+ const u=String(localStorage.getItem('danprel_username')||'').trim().toLowerCase();
+ if(localStorage.getItem('danprel_auth')!=='true'){location.replace('login.html');return}
+ if(u!=='review@danprel'){document.documentElement.style.display='none';location.replace('project_review.html')}
+})();
+</script>
+<style>
+:root{--nav:#002b55;--bg:#f3f6fa;--ink:#0f172a;--mut:#64748b;--line:#dbe5ef;--blue:#2563eb;--amber:#d97706;--green:#059669;--red:#dc2626;--violet:#7c3aed}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Inter,"Segoe UI",Arial,sans-serif;color:var(--ink);padding:14px 16px 60px}
+.app{max-width:1900px;margin:auto}.top{height:78px;border-radius:23px;background:linear-gradient(135deg,#002b55,#064274);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:12px 18px;box-shadow:0 10px 26px #002b5528}
+.brand{display:flex;align-items:center;gap:10px}.logo{width:44px;height:44px;border-radius:13px;background:#fff;padding:5px;object-fit:contain}.brand b{font-size:.95rem}.brand small{display:block;color:#5eead4;font-size:.55rem;font-weight:800;text-transform:uppercase}.top-title{font-weight:950}.icon{width:43px;height:43px;border-radius:13px;border:1px solid #ffffff25;background:#ffffff12;color:#fff}.side{position:fixed;left:-310px;top:0;width:310px;height:100%;background:linear-gradient(#001f3f,#003b70);z-index:1000;padding:25px;transition:.25s;box-shadow:15px 0 45px #001f3f50}.side.on{left:0}.shade{position:fixed;inset:0;background:#020c1b88;z-index:990;opacity:0;visibility:hidden;transition:.2s}.shade.on{opacity:1;visibility:visible}.side a,.side button{width:100%;border:0;background:transparent;color:#dbeafe;text-decoration:none;display:flex;align-items:center;gap:11px;padding:11px;border-radius:13px;font-weight:800;font-size:.82rem;margin:3px 0}.side a.active{background:#14b8a62a;color:#fff;box-shadow:inset 3px 0 #2dd4bf}.side i{color:#5eead4}.hero{display:flex;justify-content:space-between;align-items:flex-end;gap:15px;margin:20px 4px 12px}.hero h1{margin:0;color:var(--nav);font-size:1.55rem;font-weight:950}.hero p{margin:4px 0 0;color:var(--mut);font-size:.8rem}.actions{display:flex;gap:7px;flex-wrap:wrap}.btnpill{border:1px solid var(--line);border-radius:999px;padding:7px 13px;background:#fff;font-size:.7rem;font-weight:900}.btnpill.green{background:var(--green);color:#fff;border-color:var(--green)}
+.panel,.cardx{background:#fff;border:1px solid #e4ebf3;border-radius:19px;box-shadow:0 5px 18px #0f172a0b}.panel{padding:14px;margin-bottom:13px}.filters{display:grid;grid-template-columns:.8fr 1.2fr 1fr 1fr .75fr auto;gap:9px;align-items:end}.f label{display:block;color:var(--mut);font-size:.57rem;font-weight:950;text-transform:uppercase;margin:0 0 4px 2px}.f select,.f input{min-height:38px;border-radius:10px;font-size:.72rem}.status{margin-top:9px;border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8;border-radius:10px;padding:8px 10px;font-size:.65rem;font-weight:800}.status.ok{background:#ecfdf5;border-color:#a7f3d0;color:#047857}.status.err{background:#fff1f2;border-color:#fecdd3;color:#be123c}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:11px}.kpi{padding:15px;min-height:118px}.kpi .l{font-size:.61rem;color:var(--mut);font-weight:950;text-transform:uppercase}.kpi .v{font-size:1.35rem;color:var(--nav);font-weight:950;margin:8px 0}.kpi .s{font-size:.62rem;color:#94a3b8;font-weight:700}
+.sec{margin:21px 3px 9px}.sec b{color:var(--nav);font-size:.98rem}.sec span{color:var(--mut);font-size:.67rem;margin-left:8px}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:11px}.full{grid-column:1/-1}.chart{padding:14px}.chart h3{font-size:.86rem;font-weight:950;margin:0}.chart p{font-size:.63rem;color:var(--mut);margin:3px 0 8px}.cw{height:350px;position:relative}.cw.tall{height:440px}.cw.dynamic{height:360px}
+.over{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end;margin:8px 0}.over label{font-size:.58rem;color:var(--mut);font-weight:900;text-transform:uppercase}.mini{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:10px}.mini>div{background:#f8fafc;border:1px solid #e4ebf3;border-radius:13px;padding:11px}.mini .l{font-size:.56rem;color:var(--mut);font-weight:900;text-transform:uppercase}.mini .v{font-weight:950;color:var(--nav);margin-top:4px}
+@media(max-width:1150px){.filters{grid-template-columns:repeat(3,1fr)}.kpis{grid-template-columns:repeat(2,1fr)}}@media(max-width:850px){body{padding:8px}.top-title{display:none}.filters,.kpis,.grid2,.mini{grid-template-columns:1fr}.full{grid-column:auto}.hero{align-items:flex-start;flex-direction:column}}
+</style>
+
+<style id="pmis-financial-analytics-v77y3-no-data-style">
+.pmis-v77y3-no-data{
+    height:100%;
+    min-height:220px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    gap:8px;
+    padding:24px;
+    color:#64748b;
+    font-size:.76rem;
+    font-weight:800;
+}
+.pmis-v77y3-no-data i{
+    width:44px;
+    height:44px;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#f1f5f9;
+    color:#64748b;
+    font-size:1.2rem;
+}
+</style>
+
+    <link rel="stylesheet" href="pmis-menu-exact-dashboard-v4.css">
+    <link rel="stylesheet" href="pmis-finance-menu-access-v41.css">
+</head>
+<body>
+<div class="side" id="side">
+<div class="brand mb-4"><img class="logo" src="asset/image.png"><div><b>DANPREL</b><small>Project MIS</small></div></div>
+<a href="project_review.html"><i class="bi bi-speedometer2"></i>Project Dashboard</a>
+<a href="cashflow.html"><i class="bi bi-graph-up-arrow"></i>Cashflow / Payments</a>
+<a href="invoice_register.html"><i class="bi bi-receipt-cutoff"></i>Invoice Register</a>
+<a href="financial_analytics.html" class="active"><i class="bi bi-bar-chart-line-fill"></i>Financial Analytics</a>
+<a href="resource_hub.html"><i class="bi bi-people-fill"></i>Resource Hub</a>
+<button onclick="logoutFA()"><i class="bi bi-box-arrow-right"></i>Logout</button>
+</div><div class="shade" id="shade" onclick="menuFA()"></div>
+<div class="app">
+<header class="top"><div class="brand"><button class="icon" onclick="menuFA()"><i class="bi bi-list"></i></button><img class="logo" src="asset/image.png"><div><b>DANPREL</b><small>Engineering Automation Pvt Ltd</small></div></div><div class="top-title">FINANCIAL ANALYTICS</div><div><span style="font-size:.68rem;font-weight:800">review@danprel</span></div></header>
+<div class="hero"><div><h1>Financial Analytics</h1><p>Planned → Invoiced → Collected performance, receivables, customer/project exposure and Proforma conversion.</p></div><div class="actions"><button class="btnpill" id="pdf">Export PDF</button><button class="btnpill" id="xlsx">Export Excel</button><button class="btnpill green" id="refresh">Refresh</button></div></div>
+<section class="panel">
+<div class="filters">
+<div class="f"><label>Financial Year</label><select class="form-select" id="fy"></select></div>
+<div class="f"><label>Project</label><select class="form-select" id="proj"><option value="">All Projects</option></select></div>
+<div class="f"><label>Customer</label><select class="form-select" id="cust"><option value="">All Customers</option></select></div>
+<div class="f"><label>Project Expeditor</label><select class="form-select" id="mgr"><option value="">All Project Expeditors</option></select></div>
+<div class="f"><label>Order Type</label><select class="form-select" id="otype"><option value="">All</option><option value="domestic">Domestic</option><option value="international">Overseas</option></select></div>
+<div><button class="btnpill" id="clear">Clear Filters</button></div>
+</div>
+<div class="status" id="status">Loading live PMIS financial data...</div>
+</section>
+<section class="kpis">
+<div class="cardx kpi"><div class="l">Invoice Achievement %</div><div class="v" id="ka">--</div><div class="s">Tax Invoice Gross ÷ Planned Gross</div></div>
+<div class="cardx kpi"><div class="l">Invoice Collection %</div><div class="v" id="kc">--</div><div class="s">Collected against invoices ÷ Tax Invoice Gross</div></div>
+<div class="cardx kpi"><div class="l">Invoiced Amount</div><div class="v" id="kin">--</div><div class="s">Tax Invoice Net</div></div>
+<div class="cardx kpi"><div class="l">Invoiced Amount incl. GST</div><div class="v" id="kig">--</div><div class="s">Tax Invoice Gross</div></div>
+<div class="cardx kpi"><div class="l">Planned Not Yet Invoiced</div><div class="v" id="kpni">--</div><div class="s">Planned Gross less Tax Invoice Gross</div></div>
+<div class="cardx kpi"><div class="l">Plan → Invoice Gap</div><div class="v" id="kpiGap">--</div><div class="s">Amount-weighted days: invoice realization vs plan realization</div></div>
+<div class="cardx kpi"><div class="l">Invoice → Collection Gap</div><div class="v" id="kicGap">--</div><div class="s">FIFO amount-weighted days: receipt vs invoice realization</div></div>
+<div class="cardx kpi"><div class="l">Outstanding Receivables</div><div class="v" id="kor">--</div><div class="s">All Tax Invoice Gross raised to date less all receipts received to date</div></div>
+</section>
+
+<div class="sec"><b>Cashflow Performance</b><span>Existing Cashflow views plus invoice realization.</span></div>
+<div class="grid2">
+<div class="cardx chart full"><h3>Monthly Cashflow — Planned vs Invoiced vs Actual</h3><p>Planned realization, invoice realization (Invoice Date + Credit Days), and actual receipt month.</p><div class="cw tall"><canvas id="mchart"></canvas></div></div>
+<div class="cardx chart full"><h3>Cumulative Cashflow</h3><p>Cumulative Planned, Invoiced and Actual.</p><div class="cw tall"><canvas id="cchart"></canvas></div></div>
+<div class="cardx chart"><h3>Payment Amount Mix</h3><p>Planned not invoiced, receivable, collected against invoice and extra cash-in.</p><div class="cw"><canvas id="mixchart"></canvas></div></div>
+<div class="cardx chart"><h3>Monthly Fixed Overhead vs Invoiced & Collected</h3><p>Review-only benchmark. No overhead value is invented by PMIS.</p><div class="over"><div class="f"><label>Monthly Fixed Overhead</label><input class="form-control" type="number" min="0" id="overhead" placeholder="Enter overhead"></div><button class="btnpill" id="saveOverhead">Save</button></div><div class="cw"><canvas id="ohchart"></canvas></div></div>
+</div>
+
+<div class="sec"><b>Customer Analytics</b><span>Customer-wise billing and collection exposure.</span></div>
+<div class="grid2">
+<div class="cardx chart full"><h3>Customer-wise Planned · Invoiced · Collected</h3><p>Gross values in the active scope.</p><div class="cw dynamic" id="wcf"><canvas id="cfchart"></canvas></div></div>
+<div class="cardx chart"><h3>Customer-wise Outstanding Receivables</h3><p>Current receivable balance across all historical Tax Invoices and receipts. FY filter does not limit this balance.</p><div class="cw dynamic" id="wcr"><canvas id="crchart"></canvas></div></div>
+<div class="cardx chart"><h3>Customer-wise Planned but Not Invoiced</h3><p>Planned cashflow still awaiting invoice conversion.</p><div class="cw dynamic" id="wcg"><canvas id="cgchart"></canvas></div></div>
+<div class="cardx chart"><h3>Domestic vs Overseas Invoice Share</h3><p>Share of Tax Invoice Gross by Invoice Date in the selected FY / filters.</p><div class="cw"><canvas id="sharechart"></canvas></div></div>
+</div>
+
+<div class="sec"><b>Project Analytics</b><span>Project-wise conversion and receivable exposure.</span></div>
+<div class="grid2">
+<div class="cardx chart full"><h3>Project-wise Planned · Invoiced · Actual Flow</h3><p>All projects in scope.</p><div class="cw dynamic" id="wpf"><canvas id="pfchart"></canvas></div></div>
+<div class="cardx chart"><h3>Project-wise Outstanding Receivables</h3><p>Current receivable balance across all historical Tax Invoices and receipts, ranked by project. FY filter does not limit this balance.</p><div class="cw dynamic" id="wpr"><canvas id="prchart"></canvas></div></div>
+<div class="cardx chart"><h3>Project-wise Planned but Not Invoiced</h3><p>Projects ranked by plan-to-invoice value gap.</p><div class="cw dynamic" id="wpg"><canvas id="pgchart"></canvas></div></div>
+</div>
+
+<div class="sec"><b>Proforma Insights</b><span>Proforma value, conversion and time-to-invoice.</span></div>
+<div class="cardx chart full">
+<div class="mini">
+<div><div class="l">Proforma Gross</div><div class="v" id="pfg">--</div></div>
+<div><div class="l">Open Proforma Gross</div><div class="v" id="pfo">--</div></div>
+<div><div class="l">Proforma Conversion %</div><div class="v" id="pfc">--</div></div>
+<div><div class="l">Avg Proforma → Invoice</div><div class="v" id="pfd">--</div></div>
+</div>
+<h3>Customer-wise Proforma — Open vs Converted</h3><p>Gross Proforma by milestone conversion status.</p><div class="cw dynamic" id="wpfo"><canvas id="pfochart"></canvas></div>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+<script>
+/* PMIS_FINANCIAL_ANALYTICS_REVIEW_ONLY_V77Y */
+(function(){
+'use strict';
+const $=id=>document.getElementById(id), N=v=>{const n=Number(v);return Number.isFinite(n)?n:0}, norm=v=>String(v??'').trim().toLowerCase(), CR=1e7, DAY=864e5, OH='PMIS_REVIEW_MONTHLY_FIXED_OVERHEAD_V77Y';
+const C={p:'#2563eb',i:'#d97706',a:'#059669',r:'#dc2626',g:'#7c3aed',o:'#0f172a',x:'#0284c7'};
+let projects=[], charts={}, model=null;
+window.menuFA=()=>{$('side').classList.toggle('on');$('shade').classList.toggle('on')};
+window.logoutFA=()=>{localStorage.removeItem('danprel_auth');localStorage.removeItem('danprel_access_token');location.href='login.html'};
+function hdr(){const h={'x-pmis-role':localStorage.getItem('danprel_role')||'','x-pmis-username':localStorage.getItem('danprel_username')||'','x-pmis-employee-id':localStorage.getItem('danprel_employee_id')||'','x-pmis-display-name':localStorage.getItem('danprel_display_name')||''},t=localStorage.getItem('danprel_access_token')||'';if(t)h.Authorization='Bearer '+t;return h}
+function d(v){if(!v)return null;const p=String(v).slice(0,10).split('-').map(Number);if(p.length===3&&!p.some(Number.isNaN)){const x=new Date(p[0],p[1]-1,p[2]);x.setHours(0,0,0,0);return x}const x=new Date(v);if(Number.isNaN(x.getTime()))return null;x.setHours(0,0,0,0);return x}
+function iso(v){const x=d(v);return x?[x.getFullYear(),String(x.getMonth()+1).padStart(2,'0'),String(x.getDate()).padStart(2,'0')].join('-'):''}
+function add(v,n){const x=d(v);if(!x)return '';x.setDate(x.getDate()+Math.max(0,Math.trunc(N(n))));return iso(x)}
+function diff(a,b){const x=d(a),y=d(b);return x&&y?(y-x)/DAY:null}
+function fy(v){const x=d(v);if(!x)return '';const y=x.getFullYear(),m=x.getMonth()+1,s=m>=4?y:y-1;return `FY ${s}-${String(s+1).slice(-2)}`}
+function currentFy(){return fy(new Date())}
+function mkey(v){const x=d(v);return x?`${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}`:''}
+function mlabel(k){const m=String(k).match(/^(\d{4})-(\d{2})$/);return m?new Date(+m[1],+m[2]-1,1).toLocaleDateString('en-IN',{month:'short',year:'2-digit'}):k}
+function fymonths(v){const m=String(v).match(/^FY\s+(\d{4})-(\d{2})$/);if(!m)return [];return Array.from({length:12},(_,i)=>{const x=new Date(+m[1],3+i,1);return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}`})}
+function money(v){const a=N(v);if(Math.abs(a)>=CR)return '₹'+(a/CR).toFixed(2)+'Cr';if(Math.abs(a)>=1e5)return '₹'+(a/1e5).toFixed(1)+'L';return '₹'+a.toLocaleString('en-IN',{maximumFractionDigits:0})}
+function pct(v){return N(v).toFixed(1)+'%'} function days(v){return Number.isFinite(Number(v))?((v>0?'+':'')+Number(v).toFixed(1)+' days'):'--'}
+function pdate(p){return iso(p?.po_date||p?.poDate||'')} function plabel(p){return [p?.code||p?.tracking_code||'',p?.name||''].filter(Boolean).join(' - ')||'Project'} function pshort(p){return p?.code||p?.tracking_code||p?.name||'Project'}
+function customer(p){return String(p?.customer_name||p?.customer||'Not Set').trim()||'Not Set'} function manager(p){return String(p?.project_manager||p?.project_expeditor||'Not assigned').trim()||'Not assigned'}
+function order(p){const x=norm(p?.cashflow_order_type||p?.order_type||'domestic');return ['international','overseas','export'].includes(x)?'international':'domestic'}
+function gst(p){if(order(p)==='international')return 0;const x=Number(p?.cashflow_gst_percent??p?.gst_percent);return Number.isFinite(x)&&x>=0?x:18}
+function grossPo(p){const n=Math.max(0,N(p?.po_value));return n+n*gst(p)/100}
+function terms(p){return Array.isArray(p?.payment_milestones)?p.payment_milestones:[]} function receipts(t){return Array.isArray(t?.actual_receipts)?t.actual_receipts:[]} function invoices(p){return Array.isArray(p?.finance_invoices)?p.finance_invoices:[]}
+function minv(p,i){const st=String(terms(p)?.[i]?.linked_stage_id||'').trim();return invoices(p).filter(x=>x?.milestone_index!==undefined&&x?.milestone_index!==null&&String(x.milestone_index).trim()!==''?Number(x.milestone_index)===Number(i):(st&&String(x?.milestone_stage_id||'').trim()===st))}
+function igross(x){const g=Number(x?.invoice_gross);return Number.isFinite(g)&&g>=0?g:Math.max(0,N(x?.invoice_amount)+N(x?.invoice_gst))}
+function tax(x){return norm(x?.document_type)==='invoice'} function pro(x){return norm(x?.document_type)==='proforma'}
+function stageEnd(p,id){if(id==='po_date')return pdate(p);const x=p?.detailed_phases?.[id]||{},r=Array.isArray(x?.revisions)?x.revisions:[],last=r.length?r[r.length-1]:null;return iso(last?.end)||iso(x?.reassign_end)||iso(x?.plan_end)||iso(x?.planEnd)||''}
+function planDate(p,t){const direct=iso(t?.planned_realization_date||t?.planned_date||t?.expected_date||t?.latest_plan_date||'');if(direct)return direct;return add(stageEnd(p,String(t?.linked_stage_id||'').trim()),t?.credit_days??t?.creditDays??0)}
+function planGross(p,t){const ga=Number(t?.gross_allocation_percent??t?.grossAllocationPercent);if(Number.isFinite(ga)&&ga>0)return Math.max(0,grossPo(p)*ga/100);const po=Math.max(0,N(p?.po_value)),net=po*Math.max(0,N(t?.percentage))/100,tgst=po*gst(p)/100,gp=Math.max(0,Math.min(100,N(t?.gst_allocation_percent??t?.gstAllocationPercent??t?.gst_percent_allocation??t?.gstAllocation??0)));return Math.max(0,net+tgst*gp/100)}
+function invDue(t,x){return add(iso(x?.invoice_date),t?.credit_days??t?.creditDays??0)} function inFy(v,f){return !f||fy(v)===f}
+function scopeP(p){return (!$('proj').value||String(p?._id||'')===$('proj').value)&&(!$('cust').value||customer(p)===$('cust').value)&&(!$('mgr').value||manager(p)===$('mgr').value)&&(!$('otype').value||order(p)===$('otype').value)}
+function rows(){const F=$('fy').value||'',out=[];projects.filter(scopeP).sort((a,b)=>(d(pdate(b))?.getTime()||0)-(d(pdate(a))?.getTime()||0)).forEach(p=>terms(p).forEach((t,i)=>{if(!(N(t?.percentage)>0||String(t?.linked_stage_id||'').trim()||minv(p,i).length||receipts(t).length))return;const pd=planDate(p,t),pg=planGross(p,t),ie=minv(p,i).filter(tax).map(x=>({row:x,g:igross(x),n:Math.max(0,N(x?.invoice_amount)),gst:Math.max(0,N(x?.invoice_gst)),id:iso(x?.invoice_date),due:invDue(t,x)})),re=receipts(t).map(x=>({row:x,a:Math.max(0,N(x?.amount)),date:iso(x?.received_date)}));out.push({p,t,i,pd,pg:pd&&inFy(pd,F)?pg:0,allpg:pg,ie,ii:ie.filter(x=>x.due&&inFy(x.due,F)),re,ri:re.filter(x=>x.date&&inFy(x.date,F)),pros:minv(p,i).filter(pro)})}));return out}
+function gap(R,type){let wd=0,w=0;if(type==='pi')R.forEach(r=>{if(!r.pd)return;r.ii.forEach(x=>{const g=diff(r.pd,x.due);if(Number.isFinite(g)&&x.g>0){wd+=g*x.g;w+=x.g}})});else R.forEach(r=>{const I=r.ie.filter(x=>x.due&&x.g>0).sort((a,b)=>d(a.due)-d(b.due)).map(x=>({...x,left:x.g})),P=r.re.filter(x=>x.date&&x.a>0).sort((a,b)=>d(a.date)-d(b.date)).map(x=>({...x,left:x.a}));let k=0;P.forEach(p=>{while(p.left>.005&&k<I.length){const x=I[k];if(x.left<=.005){k++;continue}const a=Math.min(p.left,x.left),g=diff(x.due,p.date);if(Number.isFinite(g)){wd+=g*a;w+=a}p.left-=a;x.left-=a;if(x.left<=.005)k++}})});return w?wd/w:null}
+/* PMIS_FINANCIAL_ANALYTICS_RECEIVABLE_SCOPE_FIX_V77Y3 */
+function asOfTodayV77Y3(v){
+ const x=d(v);
+ if(!x)return false;
+ const today=new Date();
+ today.setHours(23,59,59,999);
+ return x<=today;
+}
+function historicalReceivableV77Y3(r){
+ const invoiced=r.ie
+  .filter(x=>x.id&&asOfTodayV77Y3(x.id))
+  .reduce((s,x)=>s+x.g,0);
+
+ const received=r.re
+  .filter(x=>x.date&&asOfTodayV77Y3(x.date))
+  .reduce((s,x)=>s+x.a,0);
+
+ return {
+  invoiced,
+  received,
+  outstanding:Math.max(0,invoiced-received)
+ };
+}
+function invoiceShareGrossV77Y3(r){
+ const F=$('fy').value||'';
+
+ return r.ie
+  .filter(x=>x.id&&inFy(x.id,F))
+  .reduce((s,x)=>s+x.g,0);
+}
+function noDataV77Y3(canvasId,message){
+ const canvas=$(canvasId);
+ if(!canvas)return;
+
+ const wrap=canvas.parentElement;
+ if(!wrap)return;
+
+ canvas.style.display='none';
+
+ let empty=wrap.querySelector(
+  '.pmis-v77y3-no-data'
+ );
+
+ if(!empty){
+  empty=document.createElement('div');
+  empty.className='pmis-v77y3-no-data';
+  wrap.appendChild(empty);
+ }
+
+ empty.innerHTML=
+  '<i class="bi bi-info-circle"></i>'+
+  '<div>'+String(message||'No data available.')+'</div>';
+}
+function showDataV77Y3(canvasId){
+ const canvas=$(canvasId);
+ if(!canvas)return;
+
+ canvas.style.display='';
+
+ canvas.parentElement
+  ?.querySelector(
+   '.pmis-v77y3-no-data'
+  )
+  ?.remove();
+}
+function agg(R){const CM=new Map(),PM=new Map(),MM=new Map(),PFM=new Map();let planned=0,ig=0,inn=0,igst=0,rec=0,extra=0,dom=0,ov=0,pfg=0,pfo=0,pfc=0,pfn=0,pfdw=0,pfdwt=0,allReceivable=0;
+ const aget=(M,k,l)=>{if(!M.has(k))M.set(k,{label:l,planned:0,invoiced:0,actual:0,receivable:0,gap:0});return M.get(k)}; const mb=k=>{if(!MM.has(k))MM.set(k,{planned:0,invoiced:0,actual:0});return MM.get(k)};
+ R.forEach(r=>{const invg=r.ii.reduce((s,x)=>s+x.g,0),invn=r.ii.reduce((s,x)=>s+x.n,0),ivgst=r.ii.reduce((s,x)=>s+x.gst,0),rr=r.ri.reduce((s,x)=>s+x.a,0),hist=historicalReceivableV77Y3(r);planned+=r.pg;ig+=invg;inn+=invn;igst+=ivgst;rec+=rr;extra+=Math.max(0,rr-invg);allReceivable+=hist.outstanding;
+  const ca=aget(CM,customer(r.p),customer(r.p)),pa=aget(PM,String(r.p?._id||pshort(r.p)),pshort(r.p));[ca,pa].forEach(a=>{a.planned+=r.pg;a.invoiced+=invg;a.actual+=rr;a.receivable+=hist.outstanding;a.gap+=Math.max(0,r.pg-invg)});
+  if(r.pd&&r.pg>0)mb(mkey(r.pd)).planned+=r.pg;r.ii.forEach(x=>{mb(mkey(x.due)).invoiced+=x.g});const shareGross=invoiceShareGrossV77Y3(r);order(r.p)==='international'?ov+=shareGross:dom+=shareGross;r.ri.forEach(x=>mb(mkey(x.date)).actual+=x.a);
+  const pros=r.pros.filter(x=>inFy(x?.invoice_date,$('fy').value||''));if(pros.length){const pg=pros.reduce((s,x)=>s+igross(x),0),ti=r.ie.filter(x=>x.id).sort((a,b)=>d(a.id)-d(b.id))[0]||null,conv=!!ti;pfg+=pg;pfn++;if(conv)pfc++;else pfo+=pg;const pp=pros.map(x=>iso(x?.invoice_date)).filter(Boolean).sort()[0];if(pp&&ti){const gd=diff(pp,ti.id);if(Number.isFinite(gd)){pfdw+=gd*pg;pfdwt+=pg}}const c=customer(r.p);if(!PFM.has(c))PFM.set(c,{label:c,open:0,converted:0});conv?PFM.get(c).converted+=pg:PFM.get(c).open+=pg}
+ });
+ const pni=Math.max(0,planned-ig),periodReceivable=Math.max(0,ig-rec),applied=Math.min(ig,Math.max(0,rec)),recv=allReceivable;
+ return {R,planned,ig,inn,igst,rec,extra,pni,recv,periodReceivable,ach:planned?ig/planned*100:0,col:ig?applied/ig*100:0,pig:gap(R,'pi'),icg:gap(R,'ic'),customers:[...CM.values()],projects:[...PM.values()],months:MM,dom,ov,pfg,pfo,pfconv:pfn?pfc/pfn*100:0,pfd:pfdwt?pfdw/pfdwt:null,pf:[...PFM.values()]}}
+function setStatus(cls,msg){$('status').className='status'+(cls?' '+cls:'');$('status').textContent=msg}
+function fill(){const keep={p:$('proj').value,c:$('cust').value,m:$('mgr').value},sort=projects.slice().sort((a,b)=>(d(pdate(b))?.getTime()||0)-(d(pdate(a))?.getTime()||0));$('proj').innerHTML='<option value="">All Projects</option>'+sort.map(p=>`<option value="${String(p?._id||'').replace(/"/g,'&quot;')}">${plabel(p).replace(/</g,'&lt;')}</option>`).join('');
+ const uniq=f=>[...new Set(projects.map(f))].filter(Boolean).sort((a,b)=>a.localeCompare(b));$('cust').innerHTML='<option value="">All Customers</option>'+uniq(customer).map(x=>`<option>${x.replace(/</g,'&lt;')}</option>`).join('');$('mgr').innerHTML='<option value="">All Project Expeditors</option>'+uniq(manager).map(x=>`<option>${x.replace(/</g,'&lt;')}</option>`).join('');
+ const fys=new Set();projects.forEach(p=>{if(pdate(p))fys.add(fy(pdate(p)));terms(p).forEach((t,i)=>{const pd=planDate(p,t);if(pd)fys.add(fy(pd));minv(p,i).forEach(x=>{const z=tax(x)?invDue(t,x):iso(x?.invoice_date);if(z)fys.add(fy(z))});receipts(t).forEach(x=>{const z=iso(x?.received_date);if(z)fys.add(fy(z))})})});const F=[...fys].filter(Boolean).sort((a,b)=>b.localeCompare(a)),prev=$('fy').value||currentFy();$('fy').innerHTML='<option value="">All FY</option>'+F.map(x=>`<option>${x}</option>`).join('');if([...$('fy').options].some(o=>o.value===prev))$('fy').value=prev;else if([...$('fy').options].some(o=>o.value===currentFy()))$('fy').value=currentFy();if([...$('proj').options].some(o=>o.value===keep.p))$('proj').value=keep.p;if([...$('cust').options].some(o=>o.value===keep.c))$('cust').value=keep.c;if([...$('mgr').options].some(o=>o.value===keep.m))$('mgr').value=keep.m}
+function destroy(k){if(charts[k]){try{charts[k].destroy()}catch(_){}delete charts[k]}}
+function yax(){return {beginAtZero:true,ticks:{callback:v=>Math.abs(v)>=CR?(v/CR).toFixed(1)+'Cr':Math.abs(v)>=1e5?(v/1e5).toFixed(1)+'L':v}}}
+// PMIS_FINANCIAL_ANALYTICS_DATA_LABEL_FIX_V77Y5
+function dyn(id,n,series=1){
+ const grouped=Number(series)>=3;
+ const rowHeight=grouped?52:38;
+ const maxHeight=grouped?2400:1800;
+ $(id).style.height=
+  Math.min(
+   maxHeight,
+   Math.max(360,n*rowHeight+90)
+  )+'px';
+}
+function monthly(M){const F=$('fy').value||'',keys=F?fymonths(F):[...M.months.keys()].sort();return {keys,labels:keys.map(mlabel),p:keys.map(k=>M.months.get(k)?.planned||0),i:keys.map(k=>M.months.get(k)?.invoiced||0),a:keys.map(k=>M.months.get(k)?.actual||0)}}
+/* PMIS_FINANCIAL_ANALYTICS_ALL_CHART_DATA_LABELS_V77Y4 */
+function financialDataLabelTextV77Y4(value){
+ const amount=N(value);
+
+ if(Math.abs(amount)>=CR){
+  return '₹'+
+   (amount/CR).toLocaleString(
+    'en-IN',
+    {
+     minimumFractionDigits:1,
+     maximumFractionDigits:2
+    }
+   )+
+   'Cr';
+ }
+
+ if(Math.abs(amount)>=1e5){
+  return '₹'+
+   (amount/1e5).toLocaleString(
+    'en-IN',
+    {
+     minimumFractionDigits:1,
+     maximumFractionDigits:1
+    }
+   )+
+   'L';
+ }
+
+ return '₹'+
+  Math.round(amount).toLocaleString('en-IN');
+}
+
+function financialLabelBoxV77Y4(
+ ctx,
+ text,
+ x,
+ y,
+ options={}
+){
+ const fontSize=
+  Number(options.fontSize)||9;
+
+ const paddingX=3;
+ const paddingY=1.5;
+
+ ctx.save();
+
+ ctx.font=
+  '800 '+fontSize+'px Arial';
+
+ const width=
+  ctx.measureText(text).width+
+  paddingX*2;
+
+ const height=
+  fontSize+
+  paddingY*2+
+  2;
+
+ const left=
+  x-width/2;
+
+ const top=
+  y-height/2;
+
+ ctx.fillStyle=
+  options.background||
+  'rgba(255,255,255,.92)';
+
+ ctx.strokeStyle=
+  options.border||
+  'rgba(148,163,184,.38)';
+
+ ctx.lineWidth=.7;
+
+ const radius=4;
+
+ ctx.beginPath();
+
+ if(
+  typeof ctx.roundRect==='function'
+ ){
+  ctx.roundRect(
+   left,
+   top,
+   width,
+   height,
+   radius
+  );
+ }
+ else{
+  ctx.rect(
+   left,
+   top,
+   width,
+   height
+  );
+ }
+
+ ctx.fill();
+ ctx.stroke();
+
+ ctx.fillStyle=
+  options.color||
+  '#0f172a';
+
+ ctx.textAlign='center';
+ ctx.textBaseline='middle';
+
+ ctx.fillText(
+  text,
+  x,
+  y+.5
+ );
+
+ ctx.restore();
+
+ return {
+  left,
+  right:left+width,
+  top,
+  bottom:top+height
+ };
+}
+
+// PMIS_FINANCIAL_ANALYTICS_DATA_LABEL_FIX_V77Y5
+// Measure candidate label positions WITHOUT drawing them.
+// V77Y4 drew every collision-test attempt, which caused the repeated
+// ₹xx.xL pills visible on top of each other.
+function financialLabelBoundsV77Y5(
+ ctx,
+ text,
+ x,
+ y,
+ options={}
+){
+ const fontSize=
+  Number(options.fontSize)||9;
+
+ const paddingX=3;
+ const paddingY=1.5;
+
+ ctx.save();
+
+ ctx.font=
+  '800 '+fontSize+'px Arial';
+
+ const width=
+  ctx.measureText(text).width+
+  paddingX*2;
+
+ ctx.restore();
+
+ const height=
+  fontSize+
+  paddingY*2+
+  2;
+
+ return {
+  left:x-width/2,
+  right:x+width/2,
+  top:y-height/2,
+  bottom:y+height/2
+ };
+}
+
+function boxesOverlapV77Y4(a,b){
+ return !(
+  a.right<b.left ||
+  a.left>b.right ||
+  a.bottom<b.top ||
+  a.top>b.bottom
+ );
+}
+
+// PMIS_FINANCIAL_ANALYTICS_DATA_LABEL_FIX_V77Y5
+const financialDataLabelsPluginV77Y4={
+ id:'pmisFinancialDataLabelsV77Y4',
+
+ afterDatasetsDraw(chart){
+  const type=
+   chart.config.type;
+
+  const ctx=
+   chart.ctx;
+
+  const occupied=[];
+
+  if(type==='doughnut'){
+   const total=
+    chart.data.datasets
+     .flatMap(ds=>ds.data||[])
+     .reduce(
+      (sum,value)=>
+       sum+Math.max(0,N(value)),
+      0
+     );
+
+   chart.data.datasets.forEach(
+    (dataset,datasetIndex)=>{
+     const meta=
+      chart.getDatasetMeta(
+       datasetIndex
+      );
+
+     if(meta.hidden)return;
+
+     meta.data.forEach(
+      (arc,index)=>{
+       const value=
+        N(dataset.data?.[index]);
+
+       if(!(value>0))return;
+
+       const props=
+        arc.getProps(
+         [
+          'x',
+          'y',
+          'startAngle',
+          'endAngle',
+          'outerRadius'
+         ],
+         true
+        );
+
+       const angle=
+        (
+         props.startAngle+
+         props.endAngle
+        )/2;
+
+       const percentage=
+        total>0
+         ? value/total*100
+         : 0;
+
+       const label=
+        financialDataLabelTextV77Y4(
+         value
+        )+
+        ' ('+
+        percentage.toFixed(1)+
+        '%)';
+
+       const radius=
+        props.outerRadius+
+        22;
+
+       let x=
+        props.x+
+        Math.cos(angle)*radius;
+
+       let y=
+        props.y+
+        Math.sin(angle)*radius;
+
+       const box=
+        financialLabelBoxV77Y4(
+         ctx,
+         label,
+         x,
+         y,
+         {
+          fontSize:9
+         }
+        );
+
+       occupied.push(box);
+      });
+    }
+   );
+
+   return;
+  }
+
+  chart.data.datasets.forEach(
+   (dataset,datasetIndex)=>{
+    const meta=
+     chart.getDatasetMeta(
+      datasetIndex
+     );
+
+    if(meta.hidden)return;
+
+    meta.data.forEach(
+     (element,index)=>{
+      const value=
+       N(dataset.data?.[index]);
+
+      if(!(value>0))return;
+
+      const text=
+       financialDataLabelTextV77Y4(
+        value
+       );
+
+      const position=
+       element.tooltipPosition();
+
+      let x=position.x;
+      let y=position.y;
+      let alignMode='top';
+
+      if(type==='bar'){
+       const horizontal=
+        chart.options?.indexAxis===
+        'y';
+
+       if(horizontal){
+        x=
+         Math.min(
+          chart.chartArea.right-34,
+          position.x+38
+         );
+
+        y=position.y;
+        alignMode='right';
+       }
+       else{
+        x=position.x;
+
+        y=
+         Math.max(
+          chart.chartArea.top+10,
+          position.y-12
+         );
+       }
+      }
+      else if(type==='line'){
+       x=position.x;
+
+       y=
+        Math.max(
+         chart.chartArea.top+10,
+         position.y-
+         11-
+         datasetIndex*14
+        );
+      }
+
+      const isHorizontalBar=
+       type==='bar' &&
+       chart.options?.indexAxis==='y';
+
+      const labelFontSize=
+       type==='line'
+        ? 8.5
+        : isHorizontalBar &&
+          (chart.data?.datasets?.length||0)>1
+           ? 8
+           : 9;
+
+      let box=
+       financialLabelBoundsV77Y5(
+        ctx,
+        text,
+        x,
+        y,
+        {
+         fontSize:labelFontSize
+        }
+       );
+
+      /*
+       * V77Y5 collision handling:
+       * calculate candidate positions without painting them.
+       * Only the final accepted position is drawn once.
+       */
+      let attempts=0;
+
+      while(
+       occupied.some(
+        existing=>
+         boxesOverlapV77Y4(
+          box,
+          existing
+         )
+       ) &&
+       attempts<10
+      ){
+       attempts+=1;
+
+       if(isHorizontalBar){
+        /*
+         * Keep each label aligned with its own bar.
+         * Move horizontally only; do not jump into the next row.
+         */
+        x+=
+         attempts%2
+          ? 10*attempts
+          : -10*attempts;
+       }
+       else{
+        y+=
+         attempts%2
+          ? -11
+          : 22;
+       }
+
+       box=
+        financialLabelBoundsV77Y5(
+         ctx,
+         text,
+         x,
+         y,
+         {
+          fontSize:labelFontSize
+         }
+        );
+      }
+
+      // Keep final horizontal labels inside the drawable chart width.
+      if(isHorizontalBar){
+       const halfWidth=
+        (box.right-box.left)/2;
+
+       x=
+        Math.max(
+         chart.chartArea.left+halfWidth+2,
+         Math.min(
+          chart.chartArea.right-halfWidth-2,
+          x
+         )
+        );
+
+       box=
+        financialLabelBoundsV77Y5(
+         ctx,
+         text,
+         x,
+         y,
+         {
+          fontSize:labelFontSize
+         }
+        );
+      }
+
+      financialLabelBoxV77Y4(
+       ctx,
+       text,
+       x,
+       y,
+       {
+        fontSize:labelFontSize
+       }
+      );
+
+      occupied.push(box);
+    });
+   });
+ }
+};
+
+if(
+ window.Chart &&
+ !window.__PMIS_FINANCIAL_DATA_LABEL_PLUGIN_REGISTERED_V77Y4__
+){
+ Chart.register(
+  financialDataLabelsPluginV77Y4
+ );
+
+ window.__PMIS_FINANCIAL_DATA_LABEL_PLUGIN_REGISTERED_V77Y4__=
+  true;
+}
+
+function render(M){$('ka').textContent=pct(M.ach);$('kc').textContent=pct(M.col);$('kin').textContent=money(M.inn);$('kig').textContent=money(M.ig);$('kpni').textContent=money(M.pni);$('kpiGap').textContent=days(M.pig);$('kicGap').textContent=days(M.icg);$('kor').textContent=money(M.recv);$('pfg').textContent=money(M.pfg);$('pfo').textContent=money(M.pfo);$('pfc').textContent=pct(M.pfconv);$('pfd').textContent=days(M.pfd);const m=monthly(M),common={responsive:true,maintainAspectRatio:false,layout:{padding:{top:28,right:42,bottom:20,left:16}},plugins:{legend:{position:'bottom'},tooltip:{callbacks:{label:c=>c.dataset.label+': '+money(c.raw)}}}};
+ destroy('m');charts.m=new Chart($('mchart'),{type:'bar',data:{labels:m.labels,datasets:[{label:'Planned',data:m.p,backgroundColor:'#2563ebb8'},{label:'Invoiced Cashflow',data:m.i,backgroundColor:'#d97706bf'},{label:'Actual Received',data:m.a,backgroundColor:'#059669b8'}]},options:{...common,scales:{y:yax()}}});
+ let cp=0,ci=0,ca=0;destroy('c');charts.c=new Chart($('cchart'),{type:'line',data:{labels:m.labels,datasets:[{label:'Cumulative Planned',data:m.p.map(v=>cp+=v),borderColor:C.p,pointBackgroundColor:C.p,pointRadius:3.5,pointHoverRadius:4.5,tension:.2},{label:'Cumulative Invoiced',data:m.i.map(v=>ci+=v),borderColor:C.i,pointBackgroundColor:C.i,pointRadius:3.5,pointHoverRadius:4.5,tension:.2},{label:'Cumulative Actual',data:m.a.map(v=>ca+=v),borderColor:C.a,pointBackgroundColor:C.a,pointRadius:3.5,pointHoverRadius:4.5,tension:.2}]},options:{...common,scales:{y:yax()}}});
+ destroy('mix');charts.mix=new Chart($('mixchart'),{type:'doughnut',data:{labels:['Planned Not Invoiced','Selected-FY Receivable','Collected Against Invoice','Extra Cash In'],datasets:[{data:[M.pni,M.periodReceivable,Math.min(M.ig,M.rec),M.extra],backgroundColor:[C.g,C.r,C.a,C.x]}]},options:{...common}});
+ const oh=Math.max(0,N(localStorage.getItem(OH)));destroy('oh');charts.oh=new Chart($('ohchart'),{type:'line',data:{labels:m.labels,datasets:[{label:'Monthly Fixed Overhead',data:m.labels.map(()=>oh),borderColor:C.o,pointBackgroundColor:C.o,pointRadius:3,pointHoverRadius:4,borderDash:[7,5],tension:0},{label:'Invoiced Cashflow',data:m.i,borderColor:C.i,pointBackgroundColor:C.i,pointRadius:3,pointHoverRadius:4,tension:.2},{label:'Actual Received',data:m.a,borderColor:C.a,pointBackgroundColor:C.a,pointRadius:3,pointHoverRadius:4,tension:.2}]},options:{...common,scales:{y:yax()}}});
+ const CUST=M.customers.slice().sort((a,b)=>b.planned-a.planned);dyn('wcf',CUST.length,3);destroy('cf');charts.cf=new Chart($('cfchart'),{type:'bar',data:{labels:CUST.map(x=>x.label),datasets:[{label:'Planned',data:CUST.map(x=>x.planned),backgroundColor:'#2563ebb8'},{label:'Invoiced',data:CUST.map(x=>x.invoiced),backgroundColor:'#d97706bf'},{label:'Collected',data:CUST.map(x=>x.actual),backgroundColor:'#059669b8'}]},options:{...common,indexAxis:'y',scales:{x:yax()}}});
+ const CR=CUST.filter(x=>x.receivable>0).sort((a,b)=>b.receivable-a.receivable);dyn('wcr',CR.length);destroy('cr');if(!CR.length){noDataV77Y3('crchart','No outstanding receivables as of today for the selected Project / Customer / Project Expeditor / Order Type filters.')}else{showDataV77Y3('crchart');charts.cr=new Chart($('crchart'),{type:'bar',data:{labels:CR.map(x=>x.label),datasets:[{label:'Outstanding Receivables',data:CR.map(x=>x.receivable),backgroundColor:'#dc2626b8'}]},options:{...common,indexAxis:'y',scales:{x:yax()},plugins:{...common.plugins,legend:{display:false}}}})}
+ const CG=CUST.filter(x=>x.gap>0).sort((a,b)=>b.gap-a.gap);dyn('wcg',CG.length);destroy('cg');charts.cg=new Chart($('cgchart'),{type:'bar',data:{labels:CG.map(x=>x.label),datasets:[{label:'Planned Not Invoiced',data:CG.map(x=>x.gap),backgroundColor:'#7c3aedb8'}]},options:{...common,indexAxis:'y',scales:{x:yax()},plugins:{...common.plugins,legend:{display:false}}}});
+ destroy('share');if(!(M.dom>0||M.ov>0)){noDataV77Y3('sharechart','No Tax Invoice Gross is available by Invoice Date for the selected FY / filters.')}else{showDataV77Y3('sharechart');charts.share=new Chart($('sharechart'),{type:'doughnut',data:{labels:['Domestic','Overseas'],datasets:[{data:[M.dom,M.ov],backgroundColor:[C.p,C.g]}]},options:{...common}})}
+ const PROJ=M.projects.slice().sort((a,b)=>b.planned-a.planned);dyn('wpf',PROJ.length,3);destroy('pf');charts.pf=new Chart($('pfchart'),{type:'bar',data:{labels:PROJ.map(x=>x.label),datasets:[{label:'Planned',data:PROJ.map(x=>x.planned),backgroundColor:'#2563ebb8'},{label:'Invoiced',data:PROJ.map(x=>x.invoiced),backgroundColor:'#d97706bf'},{label:'Actual',data:PROJ.map(x=>x.actual),backgroundColor:'#059669b8'}]},options:{...common,indexAxis:'y',scales:{x:yax()}}});
+ const PR=PROJ.filter(x=>x.receivable>0).sort((a,b)=>b.receivable-a.receivable);dyn('wpr',PR.length);destroy('pr');if(!PR.length){noDataV77Y3('prchart','No project has an outstanding receivable as of today for the selected Project / Customer / Project Expeditor / Order Type filters.')}else{showDataV77Y3('prchart');charts.pr=new Chart($('prchart'),{type:'bar',data:{labels:PR.map(x=>x.label),datasets:[{label:'Outstanding Receivables',data:PR.map(x=>x.receivable),backgroundColor:'#dc2626b8'}]},options:{...common,indexAxis:'y',scales:{x:yax()},plugins:{...common.plugins,legend:{display:false}}}})}
+ const PG=PROJ.filter(x=>x.gap>0).sort((a,b)=>b.gap-a.gap);dyn('wpg',PG.length);destroy('pg');charts.pg=new Chart($('pgchart'),{type:'bar',data:{labels:PG.map(x=>x.label),datasets:[{label:'Planned Not Invoiced',data:PG.map(x=>x.gap),backgroundColor:'#7c3aedb8'}]},options:{...common,indexAxis:'y',scales:{x:yax()},plugins:{...common.plugins,legend:{display:false}}}});
+ const PF=M.pf.slice().sort((a,b)=>(b.open+b.converted)-(a.open+a.converted));dyn('wpfo',PF.length);destroy('pfo');charts.pfo=new Chart($('pfochart'),{type:'bar',data:{labels:PF.map(x=>x.label),datasets:[{label:'Open Proforma',data:PF.map(x=>x.open),backgroundColor:'#f59e0bbf',stack:'x'},{label:'Converted Proforma',data:PF.map(x=>x.converted),backgroundColor:'#14b8a6bf',stack:'x'}]},options:{...common,indexAxis:'y',scales:{x:{...yax(),stacked:true},y:{stacked:true}}}})
+}
+function apply(){model=agg(rows());render(model)}
+async function load(){setStatus('','Loading live PMIS financial data...');try{const r=await fetch('/api/projects?t='+Date.now(),{headers:hdr(),cache:'no-store'}),x=await r.json().catch(()=>null);if(!r.ok)throw new Error(x?.error||x?.message||'HTTP '+r.status);if(!Array.isArray(x))throw new Error('Invalid project response');projects=x;fill();apply();setStatus('ok',`Database connected. ${projects.length} projects loaded. ${projects.reduce((s,p)=>s+invoices(p).length,0)} billing records available. Analytics and exports use fresh API data.`)}catch(e){projects=[];model=null;setStatus('err','Financial data was NOT loaded: '+(e?.message||e)+'. Values are not shown as false zeroes.');['ka','kc','kin','kig','kpni','kpiGap','kicGap','kor','pfg','pfo','pfc','pfd'].forEach(id=>$(id).textContent='--')}}
+function clear(){['proj','cust','mgr','otype'].forEach(id=>$(id).value='');if([...$('fy').options].some(o=>o.value===currentFy()))$('fy').value=currentFy();else $('fy').value='';apply()}
+async function logo(){try{const r=await fetch('asset/image.png',{cache:'no-store'});if(!r.ok)return '';const b=await r.blob();return await new Promise((res,rej)=>{const f=new FileReader();f.onload=()=>res(String(f.result||''));f.onerror=rej;f.readAsDataURL(b)})}catch{return ''}}
+function scope(){const s=id=>$ (id)?.selectedOptions?.[0]?.text||'';return `FY: ${s('fy')} | Project: ${s('proj')} | Customer: ${s('cust')} | Project Expeditor: ${s('mgr')} | Order Type: ${s('otype')}`}
+function stamp(){const x=new Date(),p=v=>String(v).padStart(2,'0');return x.getFullYear()+p(x.getMonth()+1)+p(x.getDate())+'_'+p(x.getHours())+p(x.getMinutes())}
+async function pdf(){if(!model)return alert('Financial data is not loaded.');const b=$('pdf');b.disabled=true;try{const J=window.jspdf?.jsPDF;if(!J)throw Error('PDF library unavailable');const doc=new J({orientation:'landscape',unit:'mm',format:'a3'}),W=doc.internal.pageSize.getWidth(),H=doc.internal.pageSize.getHeight(),lg=await logo(),dt=new Date().toLocaleString('en-IN');const head=t=>{if(lg)try{doc.addImage(lg,'PNG',12,8,17,17)}catch{}doc.setTextColor(0,43,85);doc.setFont('helvetica','bold');doc.setFontSize(14);doc.text('DANPREL ENGINEERING AUTOMATION PVT LTD',35,14);doc.setTextColor(15);doc.setFontSize(11);doc.text(t,35,21);doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(100);doc.text('Exported On: '+dt,35,27);doc.text(doc.splitTextToSize(scope(),W-24),12,34)};head('FINANCIAL ANALYTICS');doc.autoTable({startY:42,head:[['KPI','Value']],body:[['Invoice Achievement %',pct(model.ach)],['Invoice Collection %',pct(model.col)],['Invoiced Net',money(model.inn)],['Invoiced Gross',money(model.ig)],['Planned Not Invoiced',money(model.pni)],['Outstanding Receivables (As of Today)',money(model.recv)],['Plan to Invoice Gap',days(model.pig)],['Invoice to Collection Gap',days(model.icg)]],headStyles:{fillColor:[0,59,112]}});for(const [t,k] of [['Monthly Cashflow - Planned vs Invoiced vs Actual','m'],['Cumulative Cashflow','c'],['Payment Amount Mix','mix'],['Monthly Fixed Overhead vs Invoiced & Collected','oh'],['Customer Planned - Invoiced - Collected','cf'],['Customer Outstanding Receivables','cr'],['Customer Planned but Not Invoiced','cg'],['Domestic vs Overseas Invoice Share','share'],['Project Planned - Invoiced - Actual','pf'],['Project Outstanding Receivables','pr'],['Project Planned but Not Invoiced','pg'],['Proforma Insights','pfo']]){if(!charts[k])continue;doc.addPage('a3','landscape');head(t);doc.addImage(charts[k].toBase64Image(),'PNG',12,42,W-24,H-56,undefined,'FAST')}const P=doc.getNumberOfPages();for(let i=1;i<=P;i++){doc.setPage(i);doc.setFontSize(7);doc.setTextColor(110);doc.text('DANPREL ENGINEERING AUTOMATION PVT LTD',12,H-5);doc.text(`Page ${i} of ${P}`,W-12,H-5,{align:'right'})}doc.save('PMIS_FINANCIAL_ANALYTICS_'+stamp()+'.pdf')}catch(e){alert(e?.message||'PDF export failed')}finally{b.disabled=false}}
+async function xlsx(){if(!model)return alert('Financial data is not loaded.');const b=$('xlsx');b.disabled=true;try{if(!window.ExcelJS)throw Error('Excel library unavailable');const wb=new ExcelJS.Workbook(),lg=await logo(),dt=new Date().toLocaleString('en-IN');wb.creator='DANPREL ENGINEERING AUTOMATION PVT LTD';function brand(ws,title){ws.mergeCells('B1:H1');ws.mergeCells('B2:H2');ws.mergeCells('B3:H3');ws.getCell('B1').value='DANPREL ENGINEERING AUTOMATION PVT LTD';ws.getCell('B2').value=title;ws.getCell('B3').value='Exported On: '+dt+' | '+scope();ws.getCell('B1').font={bold:true,size:15,color:{argb:'FF003B70'}};ws.getCell('B2').font={bold:true,size:12};if(lg)try{const id=wb.addImage({base64:lg,extension:'png'});ws.addImage(id,{tl:{col:0,row:0},ext:{width:68,height:50}})}catch{}}function header(r){r.eachCell(c=>{c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF003B70'}}})}
+ const S=wb.addWorksheet('Summary');brand(S,'FINANCIAL ANALYTICS');S.addRow([]);S.addRow(['KPI','Value']);header(S.getRow(5));[['Invoice Achievement %',model.ach],['Invoice Collection %',model.col],['Invoiced Net',model.inn],['Invoiced Gross',model.ig],['Planned Not Invoiced',model.pni],['Outstanding Receivables (As of Today)',model.recv],['Plan to Invoice Gap days',model.pig],['Invoice to Collection Gap days',model.icg],['Proforma Gross',model.pfg],['Open Proforma Gross',model.pfo],['Proforma Conversion %',model.pfconv],['Avg Proforma to Invoice days',model.pfd]].forEach(r=>S.addRow(r));S.getColumn(1).width=34;S.getColumn(2).width=24;
+ const M=monthly(model),MS=wb.addWorksheet('Monthly Cashflow');brand(MS,'MONTHLY CASHFLOW');MS.addRow([]);MS.addRow(['Month','Planned','Invoiced','Actual Received','Monthly Fixed Overhead']);header(MS.getRow(5));const oh=Math.max(0,N(localStorage.getItem(OH)));M.labels.forEach((l,i)=>MS.addRow([l,M.p[i],M.i[i],M.a[i],oh]));
+ for(const [title,arr] of [['Customer Analytics',model.customers],['Project Analytics',model.projects]]){const ws=wb.addWorksheet(title);brand(ws,title.toUpperCase());ws.addRow([]);ws.addRow([title.startsWith('Customer')?'Customer':'Project','Planned','Invoiced','Actual','Outstanding Receivables','Planned Not Invoiced']);header(ws.getRow(5));arr.forEach(x=>ws.addRow([x.label,x.planned,x.invoiced,x.actual,x.receivable,x.gap]));ws.getColumn(1).width=34}
+ const PF=wb.addWorksheet('Proforma Insights');brand(PF,'PROFORMA INSIGHTS');PF.addRow([]);PF.addRow(['Customer','Open Proforma Gross','Converted Proforma Gross']);header(PF.getRow(5));model.pf.forEach(x=>PF.addRow([x.label,x.open,x.converted]));PF.getColumn(1).width=34;
+ const buf=await wb.xlsx.writeBuffer(),url=URL.createObjectURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})),a=document.createElement('a');a.href=url;a.download='PMIS_FINANCIAL_ANALYTICS_'+stamp()+'.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)}catch(e){alert(e?.message||'Excel export failed')}finally{b.disabled=false}}
+['fy','proj','cust','mgr','otype'].forEach(id=>$(id).addEventListener('change',apply));$('clear').onclick=clear;$('refresh').onclick=load;$('pdf').onclick=pdf;$('xlsx').onclick=xlsx;$('saveOverhead').onclick=()=>{localStorage.setItem(OH,String(Math.max(0,N($('overhead').value))));apply()};$('overhead').value=String(Math.max(0,N(localStorage.getItem(OH)))||'');load();
+})();
+</script>
+
+<script src="pmis-menu-exact-dashboard-v4.js"></script>
+<script src="pmis-finance-menu-access-v41.js"></script>
+</body></html>

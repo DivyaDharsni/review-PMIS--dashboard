@@ -61,6 +61,13 @@ app.use('/api', (req, res, next) => {
         req.method === 'PATCH' &&
         /^\/api\/projects\/[^/]+\/customer-feedback-requirement$/.test(requestPath);
 
+    // PMIS_MANUAL_FEEDBACK_STATUS_V3
+    // Manual customer-feedback lifecycle update. This dedicated endpoint
+    // remains permitted in LOCAL_SAFE_MODE without enabling generic project edits.
+    const isCustomerFeedbackManualStatusWrite =
+        req.method === 'PATCH' &&
+        /^\/api\/projects\/[^/]+\/customer-feedback-status$/.test(requestPath);
+
     // PMIS_CUSTOMER_FEEDBACK_LIFECYCLE_INTEGRATION_V77Z
     // The dashboard sync endpoint is safe in LOCAL_SAFE_MODE because the route
     // itself returns a live projection without persisting unless explicitly
@@ -84,6 +91,7 @@ app.use('/api', (req, res, next) => {
         isLoginRequest ||
         (ALLOW_LOCAL_FEEDBACK_WRITES && isFeedbackWrite) ||
         isCustomerFeedbackRequirementWrite ||
+        isCustomerFeedbackManualStatusWrite ||
         isCustomerFeedbackStatusSync ||
         (
             ALLOW_LOCAL_CUSTOMER_FEEDBACK_INTEGRATION_WRITES &&
@@ -591,6 +599,22 @@ function calcCpmDuration(items) {
 
 // --- DATA AUTO-CORRECTION (Fixes dates for rescheduled tasks) ---
 async function syncDataOnStartup() {
+    // PMIS_MONGO_STARTUP_WAIT_V1
+    // Prevent Mongoose buffered queries from timing out during startup.
+    if (mongoose.connection.readyState !== 1) {
+        console.log('â³ Waiting for MongoDB before Data Sync...');
+        try {
+            await mongoose.connection.asPromise();
+        } catch (mongoWaitError) {
+            console.error(
+                'âŒ MongoDB was not ready for Data Sync:',
+                mongoWaitError && mongoWaitError.message
+                    ? mongoWaitError.message
+                    : mongoWaitError
+            );
+            return;
+        }
+    }
     console.log('🔧 Running Data Sync Check...');
     try {
         const allTasks = await ActionPoint.find({ 'revisions.0': { $exists: true } });
@@ -1545,6 +1569,140 @@ app.patch('/api/projects/:id/customer-feedback-requirement', async (req, res) =>
     } catch (err) {
         console.error('[CUSTOMER FEEDBACK REQUIREMENT]', err.message);
         res.status(500).json({ error: err.message });
+    }
+});
+
+
+// PMIS_MANUAL_FEEDBACK_STATUS_V3
+// Manual fallback for customer-feedback lifecycle status.
+// Access matches the existing feedback-requirement workflow:
+// Admin, or a user associated with the project's Project Manager field.
+app.patch('/api/projects/:id/customer-feedback-status', async (req, res) => {
+    try {
+        const status =
+            String(req.body?.status || '')
+                .trim()
+                .toLowerCase();
+
+        if (
+            ![
+                'not_started',
+                'sent_waiting_reply',
+                'received'
+            ].includes(status)
+        ) {
+            return res.status(400).json({
+                error:
+                    'Status must be not_started, sent_waiting_reply, or received.'
+            });
+        }
+
+        const project =
+            await Project.findById(req.params.id);
+
+        if (!project) {
+            return res.status(404).json({
+                error:'Project not found.'
+            });
+        }
+
+        const role =
+            String(req.get('x-pmis-role') || '')
+                .trim()
+                .toLowerCase();
+
+        const displayName =
+            String(req.get('x-pmis-display-name') || '')
+                .trim();
+
+        const employeeId =
+            String(req.get('x-pmis-employee-id') || '')
+                .trim();
+
+        const username =
+            String(req.get('x-pmis-username') || '')
+                .trim();
+
+        const normalizeIdentity = value =>
+            String(value || '')
+                .toUpperCase()
+                .replace(/[^A-Z0-9]/g, '');
+
+        const assignment =
+            normalizeIdentity(project.project_manager);
+
+        const identities =
+            [displayName, employeeId, username]
+                .map(normalizeIdentity)
+                .filter(Boolean);
+
+        const isAssociated =
+            Boolean(assignment) &&
+            identities.some(identity =>
+                assignment.includes(identity) ||
+                identity.includes(assignment)
+            );
+
+        if (role !== 'admin' && !isAssociated) {
+            return res.status(403).json({
+                error:
+                    'You can update customer feedback status only for an associated project.'
+            });
+        }
+
+        const now = new Date();
+
+        project.customer_feedback_status = status;
+        project.customer_feedback_sync_updated_at = now;
+
+        // PMIS_MANUAL_FEEDBACK_STATUS_V31_RESET
+        // Reset only the lifecycle timestamps so the project can be tested /
+        // marked again from the beginning without deleting feedback IDs,
+        // CSI, category, or other feedback records.
+        if (status === 'not_started') {
+            project.customer_feedback_sent_at = undefined;
+            project.customer_feedback_received_at = undefined;
+        }
+
+        if (
+            status === 'sent_waiting_reply' &&
+            !project.customer_feedback_sent_at
+        ) {
+            project.customer_feedback_sent_at = now;
+        }
+
+        if (status === 'received') {
+            if (!project.customer_feedback_sent_at) {
+                project.customer_feedback_sent_at = now;
+            }
+
+            if (!project.customer_feedback_received_at) {
+                project.customer_feedback_received_at = now;
+            }
+        }
+
+        await project.save();
+
+        res.json({
+            ok:true,
+            message:
+                status === 'not_started'
+                    ? 'Customer feedback reset to Not Sent.'
+                    : status === 'received'
+                        ? 'Customer feedback marked as Feedback Received.'
+                        : 'Customer feedback marked as Feedback Sent.',
+            project
+        });
+    }
+    catch (err) {
+        console.error(
+            '[MANUAL CUSTOMER FEEDBACK STATUS V3]',
+            err.message
+        );
+
+        res.status(500).json({
+            error:err.message
+        });
     }
 });
 

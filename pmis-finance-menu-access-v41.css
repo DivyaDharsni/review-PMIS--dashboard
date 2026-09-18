@@ -1,0 +1,7 @@
+/* Hide restricted finance menu entries for every non-admin/non-review login. */
+body:not(.pmis-finance-restricted-allowed) a[href="invoice_register.html"],
+body:not(.pmis-finance-restricted-allowed) a[href="./invoice_register.html"],
+body:not(.pmis-finance-restricted-allowed) a[href="financial_analytics.html"],
+body:not(.pmis-finance-restricted-allowed) a[href="./financial_analytics.html"] {
+    display: none !important;
+}
