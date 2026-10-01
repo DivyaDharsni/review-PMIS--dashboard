@@ -9853,7 +9853,7 @@ if (options.has('phases')) {
                 const pct = counts.total ? Math.round((values[index] / counts.total) * 100) : 0;
                 ctx.fillStyle = '#64748b';
                 ctx.font = '600 16px Inter, Arial, sans-serif';
-                ctx.fillText(`${values[index]} action point${values[index] === 1 ? '' : 's'} Â· ${pct}%`, 325, y + 28);
+                ctx.fillText(`${values[index]} action point${values[index] === 1 ? '' : 's'} · ${pct}%`, 325, y + 28);
             });
 
             return canvas.toDataURL('image/png');

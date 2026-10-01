@@ -122,7 +122,7 @@
             .kpis{grid-template-columns:repeat(4,minmax(0,1fr))}
         }
 
-        /* PMIS_PROJECT_GST_PERCENT_V76I5 ΓÇö stage GST visibility */
+        /* PMIS_PROJECT_GST_PERCENT_V76I5 — stage GST visibility */
         #tableArea table{
             min-width:1680px;
         }
@@ -633,6 +633,120 @@ window.fetch=
 
 })();
 </script>
+
+<!-- PMIS_REVENUE_ADMIN_ONLY_V77L2_START -->
+<style id="pmis-revenue-admin-only-v77l2-style">
+/*
+ * Planned Revenue is private to the exact Admin role.
+ * Default is hidden so there is no flash of revenue content.
+ */
+#pmisPlannedRevenueRowV77G{
+  display:none !important;
+}
+html[data-pmis-revenue-admin-v77l2="1"] #pmisPlannedRevenueRowV77G{
+  display:grid !important;
+}
+</style>
+
+<script id="pmis-revenue-admin-only-v77l2-guard">
+(function(){
+ 'use strict';
+
+ function norm(value){
+  return String(value||'').trim().toLowerCase();
+ }
+
+ /*
+  * IMPORTANT:
+  * Only an EXACT "admin" value is accepted.
+  * Values such as finance, accounts, pm, pc, lead,
+  * administrator_view, non_admin, etc. do not qualify.
+  */
+ const role=norm(localStorage.getItem('danprel_role'));
+ const authRole=norm(localStorage.getItem('danprel_auth_role'));
+
+ const allowed=
+  role==='admin' ||
+  authRole==='admin';
+
+ window.PMIS_REVENUE_ADMIN_ONLY_V77L2=
+  allowed===true;
+
+ if(allowed){
+  document.documentElement.setAttribute(
+   'data-pmis-revenue-admin-v77l2',
+   '1'
+  );
+ }
+ else{
+  document.documentElement.removeAttribute(
+   'data-pmis-revenue-admin-v77l2'
+  );
+ }
+
+ function enforce(){
+  if(window.PMIS_REVENUE_ADMIN_ONLY_V77L2===true){
+   return;
+  }
+
+  const row=
+   document.getElementById(
+    'pmisPlannedRevenueRowV77G'
+   );
+
+  if(row){
+   row.remove();
+  }
+ }
+
+ if(document.readyState==='loading'){
+  document.addEventListener(
+   'DOMContentLoaded',
+   enforce,
+   {once:true}
+  );
+ }
+ else{
+  enforce();
+ }
+
+ /*
+  * Belt-and-suspenders protection:
+  * even if legacy Revenue code attempts to recreate the pane later,
+  * a non-admin user never keeps it in the DOM.
+  */
+ if(window.PMIS_REVENUE_ADMIN_ONLY_V77L2!==true){
+  const observer=
+   new MutationObserver(
+    enforce
+   );
+
+  const startObserver=()=>{
+   if(document.documentElement){
+    observer.observe(
+     document.documentElement,
+     {
+      childList:true,
+      subtree:true
+     }
+    );
+   }
+  };
+
+  if(document.readyState==='loading'){
+   document.addEventListener(
+    'DOMContentLoaded',
+    startObserver,
+    {once:true}
+   );
+  }
+  else{
+   startObserver();
+  }
+ }
+})();
+</script>
+<!-- PMIS_REVENUE_ADMIN_ONLY_V77L2_END -->
 </head>
 <body data-pmis-cashflow-version="V76A">
 <!-- PMIS_PAYMENT_MILESTONES_CASHFLOW_V75A -->
@@ -686,7 +800,7 @@ window.fetch=
 <main class="cashflow-main">
     <div class="title-row">
         <div><h1>Cashflow / Payment Status</h1><p>Optional project payment milestones: planned realization versus actual customer receipts.</p></div>
-        <div id="scopeLabel" class="badge rounded-pill text-bg-light border px-3 py-2 text-secondary">Loading project scopeΓÇª</div>
+        <div id="scopeLabel" class="badge rounded-pill text-bg-light border px-3 py-2 text-secondary">Loading project scope…</div>
     </div>
 
         <section class="panel filters">
@@ -726,11 +840,11 @@ window.fetch=
         <section class="panel pmis-v77t-invoice-panel" id="pmisFinanceInvoicePaneV77T">
             <div class="pmis-v77t-invoice-head">
                 <div>
-                    <div class="pmis-v77t-eyebrow">FINANCE ┬╖ BILLING CONTROL</div>
+                    <div class="pmis-v77t-eyebrow">FINANCE • BILLING CONTROL</div>
                     <h3>Invoice Register</h3>
                     <p>Track Proforma / Invoice raised against each prefilled PO payment milestone, then compare billing with actual realization.</p>
                 </div>
-                <div class="pmis-v77t-access-badge" id="pmisFinanceAccessBadgeV77T">Loading accessΓÇª</div>
+                <div class="pmis-v77t-access-badge" id="pmisFinanceAccessBadgeV77T">Loading access…</div>
             </div>
 
             <div class="pmis-v77t-kpis">
@@ -783,7 +897,7 @@ window.fetch=
                 <div class="pmis-v77t-search">
                     <label>Search</label>
                     <input id="pmisInvSearchV77T" class="form-control" type="search"
-                           placeholder="Project / milestone / invoice noΓÇª">
+                           placeholder="Project / milestone / invoice no…">
                 </div>
                 <button type="button" id="pmisInvClearV77T" class="btn btn-light border fw-bold">
                     <i class="bi bi-arrow-counterclockwise me-1"></i>Clear
@@ -796,12 +910,12 @@ window.fetch=
             </div>
 
             <div id="pmisFinanceInvoiceAreaV77T" class="pmis-v77t-loading">
-                <span class="spinner-border spinner-border-sm me-2"></span>Loading invoice registerΓÇª
+                <span class="spinner-border spinner-border-sm me-2"></span>Loading invoice register…
             </div>
         </section>
 
         <div class="charts">
-            <section class="panel chart-card"><h3>Monthly Cashflow ΓÇö Planned vs Invoiced vs Actual</h3><p>Planned realization vs invoiced realization (Invoice Date + Credit Days) vs actual receipt month.</p><div class="chart-wrap"><canvas id="cashflowChart"></canvas></div></section>
+            <section class="panel chart-card"><h3>Monthly Cashflow — Planned vs Invoiced vs Actual</h3><p>Planned realization vs invoiced realization (Invoice Date + Credit Days) vs actual receipt month.</p><div class="chart-wrap"><canvas id="cashflowChart"></canvas></div></section>
             <section class="panel chart-card"><h3>Payment Amount Mix</h3><p>Received and outstanding value split for the current filtered scope.</p><div class="chart-wrap"><canvas id="statusChart"></canvas></div></section>
         </div>
         <div class="charts second">
@@ -811,7 +925,7 @@ window.fetch=
 
         <section class="panel table-panel">
             <div class="table-head"><h3>Payment Milestone Register</h3><div class="small text-secondary" id="rowCount">0 milestones</div></div>
-            <div id="tableArea" class="loading"><span class="spinner-border spinner-border-sm me-2"></span>Loading payment dataΓÇª</div>
+            <div id="tableArea" class="loading"><span class="spinner-border spinner-border-sm me-2"></span>Loading payment data…</div>
         </section>
 </main>
 
@@ -821,7 +935,7 @@ window.fetch=
         <div class="modal-content">
             <div class="modal-header pmis-v77t-modal-header">
                 <div>
-                    <div class="pmis-v77t-eyebrow text-white-50">FINANCE ┬╖ MILESTONE BILLING</div>
+                    <div class="pmis-v77t-eyebrow text-white-50">FINANCE • MILESTONE BILLING</div>
                     <h5 class="modal-title mb-0">Invoice / Proforma Entry</h5>
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
@@ -933,7 +1047,7 @@ window.fetch=
                     <div class="row g-3">
                         <div class="col-md-6"><label class="form-label">Amount Received (₹)</label><input id="rAmount" type="number" min="0.01" step="0.01" class="form-control"></div>
                         <div class="col-md-6"><label class="form-label">Received Date</label><input id="rDate" type="date" class="form-control"></div>
-                        <div class="col-12"><label class="form-label">Payment / UTR Reference <span class="text-secondary fw-normal">(Optional)</span></label><input id="rReference" maxlength="120" class="form-control" placeholder="Optional ΓÇö UTR / cheque / bank reference"></div>
+                        <div class="col-12"><label class="form-label">Payment / UTR Reference <span class="text-secondary fw-normal">(Optional)</span></label><input id="rReference" maxlength="120" class="form-control" placeholder="Optional — UTR / cheque / bank reference"></div>
                     <!-- PMIS_OPTIONAL_REFERENCE_ALWAYS_ADD_RECEIPT_V77N -->
                         <div class="col-12"><label class="form-label">Remarks</label><textarea id="rRemarks" maxlength="250" rows="2" class="form-control" placeholder="Optional receipt note"></textarea></div>
                     </div>
@@ -1322,7 +1436,7 @@ const pmisV75ZDataLabels={
         chartLabelMoneyV76A(
          value
         )+
-        ' ┬╖ '+
+        ' • '+
         pct.toFixed(0)+
         '%';
       }
@@ -1683,7 +1797,7 @@ function buildRows(){
 function fillSelect(id,values,label){const el=$(id);const current=el.value;el.innerHTML=`<option value="">${label}</option>`+[...new Set(values.filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b))).map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');if([...el.options].some(o=>o.value===current))el.value=current}
 function populateFilters(){
  fillSelect('fProject',projects.map(p=>String(p._id||'')),'All Projects');
- const fp=$('fProject');fp.innerHTML='<option value="">All Projects</option>'+projects.slice().sort(compareProjectsByPoDateV77M).map(p=>`<option value="${esc(p._id)}">${esc((p.code||p.tracking_code||'Project')+' ΓÇö '+(p.name||''))}</option>`).join('');
+ const fp=$('fProject');fp.innerHTML='<option value="">All Projects</option>'+projects.slice().sort(compareProjectsByPoDateV77M).map(p=>`<option value="${esc(p._id)}">${esc((p.code||p.tracking_code||'Project')+' — '+(p.name||''))}</option>`).join('');
  fillSelect('fCustomer',projects.map(p=>p.customer_name),'All Customers');fillSelect('fManager',projects.map(p=>p.project_manager),'All Expeditors');
  const fys=[];rows.forEach(r=>{if(r.planned)fys.push(fyOf(r.planned));receipts(r.term).forEach(x=>{if(x?.received_date)fys.push(fyOf(x.received_date))})});fillSelect('fFy',fys,'All FY');
 }
@@ -2121,7 +2235,7 @@ function renderTable(){
     !r.eligible
      ?'Linked stage is not 100% complete yet.'
      :r.balance<=.5
-       ?'Milestone realized ΓÇö additional receipt is allowed.'
+       ?'Milestone realized — additional receipt is allowed.'
        :'Open receipt history / add split payment';
 
    const paymentPct=
@@ -2363,7 +2477,7 @@ function renderTable(){
 
         <div class="pmis-v75y-project-sub">
          ${esc(p.name||'')}
-         ${p.customer_name?' ┬╖ '+esc(p.customer_name):''}
+         ${p.customer_name?' • '+esc(p.customer_name):''}
         </div>
 
         <div class="pmis-v75y-project-meta">
@@ -2963,7 +3077,29 @@ function plannedRevenueQuarterOfV77G(date){
  return '';
 }
 
+function hidePlannedRevenuePaneV77L(){
+ try{
+  if(charts.revenueV77G){
+   try{charts.revenueV77G.destroy();}catch(_){}
+   charts.revenueV77G=null;
+  }
+ }catch(_){}
+
+ [
+  'pmisPlannedRevenueRowV77G',
+  'pmisRevenuePendingBadgeV77H',
+  'pmisRevenueDrilldownV77H'
+ ].forEach(id=>{
+  const el=document.getElementById(id);
+  if(el)el.remove();
+ });
+}
 function ensurePlannedRevenueCardV77G(){
+ if(window.PMIS_REVENUE_ADMIN_ONLY_V77L2!==true){
+  const existing=document.getElementById('pmisPlannedRevenueRowV77G');
+  if(existing)existing.remove();
+  return null;
+ }
  let row=
   document.getElementById(
    'pmisPlannedRevenueRowV77G'
@@ -3064,10 +3200,10 @@ function ensurePlannedRevenueCardV77G(){
        style="min-width:170px;"
       >
        <option value="all">All Quarters</option>
-       <option value="q1">Q1 ┬╖ Apr-Jun</option>
-       <option value="q2">Q2 ┬╖ Jul-Sep</option>
-       <option value="q3">Q3 ┬╖ Oct-Dec</option>
-       <option value="q4">Q4 ┬╖ Jan-Mar</option>
+       <option value="q1">Q1 • Apr-Jun</option>
+       <option value="q2">Q2 • Jul-Sep</option>
+       <option value="q3">Q3 • Oct-Dec</option>
+       <option value="q4">Q4 • Jan-Mar</option>
       </select>
      </div>
 
@@ -3452,7 +3588,7 @@ function renderPlannedRevenueDrilldownV77H(
      title="Collapse / expand"
      style="width:34px;height:34px;min-width:34px;padding:0;display:inline-flex;align-items:center;justify-content:center;"
     >
-     <span style="font-size:1.15rem;line-height:1;">ΓêÆ</span>
+     <span style="font-size:1.15rem;line-height:1;">−</span>
     </button>
    </div>
   </div>
@@ -3519,12 +3655,17 @@ function renderPlannedRevenueDrilldownV77H(
 
    toggle.innerHTML=
     nextExpanded
-     ?'<span style="font-size:1.15rem;line-height:1;">ΓêÆ</span>'
+     ?'<span style="font-size:1.15rem;line-height:1;">−</span>'
      :'<span style="font-size:1.15rem;line-height:1;">+</span>';
   });
  }
 }
 function renderPlannedRevenueV77G(){
+ if(window.PMIS_REVENUE_ADMIN_ONLY_V77L2!==true){
+  const existing=document.getElementById('pmisPlannedRevenueRowV77G');
+  if(existing)existing.remove();
+  return;
+ }
  if(typeof Chart!=='function')return;
 
  ensurePlannedRevenueCardV77G();
@@ -3888,7 +4029,7 @@ charts.revenueV77G=new Chart(canvas,{
     const label=
      labels[index]==='Pending'
       ?'Plan Date Pending'
-      :((plannedRevenueQuarterV77G==='all'?visibleMonths[index]?.[2]+' ┬╖ ':'')+labels[index]);
+      :((plannedRevenueQuarterV77G==='all'?visibleMonths[index]?.[2]+' • ':'')+labels[index]);
 
     renderPlannedRevenueDrilldownV77H(
      label,
@@ -3903,7 +4044,7 @@ charts.revenueV77G=new Chart(canvas,{
        const index=items?.[0]?.dataIndex;
        if(!Number.isInteger(index))return '';
        if(labels[index]==='Pending')return 'Plan Date Pending';
-       return visibleMonths[index]?.[2]+' ┬╖ '+labels[index];
+       return visibleMonths[index]?.[2]+' • '+labels[index];
       },
       label:c=>`Planned Revenue: ${money(c.raw)}`
      }
@@ -3972,7 +4113,7 @@ function receiptSummaryV77M(p,term,index){
   exp,got,
   balance:Math.max(0,exp-got),
   excess:Math.max(0,got-exp),
-  html:`<strong>${esc(p.code||p.name)} ΓÇö Milestone M${index+1}</strong><br>${esc(stageLabel(p,term.linked_stage_id))}<br><span class="text-secondary">Planned Gross: ${money(exp)} &nbsp;ΓÇó&nbsp; Received: ${money(got)} &nbsp;ΓÇó&nbsp; Outstanding: ${money(Math.max(0,exp-got))}${got-exp>0.5?` &nbsp;ΓÇó&nbsp; <strong style="color:#047857;">Excess Cash In: ${money(got-exp)}</strong>`:''}</span>`
+  html:`<strong>${esc(p.code||p.name)} — Milestone M${index+1}</strong><br>${esc(stageLabel(p,term.linked_stage_id))}<br><span class="text-secondary">Planned Gross: ${money(exp)} &nbsp;•&nbsp; Received: ${money(got)} &nbsp;•&nbsp; Outstanding: ${money(Math.max(0,exp-got))}${got-exp>0.5?` &nbsp;•&nbsp; <strong style="color:#047857;">Excess Cash In: ${money(got-exp)}</strong>`:''}</span>`
  };
 }
 function resetReceiptEntryV77M(p,term,index){
@@ -4093,9 +4234,9 @@ if(!window.__PMIS_V77M_CASHFLOW_RECEIPT_ACTIONS__){
  });
 }
 async function load(){
- $('tableArea').className='loading';$('tableArea').innerHTML='<span class="spinner-border spinner-border-sm me-2"></span>Loading payment dataΓÇª';
+ $('tableArea').className='loading';$('tableArea').innerHTML='<span class="spinner-border spinner-border-sm me-2"></span>Loading payment data…';
  try{
-  const res=await fetch('/api/projects?t='+Date.now(),{headers:headers(false),cache:'no-store'});const data=await res.json().catch(()=>[]);if(!res.ok)throw new Error(data.error||data.message||('Unable to load projects (HTTP '+res.status+')'));if(!Array.isArray(data))throw new Error('Projects API returned an invalid response.');projects=data.filter(canAccess);buildRows();populateFilters();applyFilters();$('scopeLabel').textContent=(isAdmin()?'Admin ΓÇö ':isFinanceV77T()?'Finance ΓÇö ':'Associated projects ΓÇö ')+projects.length+' project'+(projects.length===1?'':'s');
+  const res=await fetch('/api/projects?t='+Date.now(),{headers:headers(false),cache:'no-store'});const data=await res.json().catch(()=>[]);if(!res.ok)throw new Error(data.error||data.message||('Unable to load projects (HTTP '+res.status+')'));if(!Array.isArray(data))throw new Error('Projects API returned an invalid response.');projects=data.filter(canAccess);buildRows();populateFilters();applyFilters();$('scopeLabel').textContent=(isAdmin()?'Admin — ':isFinanceV77T()?'Finance — ':'Associated projects — ')+projects.length+' project'+(projects.length===1?'':'s');
  }catch(error){$('tableArea').className='empty';$('tableArea').innerHTML='<i class="bi bi-exclamation-triangle fs-2 d-block mb-2 text-danger"></i>'+esc(error.message||'Unable to load cashflow data.');}
 }
 function clearFilters(){['fProject','fCustomer','fManager','fStatus','fFy'].forEach(id=>$(id).value='');$('fDateBasis').value='planned';$('fFrom').value='';$('fTo').value='';applyFilters()}
@@ -4124,7 +4265,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 .pmis-v75y-project-head:hover{background:#f3f8fd}
 
 /* PMIS_PROJECT_HEADER_PAYMENT_COLOR_V77O */
-/* Whole project header pane ΓÇö commercial receipt status */
+/* Whole project header pane — commercial receipt status */
 #tableArea .pmis-v75y-project-head.pmis-v77o-payment-total{
  background:#ecfdf5!important;
  box-shadow:inset 4px 0 0 #34d399;
@@ -4568,7 +4709,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
                                     : 0;
 
                             label +=
-                                ' ┬╖ ' +
+                                ' • ' +
                                 pct.toFixed(0) +
                                 '%';
                         }
@@ -4810,7 +4951,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
                         return {
                             text:
                                 label +
-                                ' ΓÇö ' +
+                                ' — ' +
                                 moneyCr(value, true) +
                                 ' (' +
                                 pct.toFixed(0) +
@@ -5334,8 +5475,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
         return txt(value)
             .replace(/\u00a0/g,' ')
             .replace(/\u20b9/g,'Rs. ')
-            .replace(/[ΓÇôΓÇö]/g,'-')
-            .replace(/[┬╖ΓÇó]/g,' | ')
+            .replace(/[–—]/g,'-')
+            .replace(/[••]/g,' | ')
             .replace(/\s*\|\s*/g,' | ')
             .replace(/\s+/g,' ')
             .trim();
@@ -6137,7 +6278,7 @@ async function exportPdf() {
                     )
             };
 
-            /* PAGE 1 ΓÇö compact dashboard */
+            /* PAGE 1 — compact dashboard */
             addHeader(
                     doc,
                     'PROJECT FINANCIAL PERFORMANCE REPORT',
@@ -7667,7 +7808,7 @@ function render(){
 
  const access=$('pmisFinanceAccessBadgeV77T');
  if(access){
-  access.textContent=canEdit()?'Finance / Admin ┬╖ Edit Access':'Project Team ┬╖ View Only';
+  access.textContent=canEdit()?'Finance / Admin • Edit Access':'Project Team • View Only';
   access.className='pmis-v77t-access-badge '+(canEdit()?'edit':'view');
  }
 
@@ -7695,10 +7836,10 @@ function render(){
     <div class="pmis-v77t-project-title">
      <i class="bi bi-building-check"></i>
      <div><strong>${esc(group.p?.code||group.p?.tracking_code||group.p?.name||'Project')}</strong>
-      <span> ┬╖ ${esc(group.p?.name||'')} ┬╖ ${esc(group.p?.customer_name||'-')}</span></div>
+      <span> • ${esc(group.p?.name||'')} • ${esc(group.p?.customer_name||'-')}</span></div>
     </div>
     <div class="pmis-v77t-project-summary">
-      Planned <b>${money(planned)}</b> ┬╖ Invoiced <b>${money(invoice)}</b> ┬╖ Received <b>${money(got)}</b>
+      Planned <b>${money(planned)}</b> • Invoiced <b>${money(invoice)}</b> • Received <b>${money(got)}</b>
     </div>
    </summary>
    <div class="pmis-v77t-table-wrap">
@@ -7716,7 +7857,7 @@ function render(){
        const receivable=Math.max(0,ig-rg);
        const lastHtml=last
         ? `<span class="pmis-v77t-doc ${esc(norm(last.document_type))}">${esc(norm(last.document_type)==='invoice'?'Invoice':'Proforma')}</span>
-           <div class="mt-1">${esc(last.invoice_number||'-')} ┬╖ ${fmtDate(last.invoice_date)}</div>`
+           <div class="mt-1">${esc(last.invoice_number||'-')} • ${fmtDate(last.invoice_date)}</div>`
         : '-';
        return `<tr>
         <td><strong>M${index+1}</strong>${term?.remarks?`<div class="text-secondary mt-1">${esc(term.remarks)}</div>`:''}</td>
@@ -7783,9 +7924,9 @@ function renderHistory(){
    <span class="text-secondary">${esc(r.remarks||'No remarks')}</span>
   </div>
   <div class="pmis-v77t-history-money">
-   Net <strong>${money(r.invoice_amount)}</strong> ┬╖ GST <strong>${money(r.invoice_gst)}</strong><br>
+   Net <strong>${money(r.invoice_amount)}</strong> • GST <strong>${money(r.invoice_gst)}</strong><br>
    Gross <strong>${money(docGross(r))}</strong><br>
-   <span class="text-secondary">${esc(r.recorded_by||'-')}${r.edited_at?' ┬╖ edited':''}</span>
+   <span class="text-secondary">${esc(r.recorded_by||'-')}${r.edited_at?' • edited':''}</span>
   </div>
   <div class="pmis-v77t-history-actions">
    ${canEdit()?`<button type="button" data-pmis-invoice-edit="${esc(r.id)}"><i class="bi bi-pencil-square me-1"></i>Edit</button>
@@ -7799,10 +7940,10 @@ function openInvoice(projectId,index){
  const p=activeProject(),term=activeTerm();if(!p||!term)return;
  const pg=plannedGross(p,term),ig=taxGross(p,index),pf=proformaGross(p,index),rg=received(term);
  if($('pmisInvoiceContextV77T'))$('pmisInvoiceContextV77T').innerHTML=
-  `<strong>${esc(p?.code||p?.name||'Project')} ┬╖ Milestone M${index+1}</strong><br>
-   ${esc(stageLabel(p,term?.linked_stage_id))}${term?.remarks?' ┬╖ '+esc(term.remarks):''}<br>
-   <span class="text-secondary">Planned Gross: ${money(pg)} &nbsp;ΓÇó&nbsp; Proforma: ${money(pf)}
-   &nbsp;ΓÇó&nbsp; Tax Invoiced: ${money(ig)} &nbsp;ΓÇó&nbsp; Received: ${money(rg)}</span>`;
+  `<strong>${esc(p?.code||p?.name||'Project')} • Milestone M${index+1}</strong><br>
+   ${esc(stageLabel(p,term?.linked_stage_id))}${term?.remarks?' • '+esc(term.remarks):''}<br>
+   <span class="text-secondary">Planned Gross: ${money(pg)} &nbsp;•&nbsp; Proforma: ${money(pf)}
+   &nbsp;•&nbsp; Tax Invoiced: ${money(ig)} &nbsp;•&nbsp; Received: ${money(rg)}</span>`;
  const entry=$('pmisInvoiceEntryBlockV77T'),save=$('pmisInvoiceSaveV77T');
  if(entry)entry.style.display=canEdit()?'':'none';
  if(save)save.style.display=canEdit()?'':'none';
@@ -7929,7 +8070,7 @@ async function deleteRecord(id){
 
 async function load(){
  const area=$('pmisFinanceInvoiceAreaV77T');
- if(area){area.className='pmis-v77t-loading';area.innerHTML='<span class="spinner-border spinner-border-sm me-2"></span>Loading invoice registerΓÇª'}
+ if(area){area.className='pmis-v77t-loading';area.innerHTML='<span class="spinner-border spinner-border-sm me-2"></span>Loading invoice register…'}
  try{
   const res=await fetch('/api/projects?t='+Date.now(),{headers:headers(false),cache:'no-store'});
   const data=await res.json().catch(()=>[]);
@@ -8399,7 +8540,7 @@ No graph, calculation, filter, receipt, database or export logic changed.
 
 <!-- PMIS_REVENUE_DRILLDOWN_SYMBOLS_V77H3
 Revenue drilldown toggle uses symbols only:
-ΓêÆ = collapse
+− = collapse
 + = expand
 No revenue calculation or graph logic changed.
 -->
