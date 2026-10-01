@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <script id="pmis-lead-view-cashflow-direct-access-guard-v75p">
@@ -122,7 +122,7 @@
             .kpis{grid-template-columns:repeat(4,minmax(0,1fr))}
         }
 
-        /* PMIS_PROJECT_GST_PERCENT_V76I5 — stage GST visibility */
+        /* PMIS_PROJECT_GST_PERCENT_V76I5 ΓÇö stage GST visibility */
         #tableArea table{
             min-width:1680px;
         }
@@ -143,6 +143,496 @@
 
     <link rel="stylesheet" href="pmis-menu-exact-dashboard-v4.css">
     <link rel="stylesheet" href="pmis-finance-menu-access-v41.css">
+
+<!-- PMIS_PROJECT_PHASE_FILTER_V77I -->
+<script id="pmis-project-phase-filter-v77i-early">
+(function(){
+'use strict';
+
+/*
+ * PMIS V77I2
+ *
+ * Project Phase means:
+ * "show finance linked to payment milestones inside this phase".
+ *
+ * It DOES NOT filter by the project's current lifecycle phase.
+ *
+ * A parent phase includes:
+ * - its own parent-stage ID,
+ * - all fixed child/sub-stage IDs,
+ * - all custom V74Q substages whose parent matches the phase.
+ */
+
+if(window.__PMIS_PROJECT_PHASE_FILTER_V77I__)return;
+window.__PMIS_PROJECT_PHASE_FILTER_V77I__=true;
+
+const PARAM='pmis_phase';
+
+const PHASES=[
+ {
+  key:'kickoff',
+  label:'1. Kickoff',
+  children:[
+   'kickoff_1',
+   'kickoff_2'
+  ]
+ },
+ {
+  key:'design',
+  label:'2. Design',
+  children:[
+   'design_1',
+   'design_2',
+   'design_critical_approval',
+   'design_3',
+   'design_4',
+   'design_5',
+   'design_6'
+  ]
+ },
+ {
+  key:'purchase',
+  label:'3. Purchase',
+  children:[
+   'purchase_1',
+   'purchase_2'
+  ]
+ },
+ {
+  key:'mech_assembly',
+  label:'4. Machine Assembly',
+  children:[
+   'mech_assembly_1',
+   'mech_assembly_2'
+  ]
+ },
+ {
+  key:'program',
+  label:'5. Programming',
+  children:[
+   'prog_plc_offline',
+   'prog_plc',
+   'prog_robot',
+   'prog_labview'
+  ]
+ },
+ {
+  key:'inhouse',
+  label:'6. Inhouse Trials',
+  children:[
+   'inhouse_1',
+   'inhouse_2'
+  ]
+ },
+ {
+  key:'mq1_fat',
+  label:'7. MQ1/FAT (Machine Qualification)',
+  children:[
+   'mq1_fat_1',
+   'mq1_fat_2',
+   'mq1_fat_3'
+  ]
+ },
+ {
+  key:'dispatch_parent',
+  label:'8. Machine Dispatch',
+  children:[
+   'dispatch_1',
+   'dispatch_2'
+  ]
+ },
+ {
+  key:'inc_parent',
+  label:'9. Installation & Commissioning',
+  children:[
+   'inc_1',
+   'inc_2',
+   'inc_3',
+   'inc_4'
+  ]
+ }
+];
+
+window.PMIS_PHASE_FILTERS_V77I=
+ PHASES.map(item=>({
+  key:item.key,
+  label:item.label
+ }));
+
+function text(value){
+ return String(
+  value??''
+ ).trim();
+}
+
+function linkedStageId(milestone){
+ return text(
+  milestone?.linked_stage_id ??
+  milestone?.linkedStageId ??
+  milestone?.stage_id ??
+  milestone?.stageId ??
+  milestone?.phase_id ??
+  milestone?.phaseId ??
+  milestone?.linked_phase_id ??
+  milestone?.linkedPhaseId
+ );
+}
+
+function customDefinitions(project){
+ const rows=
+  project
+   ?.detailed_phases
+   ?.__custom_substages_v74q;
+
+ return Array.isArray(rows)
+  ?rows
+  :[];
+}
+
+function parentPhaseForStage(
+ project,
+ stageId
+){
+ const id=
+  text(
+   stageId
+  );
+
+ if(!id)return '';
+
+ /*
+  * Advance / PO-date milestone is treated as Kickoff finance,
+  * because it occurs at project commencement.
+  */
+ if(id==='po_date'){
+  return 'kickoff';
+ }
+
+ const direct=
+  PHASES.find(item=>
+   item.key===id
+  );
+
+ if(direct){
+  return direct.key;
+ }
+
+ for(const item of PHASES){
+  if(
+   item.children.includes(
+    id
+   )
+  ){
+   return item.key;
+  }
+ }
+
+ /*
+  * Project-specific custom substages:
+  * { id:'custom_...', parent:'design', ... }
+  */
+ const custom=
+  customDefinitions(
+   project
+  ).find(item=>
+   text(item?.id)===id
+  );
+
+ if(custom){
+  const parent=
+   text(
+    custom?.parent
+   );
+
+  if(
+   PHASES.some(item=>
+    item.key===parent
+   )
+  ){
+   return parent;
+  }
+ }
+
+ /*
+  * Safe prefix fallback for known PMIS fixed IDs.
+  */
+ if(/^kickoff(?:_|$)/.test(id))return 'kickoff';
+ if(/^design(?:_|$)/.test(id))return 'design';
+ if(/^purchase(?:_|$)/.test(id))return 'purchase';
+ if(/^mech_assembly(?:_|$)/.test(id))return 'mech_assembly';
+ if(/^prog(?:_|$)/.test(id))return 'program';
+ if(/^inhouse(?:_|$)/.test(id))return 'inhouse';
+ if(/^mq1_fat(?:_|$)/.test(id))return 'mq1_fat';
+ if(/^dispatch(?:_|$)/.test(id))return 'dispatch_parent';
+ if(/^inc(?:_|$)/.test(id))return 'inc_parent';
+
+ return '';
+}
+
+function matchesPhase(
+ project,
+ milestone,
+ phaseKey
+){
+ return (
+  parentPhaseForStage(
+   project,
+   linkedStageId(
+    milestone
+   )
+  )===
+  phaseKey
+ );
+}
+
+window.pmisPaymentParentPhaseV77I2=
+ parentPhaseForStage;
+
+function milestoneSource(project){
+ const candidates=[
+  project?.payment_milestones,
+  project?.paymentMilestones,
+  project?.payment_terms,
+  project?.paymentTerms
+ ];
+
+ return candidates.find(
+  Array.isArray
+ )||
+ [];
+}
+
+function scopeProjectToPhase(
+ project,
+ phaseKey
+){
+ const source=
+  milestoneSource(
+   project
+  );
+
+ if(!source.length){
+  return null;
+ }
+
+ const selected=
+  source.filter(milestone=>
+   matchesPhase(
+    project,
+    milestone,
+    phaseKey
+   )
+  );
+
+ if(!selected.length){
+  return null;
+ }
+
+ const scoped={
+  ...project
+ };
+
+ /*
+  * Keep every supported milestone alias synchronized so both
+  * cashflow.html and financial_analytics.html read the same scope.
+  */
+ scoped.payment_milestones=
+  selected;
+
+ if(
+  Array.isArray(
+   project?.paymentMilestones
+  )
+ ){
+  scoped.paymentMilestones=
+   selected;
+ }
+
+ if(
+  Array.isArray(
+   project?.payment_terms
+  )
+ ){
+  scoped.payment_terms=
+   selected;
+ }
+
+ if(
+  Array.isArray(
+   project?.paymentTerms
+  )
+ ){
+  scoped.paymentTerms=
+   selected;
+ }
+
+ return scoped;
+}
+
+const params=
+ new URLSearchParams(
+  location.search
+ );
+
+const active=
+ text(
+  params.get(
+   PARAM
+  )
+ );
+
+window.PMIS_ACTIVE_PHASE_V77I=
+ active;
+
+if(!active){
+ return;
+}
+
+const valid=
+ PHASES.some(item=>
+  item.key===active
+ );
+
+if(!valid){
+ params.delete(
+  PARAM
+ );
+
+ const clean=
+  location.pathname+
+  (
+   params.toString()
+    ?'?'+params.toString()
+    :''
+  )+
+  location.hash;
+
+ history.replaceState(
+  null,
+  '',
+  clean
+ );
+
+ window.PMIS_ACTIVE_PHASE_V77I='';
+ return;
+}
+
+const nativeFetch=
+ window.fetch.bind(
+  window
+ );
+
+window.fetch=
+ async function(
+  input,
+  init
+ ){
+  const response=
+   await nativeFetch(
+    input,
+    init
+   );
+
+  let url='';
+
+  try{
+   url=
+    typeof input==='string'
+     ?input
+     :String(
+       input?.url||
+       ''
+      );
+  }
+  catch(_){
+   return response;
+  }
+
+  if(
+   !response.ok||
+   !/\/api\/projects(?:[?#]|$)/i.test(
+    url
+   )
+  ){
+   return response;
+  }
+
+  try{
+   const clone=
+    response.clone();
+
+   const payload=
+    await clone.json();
+
+   if(
+    !Array.isArray(
+     payload
+    )
+   ){
+    return response;
+   }
+
+   const scoped=
+    payload
+     .map(project=>
+      scopeProjectToPhase(
+       project,
+       active
+      )
+     )
+     .filter(Boolean);
+
+   const headers=
+    new Headers(
+     response.headers
+    );
+
+   try{
+    headers.delete(
+     'content-length'
+    );
+   }
+   catch(_){}
+
+   try{
+    headers.delete(
+     'content-encoding'
+    );
+   }
+   catch(_){}
+
+   headers.set(
+    'content-type',
+    'application/json; charset=utf-8'
+   );
+
+   return new Response(
+    JSON.stringify(
+     scoped
+    ),
+    {
+     status:
+      response.status,
+
+     statusText:
+      response.statusText,
+
+     headers
+    }
+   );
+  }
+  catch(error){
+   console.warn(
+    '[PMIS V77I2] Payment-phase scope fallback:',
+    error
+   );
+
+   return response;
+  }
+ };
+
+})();
+</script>
 </head>
 <body data-pmis-cashflow-version="V76A">
 <!-- PMIS_PAYMENT_MILESTONES_CASHFLOW_V75A -->
@@ -196,7 +686,7 @@
 <main class="cashflow-main">
     <div class="title-row">
         <div><h1>Cashflow / Payment Status</h1><p>Optional project payment milestones: planned realization versus actual customer receipts.</p></div>
-        <div id="scopeLabel" class="badge rounded-pill text-bg-light border px-3 py-2 text-secondary">Loading project scope…</div>
+        <div id="scopeLabel" class="badge rounded-pill text-bg-light border px-3 py-2 text-secondary">Loading project scopeΓÇª</div>
     </div>
 
         <section class="panel filters">
@@ -214,20 +704,20 @@
         </section>
 
         <div class="kpis">
-            <div class="panel kpi"><small>Net PO Value</small><b id="kPo">₹0</b><div class="sub">Net PO value; Domestic plan includes 18% GST</div></div>
+            <div class="panel kpi"><small>Net PO Value</small><b id="kPo">Γé╣0</b><div class="sub">Net PO value; Domestic plan includes 18% GST</div></div>
             <div class="panel kpi">
                 <small>GST Value</small>
-                <b id="kGst">₹0</b>
+                <b id="kGst">Γé╣0</b>
                 <div class="sub">18% for Domestic orders; zero for International</div>
             </div>
             <div class="panel kpi">
                 <small>Gross PO Value</small>
-                <b id="kGrossPo">₹0</b>
+                <b id="kGrossPo">Γé╣0</b>
                 <div class="sub">Net PO Value + applicable GST</div>
             </div>
-            <div class="panel kpi"><small>Planned Collection</small><b id="kPlanned">₹0</b><div class="sub">Filtered payment milestones</div></div>
-            <div class="panel kpi"><small>Actual Collected</small><b id="kActual">₹0</b><div class="sub">Customer receipts recorded</div></div>
-            <div class="panel kpi"><small>Outstanding</small><b id="kOutstanding">₹0</b><div class="sub">Planned amount less receipts</div></div>
+            <div class="panel kpi"><small>Planned Collection</small><b id="kPlanned">Γé╣0</b><div class="sub">Filtered payment milestones</div></div>
+            <div class="panel kpi"><small>Actual Collected</small><b id="kActual">Γé╣0</b><div class="sub">Customer receipts recorded</div></div>
+            <div class="panel kpi"><small>Outstanding</small><b id="kOutstanding">Γé╣0</b><div class="sub">Planned amount less receipts</div></div>
             <div class="panel kpi"><small>Collection %</small><b id="kCollection">0%</b><div class="sub">Actual / planned collection</div></div>
         </div>
 
@@ -236,37 +726,37 @@
         <section class="panel pmis-v77t-invoice-panel" id="pmisFinanceInvoicePaneV77T">
             <div class="pmis-v77t-invoice-head">
                 <div>
-                    <div class="pmis-v77t-eyebrow">FINANCE · BILLING CONTROL</div>
+                    <div class="pmis-v77t-eyebrow">FINANCE ┬╖ BILLING CONTROL</div>
                     <h3>Invoice Register</h3>
                     <p>Track Proforma / Invoice raised against each prefilled PO payment milestone, then compare billing with actual realization.</p>
                 </div>
-                <div class="pmis-v77t-access-badge" id="pmisFinanceAccessBadgeV77T">Loading access…</div>
+                <div class="pmis-v77t-access-badge" id="pmisFinanceAccessBadgeV77T">Loading accessΓÇª</div>
             </div>
 
             <div class="pmis-v77t-kpis">
                 <div class="pmis-v77t-kpi">
                     <small>Planned Gross</small>
-                    <b id="pmisInvPlannedV77T">₹0</b>
+                    <b id="pmisInvPlannedV77T">Γé╣0</b>
                     <span>Milestone gross in scope</span>
                 </div>
                 <div class="pmis-v77t-kpi">
                     <small>Tax Invoiced</small>
-                    <b id="pmisInvTaxV77T">₹0</b>
+                    <b id="pmisInvTaxV77T">Γé╣0</b>
                     <span>Invoice gross only; Proforma excluded</span>
                 </div>
                 <div class="pmis-v77t-kpi">
                     <small>Yet to Invoice</small>
-                    <b id="pmisInvYetV77T">₹0</b>
+                    <b id="pmisInvYetV77T">Γé╣0</b>
                     <span>Planned gross less tax invoices</span>
                 </div>
                 <div class="pmis-v77t-kpi">
                     <small>Actual Received</small>
-                    <b id="pmisInvReceivedV77T">₹0</b>
+                    <b id="pmisInvReceivedV77T">Γé╣0</b>
                     <span>Existing receipt realization</span>
                 </div>
                 <div class="pmis-v77t-kpi">
                     <small>Invoice Receivable</small>
-                    <b id="pmisInvReceivableV77T">₹0</b>
+                    <b id="pmisInvReceivableV77T">Γé╣0</b>
                     <span>Tax invoiced less receipts</span>
                 </div>
             </div>
@@ -293,7 +783,7 @@
                 <div class="pmis-v77t-search">
                     <label>Search</label>
                     <input id="pmisInvSearchV77T" class="form-control" type="search"
-                           placeholder="Project / milestone / invoice no…">
+                           placeholder="Project / milestone / invoice noΓÇª">
                 </div>
                 <button type="button" id="pmisInvClearV77T" class="btn btn-light border fw-bold">
                     <i class="bi bi-arrow-counterclockwise me-1"></i>Clear
@@ -306,12 +796,12 @@
             </div>
 
             <div id="pmisFinanceInvoiceAreaV77T" class="pmis-v77t-loading">
-                <span class="spinner-border spinner-border-sm me-2"></span>Loading invoice register…
+                <span class="spinner-border spinner-border-sm me-2"></span>Loading invoice registerΓÇª
             </div>
         </section>
 
         <div class="charts">
-            <section class="panel chart-card"><h3>Monthly Cashflow — Planned vs Invoiced vs Actual</h3><p>Planned realization vs invoiced realization (Invoice Date + Credit Days) vs actual receipt month.</p><div class="chart-wrap"><canvas id="cashflowChart"></canvas></div></section>
+            <section class="panel chart-card"><h3>Monthly Cashflow ΓÇö Planned vs Invoiced vs Actual</h3><p>Planned realization vs invoiced realization (Invoice Date + Credit Days) vs actual receipt month.</p><div class="chart-wrap"><canvas id="cashflowChart"></canvas></div></section>
             <section class="panel chart-card"><h3>Payment Amount Mix</h3><p>Received and outstanding value split for the current filtered scope.</p><div class="chart-wrap"><canvas id="statusChart"></canvas></div></section>
         </div>
         <div class="charts second">
@@ -321,7 +811,7 @@
 
         <section class="panel table-panel">
             <div class="table-head"><h3>Payment Milestone Register</h3><div class="small text-secondary" id="rowCount">0 milestones</div></div>
-            <div id="tableArea" class="loading"><span class="spinner-border spinner-border-sm me-2"></span>Loading payment data…</div>
+            <div id="tableArea" class="loading"><span class="spinner-border spinner-border-sm me-2"></span>Loading payment dataΓÇª</div>
         </section>
 </main>
 
@@ -331,7 +821,7 @@
         <div class="modal-content">
             <div class="modal-header pmis-v77t-modal-header">
                 <div>
-                    <div class="pmis-v77t-eyebrow text-white-50">FINANCE · MILESTONE BILLING</div>
+                    <div class="pmis-v77t-eyebrow text-white-50">FINANCE ┬╖ MILESTONE BILLING</div>
                     <h5 class="modal-title mb-0">Invoice / Proforma Entry</h5>
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
@@ -399,7 +889,7 @@
                         <div class="col-md-4">
                             <label class="form-label fw-bold">Invoice Gross</label>
                             <input type="text" id="pmisInvoiceGrossV77T" class="form-control fw-bold"
-                                   value="₹0" readonly>
+                                   value="Γé╣0" readonly>
                         </div>
 
                         <div class="col-md-8">
@@ -441,9 +931,9 @@
                         <div><div class="fw-bold"><i class="bi bi-plus-circle me-1"></i>Add Split Payment</div><div class="small text-secondary">Use this again whenever another part-payment is realized.</div></div>
                     </div>
                     <div class="row g-3">
-                        <div class="col-md-6"><label class="form-label">Amount Received (₹)</label><input id="rAmount" type="number" min="0.01" step="0.01" class="form-control"></div>
+                        <div class="col-md-6"><label class="form-label">Amount Received (Γé╣)</label><input id="rAmount" type="number" min="0.01" step="0.01" class="form-control"></div>
                         <div class="col-md-6"><label class="form-label">Received Date</label><input id="rDate" type="date" class="form-control"></div>
-                        <div class="col-12"><label class="form-label">Payment / UTR Reference <span class="text-secondary fw-normal">(Optional)</span></label><input id="rReference" maxlength="120" class="form-control" placeholder="Optional — UTR / cheque / bank reference"></div>
+                        <div class="col-12"><label class="form-label">Payment / UTR Reference <span class="text-secondary fw-normal">(Optional)</span></label><input id="rReference" maxlength="120" class="form-control" placeholder="Optional ΓÇö UTR / cheque / bank reference"></div>
                     <!-- PMIS_OPTIONAL_REFERENCE_ALWAYS_ADD_RECEIPT_V77N -->
                         <div class="col-12"><label class="form-label">Remarks</label><textarea id="rRemarks" maxlength="250" rows="2" class="form-control" placeholder="Optional receipt note"></textarea></div>
                     </div>
@@ -500,7 +990,7 @@ function chartLabelMoneyV76A(value){
 
  if(Math.abs(amount)>=10000000){
   const cr=amount/10000000;
-  return '₹'+cr.toLocaleString(
+  return 'Γé╣'+cr.toLocaleString(
    'en-IN',
    {
     minimumFractionDigits:cr>=10?1:2,
@@ -511,7 +1001,7 @@ function chartLabelMoneyV76A(value){
 
  if(Math.abs(amount)>=100000){
   const lakh=amount/100000;
-  return '₹'+lakh.toLocaleString(
+  return 'Γé╣'+lakh.toLocaleString(
    'en-IN',
    {
     minimumFractionDigits:lakh>=10?1:2,
@@ -520,12 +1010,14 @@ function chartLabelMoneyV76A(value){
   )+'L';
  }
 
- return '₹'+Math.round(amount).toLocaleString('en-IN');
+ return 'Γé╣'+Math.round(amount).toLocaleString('en-IN');
 }
 
 const pmisV75ZDataLabels={
  id:'pmisV75ZDataLabels',
  afterDatasetsDraw(chart){
+  /* PMIS V77K12B: Revenue uses its own collision-safe labels. */
+  if(chart?.canvas?.id==='plannedRevenueChartV77G')return;
   const ctx=chart.ctx;
   const type=chart.config.type;
   const horizontal=chart.options?.indexAxis==='y';
@@ -830,7 +1322,7 @@ const pmisV75ZDataLabels={
         chartLabelMoneyV76A(
          value
         )+
-        ' · '+
+        ' ┬╖ '+
         pct.toFixed(0)+
         '%';
       }
@@ -989,7 +1481,7 @@ function canAccess(p){
  return !!assignment&&identities().some(id=>assignment.includes(id)||id.includes(assignment));
 }
 function money(v){
- const n=num(v);return '₹'+new Intl.NumberFormat('en-IN',{maximumFractionDigits:0}).format(Math.round(n));
+ const n=num(v);return 'Γé╣'+new Intl.NumberFormat('en-IN',{maximumFractionDigits:0}).format(Math.round(n));
 }
 function fmtDate(v){if(!v)return '-';const m=String(v).slice(0,10).match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?`${m[3]}/${m[2]}/${m[1]}`:String(v)}
 function addDays(v,days){if(!v)return '';const p=String(v).slice(0,10).split('-').map(Number);if(p.length!==3||p.some(Number.isNaN))return '';const d=new Date(p[0],p[1]-1,p[2]);d.setDate(d.getDate()+Math.max(0,Math.trunc(num(days))));return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')}
@@ -1191,7 +1683,7 @@ function buildRows(){
 function fillSelect(id,values,label){const el=$(id);const current=el.value;el.innerHTML=`<option value="">${label}</option>`+[...new Set(values.filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b))).map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');if([...el.options].some(o=>o.value===current))el.value=current}
 function populateFilters(){
  fillSelect('fProject',projects.map(p=>String(p._id||'')),'All Projects');
- const fp=$('fProject');fp.innerHTML='<option value="">All Projects</option>'+projects.slice().sort(compareProjectsByPoDateV77M).map(p=>`<option value="${esc(p._id)}">${esc((p.code||p.tracking_code||'Project')+' — '+(p.name||''))}</option>`).join('');
+ const fp=$('fProject');fp.innerHTML='<option value="">All Projects</option>'+projects.slice().sort(compareProjectsByPoDateV77M).map(p=>`<option value="${esc(p._id)}">${esc((p.code||p.tracking_code||'Project')+' ΓÇö '+(p.name||''))}</option>`).join('');
  fillSelect('fCustomer',projects.map(p=>p.customer_name),'All Customers');fillSelect('fManager',projects.map(p=>p.project_manager),'All Expeditors');
  const fys=[];rows.forEach(r=>{if(r.planned)fys.push(fyOf(r.planned));receipts(r.term).forEach(x=>{if(x?.received_date)fys.push(fyOf(x.received_date))})});fillSelect('fFy',fys,'All FY');
 }
@@ -1629,7 +2121,7 @@ function renderTable(){
     !r.eligible
      ?'Linked stage is not 100% complete yet.'
      :r.balance<=.5
-       ?'Milestone realized — additional receipt is allowed.'
+       ?'Milestone realized ΓÇö additional receipt is allowed.'
        :'Open receipt history / add split payment';
 
    const paymentPct=
@@ -1871,7 +2363,7 @@ function renderTable(){
 
         <div class="pmis-v75y-project-sub">
          ${esc(p.name||'')}
-         ${p.customer_name?' · '+esc(p.customer_name):''}
+         ${p.customer_name?' ┬╖ '+esc(p.customer_name):''}
         </div>
 
         <div class="pmis-v75y-project-meta">
@@ -2438,6 +2930,1015 @@ function renderCharts(){
  );
 }
 
+/* PMIS_SEPARATE_PLANNED_REVENUE_GRAPH_V77G */
+let plannedRevenueQuarterV77G='all';
+
+function plannedRevenueQuarterOfV77G(date){
+ const raw=
+  String(
+   date||
+   ''
+  ).slice(
+   0,
+   10
+  );
+
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(raw)){
+  return '';
+ }
+
+ const month=
+  Number(
+   raw.slice(
+    5,
+    7
+   )
+  );
+
+ if(month>=4&&month<=6)return 'q1';
+ if(month>=7&&month<=9)return 'q2';
+ if(month>=10&&month<=12)return 'q3';
+ if(month>=1&&month<=3)return 'q4';
+
+ return '';
+}
+
+function ensurePlannedRevenueCardV77G(){
+ let row=
+  document.getElementById(
+   'pmisPlannedRevenueRowV77G'
+  );
+
+ if(row)return row;
+
+ const outstanding=
+  document.getElementById(
+   'outstandingChart'
+  );
+
+ const cumulative=
+  document.getElementById(
+   'cumulativeChart'
+  );
+
+ const monthly=
+  document.getElementById(
+   'cashflowChart'
+  );
+
+ const anchor=
+  outstanding?.closest(
+   '.charts'
+  )||
+  cumulative?.closest(
+   '.charts'
+  )||
+  monthly?.closest(
+   '.charts'
+  );
+
+ row=
+  document.createElement(
+   'div'
+  );
+
+ row.id=
+  'pmisPlannedRevenueRowV77G';
+
+ row.className=
+  'charts pmis-v77g-revenue-row';
+
+ row.style.gridTemplateColumns=
+  '1fr';
+
+ row.innerHTML=`
+  <section
+   class="panel chart-card"
+   id="pmisPlannedRevenueCardV77G"
+  >
+   <div
+    style="
+     display:flex;
+     align-items:flex-start;
+     justify-content:space-between;
+     gap:16px;
+     flex-wrap:wrap;
+     margin-bottom:8px;
+    "
+   >
+    <div>
+     <h3 style="margin-bottom:4px;">
+      Planned Revenue
+     </h3>
+
+     <p style="margin-bottom:0;">
+      Month-wise planned revenue grouped inside FY quarters (Q1 Apr-Jun, Q2 Jul-Sep, Q3 Oct-Dec, Q4 Jan-Mar). Full Net PO Value is recognized on the Machine Dispatch phase end date; missing dates remain Pending.
+     </p>
+    </div>
+
+    <div
+     style="
+      display:flex;
+      align-items:flex-end;
+      gap:12px;
+      flex-wrap:wrap;
+     "
+    >
+     <div>
+      <label
+       for="pmisRevenueQuarterV77G"
+       style="
+        display:block;
+        font-size:.72rem;
+        font-weight:800;
+        color:#475569;
+        margin-bottom:4px;
+       "
+      >
+       Quarter
+      </label>
+
+      <select
+       id="pmisRevenueQuarterV77G"
+       class="form-select form-select-sm"
+       style="min-width:170px;"
+      >
+       <option value="all">All Quarters</option>
+       <option value="q1">Q1 ┬╖ Apr-Jun</option>
+       <option value="q2">Q2 ┬╖ Jul-Sep</option>
+       <option value="q3">Q3 ┬╖ Oct-Dec</option>
+       <option value="q4">Q4 ┬╖ Jan-Mar</option>
+      </select>
+     </div>
+
+     <div
+      style="
+       min-width:155px;
+       padding:7px 12px;
+       border:1px solid #dbe5ef;
+       border-radius:10px;
+       background:#f8fbff;
+      "
+     >
+      <div
+       style="
+        font-size:.68rem;
+        font-weight:800;
+        color:#64748b;
+       "
+      >
+       Selected Revenue
+      </div>
+
+      <div
+       id="pmisRevenueTotalV77G"
+       style="
+        margin-top:2px;
+        font-size:.92rem;
+        font-weight:900;
+        color:#0b2b4a;
+       "
+      >
+       Γé╣0
+      </div>
+     </div>
+    </div>
+   </div>
+
+   <div
+    class="chart-wrap"
+    style="
+     position:relative;
+     min-height:330px;
+     height:330px;
+     width:100%;
+    "
+   >
+    <canvas id="plannedRevenueChartV77G"></canvas>
+   </div>
+  </section>
+ `;
+
+ if(anchor){
+  anchor.insertAdjacentElement(
+   'afterend',
+   row
+  );
+ }
+ else{
+  const main=
+   document.querySelector(
+    '.cashflow-main'
+   )||
+   document.querySelector(
+    'main'
+   )||
+   document.body;
+
+  main.appendChild(
+   row
+  );
+ }
+
+ const select=
+  document.getElementById(
+   'pmisRevenueQuarterV77G'
+  );
+
+ if(select){
+  select.value=
+   plannedRevenueQuarterV77G;
+
+  select.addEventListener(
+   'change',
+   ()=>{
+    plannedRevenueQuarterV77G=
+     String(
+      select.value||
+      'all'
+     );
+
+    renderPlannedRevenueV77G();
+   }
+  );
+ }
+
+ return row;
+}
+
+/* PMIS_REVENUE_QUARTER_MONTH_DRILLDOWN_V77H */
+
+function plannedRevenueProjectScopeV77K5(){
+ const projectFilter=String($('fProject')?.value||'');
+ const customerFilter=String($('fCustomer')?.value||'');
+ const managerFilter=String($('fManager')?.value||'');
+ const statusFilter=String($('fStatus')?.value||'');
+ const fyFilter=String($('fFy')?.value||'');
+ const fromFilter=String($('fFrom')?.value||'');
+ const toFilter=String($('fTo')?.value||'');
+
+ const milestoneScopeActive=!!(
+  statusFilter||
+  fyFilter||
+  fromFilter||
+  toFilter
+ );
+
+ let uniqueProjects=[];
+
+ /*
+  * Mirror the main Net PO Value KPI scope exactly.
+  *
+  * No Status/FY/Date filters:
+  *   use all projects in Project / Customer / Expeditor scope,
+  *   including projects with no payment milestone.
+  *
+  * Status/FY/Date filters active:
+  *   use unique projects represented by the filtered milestones.
+  */
+ if(!milestoneScopeActive){
+  uniqueProjects=projects.filter(p=>{
+   if(projectFilter&&String(p?._id||'')!==projectFilter)return false;
+   if(customerFilter&&String(p?.customer_name||'')!==customerFilter)return false;
+   if(managerFilter&&String(p?.project_manager||'')!==managerFilter)return false;
+   return true;
+  });
+ }
+ else{
+  const uniq=new Map();
+
+  filtered.forEach(r=>{
+   if(!r?.project)return;
+
+   uniq.set(
+    String(r.project._id),
+    r.project
+   );
+  });
+
+  uniqueProjects=[
+   ...uniq.values()
+  ];
+ }
+
+ return uniqueProjects.map(
+  p=>({project:p})
+ );
+}
+
+function plannedRevenueProjectKeyV77K(r){
+ const p=r?.project||r||{};
+
+ /*
+  * Same unique-project identity as the Net PO KPI.
+  */
+ return String(
+  p?._id||
+  ''
+ );
+}
+
+function plannedRevenueUniqueProjectsV77K(rowsV77K){
+ const seen=new Set();
+ const out=[];
+
+ (Array.isArray(rowsV77K)?rowsV77K:[]).forEach(r=>{
+  const p=r?.project||r||null;
+  if(!p)return;
+
+  const key=plannedRevenueProjectKeyV77K(r);
+
+  if(!key||seen.has(key))return;
+
+  seen.add(key);
+  out.push(r);
+ });
+
+ return out;
+}
+
+function plannedRevenueAmountV77H(rowsV77H){
+ return plannedRevenueUniqueProjectsV77K(rowsV77H).reduce(
+  (sum,r)=>{
+   const p=r?.project||r||{};
+   return sum+Math.max(0,num(p?.po_value));
+  },
+  0
+ );
+}
+
+function plannedRevenueDateV77H(r){
+ const p=r?.project||r||null;
+ if(!p)return '';
+
+ return stagePlanEnd(
+  p,
+  'dispatch_parent'
+ );
+}
+
+function ensurePlannedRevenuePendingBadgeV77H(){
+ const totalEl=
+  document.getElementById(
+   'pmisRevenueTotalV77G'
+  );
+
+ if(!totalEl)return null;
+
+ const controls=
+  totalEl.parentElement
+   ?.parentElement;
+
+ if(!controls)return null;
+
+ let badge=
+  document.getElementById(
+   'pmisRevenuePendingBadgeV77H'
+  );
+
+ if(badge)return badge;
+
+ badge=
+  document.createElement(
+   'div'
+  );
+
+ badge.id=
+  'pmisRevenuePendingBadgeV77H';
+
+ badge.style.cssText=
+  'min-width:155px;padding:7px 12px;border:1px solid #dc2626;border-radius:10px;background:#fff7f7;';
+
+ badge.innerHTML=`
+  <div
+   style="
+    font-size:.68rem;
+    font-weight:800;
+    color:#b91c1c;
+   "
+  >
+   Plan Date Pending
+  </div>
+
+  <div
+   id="pmisRevenuePendingTotalV77H"
+   style="
+    margin-top:2px;
+    font-size:.92rem;
+    font-weight:900;
+    color:#b91c1c;
+   "
+  >
+   Γé╣0
+  </div>
+ `;
+
+ controls.appendChild(
+  badge
+ );
+
+ return badge;
+}
+
+function ensurePlannedRevenueDrilldownV77H(){
+ const card=
+  document.getElementById(
+   'pmisPlannedRevenueCardV77G'
+  );
+
+ if(!card)return null;
+
+ let box=
+  document.getElementById(
+   'pmisRevenueDrilldownV77H'
+  );
+
+ if(box)return box;
+
+ box=
+  document.createElement(
+   'div'
+  );
+
+ box.id=
+  'pmisRevenueDrilldownV77H';
+
+ box.style.cssText=
+  'margin-top:18px;border-top:1px solid #dbe5ef;padding-top:16px;';
+
+ box.innerHTML=`
+  <div
+   style="
+    padding:12px 14px;
+    border:1px dashed #cbd5e1;
+    border-radius:12px;
+    color:#64748b;
+    font-size:.82rem;
+    background:#f8fafc;
+   "
+  >
+   Click any revenue bar to see the project, linked stage and planned payment behind that value.
+  </div>
+ `;
+
+ card.appendChild(
+  box
+ );
+
+ return box;
+}
+
+function renderPlannedRevenueDrilldownV77H(
+ labelV77H,
+ rowsV77H
+){
+ const box=ensurePlannedRevenueDrilldownV77H();
+ if(!box)return;
+
+ const rows=plannedRevenueUniqueProjectsV77K(rowsV77H).slice();
+
+ if(!rows.length){
+  box.innerHTML=`
+   <div style="padding:12px 14px;border:1px dashed #cbd5e1;border-radius:12px;color:#64748b;font-size:.82rem;background:#f8fafc;">
+    No planned revenue projects are available for
+    <strong>${esc(labelV77H||'this selection')}</strong>.
+   </div>
+  `;
+  return;
+ }
+
+ rows.sort((a,b)=>{
+  const da=String(plannedRevenueDateV77H(a)||'9999-99-99');
+  const db=String(plannedRevenueDateV77H(b)||'9999-99-99');
+
+  if(da!==db)return da.localeCompare(db);
+
+  const pa=String(a.project?.code||a.project?.tracking_code||a.project?.name||'');
+  const pb=String(b.project?.code||b.project?.tracking_code||b.project?.name||'');
+
+  return pa.localeCompare(pb);
+ });
+
+ const total=plannedRevenueAmountV77H(rows);
+ const isPending=labelV77H==='Plan Date Pending';
+
+ box.innerHTML=`
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px;">
+   <div>
+    <div style="font-size:.72rem;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.04em;">
+     Revenue Drilldown
+    </div>
+    <div style="margin-top:2px;font-size:1rem;font-weight:900;color:${isPending?'#b91c1c':'#0b2b4a'};">
+     ${esc(labelV77H)}
+    </div>
+   </div>
+
+   <div style="display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap;">
+    <div style="text-align:right;">
+     <div style="font-size:.7rem;font-weight:800;color:#64748b;">
+      ${rows.length} project${rows.length===1?'':'s'}
+     </div>
+     <div style="font-size:1rem;font-weight:900;color:${isPending?'#b91c1c':'#0b2b4a'};">
+      ${money(total)}
+     </div>
+    </div>
+
+    <button
+     type="button"
+     id="pmisRevenueDrilldownToggleV77H2"
+     class="btn btn-sm btn-light border rounded-pill fw-bold"
+     aria-expanded="true"
+     aria-controls="pmisRevenueDrilldownBodyV77H2"
+     title="Collapse / expand"
+     style="width:34px;height:34px;min-width:34px;padding:0;display:inline-flex;align-items:center;justify-content:center;"
+    >
+     <span style="font-size:1.15rem;line-height:1;">ΓêÆ</span>
+    </button>
+   </div>
+  </div>
+
+  <div id="pmisRevenueDrilldownBodyV77H2">
+   <div style="overflow-x:auto;border:1px solid #e2e8f0;border-radius:12px;">
+    <table class="table table-sm align-middle mb-0" style="min-width:900px;font-size:.78rem;">
+     <thead>
+      <tr>
+       <th>Project</th>
+       <th>Customer</th>
+       <th>Revenue Stage</th>
+       <th>Machine Dispatch End Date</th>
+       <th>Planned Revenue</th>
+      </tr>
+     </thead>
+
+     <tbody>
+      ${rows.map(r=>{
+       const p=r.project||r||{};
+       const revenueDate=plannedRevenueDateV77H(r);
+       const projectCode=p.code||p.tracking_code||p.name||'Project';
+       const projectName=(p.name&&p.name!==projectCode)?p.name:'';
+
+       const revenueDateHtml=
+        revenueDate
+         ?esc(fmtDate(revenueDate))
+         :'<span style="font-weight:900;color:#b91c1c;">Pending</span>';
+
+       return `
+        <tr>
+         <td>
+          <strong>${esc(projectCode)}</strong>
+          ${projectName?`<div class="small text-secondary">${esc(projectName)}</div>`:''}
+         </td>
+         <td>${esc(p.customer_name||'-')}</td>
+         <td>
+          <strong>Machine Dispatch</strong>
+          <div class="small text-secondary">Full PO value recognized at planned phase end</div>
+         </td>
+         <td>${revenueDateHtml}</td>
+         <td style="font-weight:900;white-space:nowrap;">
+          ${money(Math.max(0,num(p.po_value)))}
+         </td>
+        </tr>
+       `;
+      }).join('')}
+     </tbody>
+    </table>
+   </div>
+  </div>
+ `;
+
+ const toggle=document.getElementById('pmisRevenueDrilldownToggleV77H2');
+ const body=document.getElementById('pmisRevenueDrilldownBodyV77H2');
+
+ if(toggle&&body){
+  toggle.addEventListener('click',()=>{
+   const expanded=toggle.getAttribute('aria-expanded')!=='false';
+   const nextExpanded=!expanded;
+
+   toggle.setAttribute('aria-expanded',String(nextExpanded));
+   body.style.display=nextExpanded?'':'none';
+
+   toggle.innerHTML=
+    nextExpanded
+     ?'<span style="font-size:1.15rem;line-height:1;">ΓêÆ</span>'
+     :'<span style="font-size:1.15rem;line-height:1;">+</span>';
+  });
+ }
+}
+function renderPlannedRevenueV77G(){
+ if(typeof Chart!=='function')return;
+
+ ensurePlannedRevenueCardV77G();
+ ensurePlannedRevenuePendingBadgeV77H();
+ ensurePlannedRevenueDrilldownV77H();
+
+ const select=document.getElementById('pmisRevenueQuarterV77G');
+ if(select)select.value=plannedRevenueQuarterV77G;
+
+ const monthRows={
+  '01':[],'02':[],'03':[],'04':[],'05':[],'06':[],
+  '07':[],'08':[],'09':[],'10':[],'11':[],'12':[]
+ };
+ const pendingRows=[];
+
+ const revenueProjects=plannedRevenueProjectScopeV77K5();
+
+ revenueProjects.forEach(r=>{
+  const raw=String(plannedRevenueDateV77H(r)||'').slice(0,10);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(raw)){
+   pendingRows.push(r);
+   return;
+  }
+  const month=raw.slice(5,7);
+  if(monthRows[month])monthRows[month].push(r);
+ });
+
+ const pendingTotal=plannedRevenueAmountV77H(pendingRows);
+ const pendingEl=document.getElementById('pmisRevenuePendingTotalV77H');
+ if(pendingEl)pendingEl.textContent=money(pendingTotal);
+
+ const fyMonths=[
+  ['04','Apr','Q1'],['05','May','Q1'],['06','Jun','Q1'],
+  ['07','Jul','Q2'],['08','Aug','Q2'],['09','Sep','Q2'],
+  ['10','Oct','Q3'],['11','Nov','Q3'],['12','Dec','Q3'],
+  ['01','Jan','Q4'],['02','Feb','Q4'],['03','Mar','Q4']
+ ];
+
+ let visibleMonths=fyMonths;
+ let quarterGroups=[
+  {label:'Q1',start:0,end:2},
+  {label:'Q2',start:3,end:5},
+  {label:'Q3',start:6,end:8},
+  {label:'Q4',start:9,end:11}
+ ];
+
+ if(plannedRevenueQuarterV77G!=='all'){
+  const q=String(plannedRevenueQuarterV77G||'').toUpperCase();
+  visibleMonths=fyMonths.filter(item=>item[2]===q);
+  quarterGroups=[{label:q,start:0,end:Math.max(0,visibleMonths.length-1)}];
+ }
+
+ const labels=visibleMonths.map(item=>item[1]);
+ const detailRows=visibleMonths.map(item=>monthRows[item[0]]||[]);
+ const values=detailRows.map(rows=>plannedRevenueAmountV77H(rows));
+
+ labels.push('Pending');
+ detailRows.push(pendingRows);
+ values.push(pendingTotal);
+
+ const selectedTotal=visibleMonths.reduce(
+  (sum,item)=>sum+plannedRevenueAmountV77H(monthRows[item[0]]||[]),
+  0
+ );
+
+ const totalEl=document.getElementById('pmisRevenueTotalV77G');
+ const totalLabel=totalEl?.previousElementSibling;
+ if(totalEl)totalEl.textContent=money(selectedTotal);
+ if(totalLabel){
+  totalLabel.textContent=
+   plannedRevenueQuarterV77G==='all'
+    ?'Planned Revenue Total'
+    :'Selected Quarter Revenue';
+ }
+
+ const canvas=document.getElementById('plannedRevenueChartV77G');
+ if(!canvas)return;
+
+ if(canvas.parentElement){
+  canvas.parentElement.style.height='640px';
+  canvas.parentElement.style.minHeight='640px';
+ }
+
+ if(typeof Chart.getChart==='function'){
+  const existing=Chart.getChart(canvas);
+  if(existing)existing.destroy();
+ }else if(charts.revenueV77G){
+  try{charts.revenueV77G.destroy();}catch(_){}
+ }
+
+ const barBackground=labels.map(label=>
+  label==='Pending'?'#dc2626':'rgba(54,162,235,.72)'
+ );
+ const barBorder=labels.map(label=>
+  label==='Pending'?'#b91c1c':'rgb(54,162,235)'
+ );
+
+ const quarterGroupingPluginV77K7={
+  id:'pmisRevenueQuarterGroupingV77K7',
+
+  afterDraw(chart){
+   const x=chart.scales?.x;
+   const area=chart.chartArea;
+
+   if(!x||!area)return;
+
+   const ctx=chart.ctx;
+
+   ctx.save();
+   ctx.strokeStyle='#94a3b8';
+   ctx.fillStyle='#334155';
+   ctx.lineWidth=1.2;
+   ctx.font='800 12px Arial';
+   ctx.textAlign='center';
+   ctx.textBaseline='middle';
+
+   quarterGroups.forEach(group=>{
+    if(
+     group.start<0||
+     group.end<group.start||
+     group.end>=visibleMonths.length
+    ){
+     return;
+    }
+
+    const first=x.getPixelForTick(group.start);
+    const last=x.getPixelForTick(group.end);
+
+    if(
+     !Number.isFinite(first)||
+     !Number.isFinite(last)
+    ){
+     return;
+    }
+
+    const step=
+     group.end>group.start
+      ?Math.abs(last-first)/(group.end-group.start)
+      :Math.max(40,x.width/Math.max(1,labels.length));
+
+    const left=first-step*.47;
+    const right=last+step*.47;
+
+    /*
+     * Keep quarter grouping at the BOTTOM.
+     * Extend only the side lines upward a little
+     * so the quarter boundaries are easier to see.
+     */
+    const lineY=x.bottom+20;
+    const sideTop=x.bottom+2;
+    const labelY=lineY+16;
+
+    ctx.beginPath();
+
+    ctx.moveTo(left,sideTop);
+    ctx.lineTo(left,lineY);
+    ctx.lineTo(right,lineY);
+    ctx.lineTo(right,sideTop);
+
+    ctx.stroke();
+
+    ctx.fillText(
+     group.label,
+     (left+right)/2,
+     labelY
+    );
+   });
+
+   ctx.restore();
+  }
+ };
+  const revenueDataLabelsV77K12D={
+  id:'pmisRevenueDataLabelsV77K12D',
+
+  afterDatasetsDraw(chart){
+   const area=chart.chartArea;
+   const dataset=chart.data?.datasets?.[0];
+   const meta=chart.getDatasetMeta?.(0);
+
+   if(
+    !area||
+    !dataset||
+    !meta||
+    meta.hidden
+   ){
+    return;
+   }
+
+   const ctx=chart.ctx;
+   const placed=[];
+
+   const overlaps=box=>
+    placed.some(old=>!(
+     box.right+4<old.left||
+     box.left-4>old.right||
+     box.bottom+3<old.top||
+     box.top-3>old.bottom
+    ));
+
+   const clampX=(x,width)=>{
+    const half=width/2;
+
+    return Math.min(
+     area.right-half-4,
+     Math.max(
+      area.left+half+4,
+      x
+     )
+    );
+   };
+
+   (dataset.data||[]).forEach((raw,index)=>{
+    const value=Number(raw)||0;
+
+    if(!(value>0))return;
+
+    const element=meta.data?.[index];
+
+    if(!element)return;
+
+    const label=
+     chartLabelMoneyV76A(
+      value
+     );
+
+    ctx.save();
+    ctx.font='800 11px Arial';
+
+    const textWidth=
+     ctx.measureText(
+      label
+     ).width;
+
+    const x=
+     clampX(
+      Number(element.x)||0,
+      textWidth
+     );
+
+    const top=
+     Number(element.y);
+
+    /*
+     * Plain data label:
+     * always try positions ABOVE the bar first.
+     */
+    const candidates=[
+     -12,
+     -26,
+     -40,
+     -54,
+     -68
+    ];
+
+    let chosen=null;
+
+    for(const offset of candidates){
+     const y=
+      Math.max(
+       area.top+8,
+       top+offset
+      );
+
+     const box={
+      left:x-textWidth/2,
+      right:x+textWidth/2,
+      top:y-7,
+      bottom:y+7
+     };
+
+     if(!overlaps(box)){
+      chosen={
+       x,
+       y,
+       box
+      };
+
+      break;
+     }
+    }
+
+    /*
+     * Final fallback also remains ABOVE the bar.
+     */
+    if(!chosen){
+     const y=
+      Math.max(
+       area.top+8,
+       top-
+       (
+        index%2===0
+         ?62
+         :78
+       )
+      );
+
+     chosen={
+      x,
+      y,
+      box:{
+       left:x-textWidth/2,
+       right:x+textWidth/2,
+       top:y-7,
+       bottom:y+7
+      }
+     };
+    }
+
+    placed.push(
+     chosen.box
+    );
+
+    /*
+     * TEXT ONLY.
+     * No rectangle, no background, no border.
+     */
+    ctx.fillStyle='#111827';
+    ctx.textAlign='center';
+    ctx.textBaseline='middle';
+
+    ctx.fillText(
+     label,
+     chosen.x,
+     chosen.y
+    );
+
+    ctx.restore();
+   });
+  }
+ };
+charts.revenueV77G=new Chart(canvas,{
+  type:'bar',
+  data:{
+   labels,
+   datasets:[{
+    label:'Planned Revenue',
+    data:values,
+    backgroundColor:barBackground,
+    borderColor:barBorder,
+    borderWidth:1,
+    borderRadius:4,
+    barPercentage:.76,
+    categoryPercentage:.86, maxBarThickness:42,
+    pmisShowAllPositiveLabels:true
+   }]
+  },
+  plugins:[quarterGroupingPluginV77K7,revenueDataLabelsV77K12D],
+  options:{
+   responsive:true,
+   maintainAspectRatio:false,
+   layout:{padding:{bottom:72,top:62}},
+   interaction:{mode:'nearest',intersect:false,axis:'x'},
+   onHover:(event,elements)=>{
+    if(event?.native?.target){
+     event.native.target.style.cursor=elements.length?'pointer':'default';
+    }
+   },
+   onClick:(event,elements)=>{
+    if(!elements||!elements.length)return;
+    const index=elements[0].index;
+    const label=
+     labels[index]==='Pending'
+      ?'Plan Date Pending'
+      :((plannedRevenueQuarterV77G==='all'?visibleMonths[index]?.[2]+' ┬╖ ':'')+labels[index]);
+
+    renderPlannedRevenueDrilldownV77H(
+     label,
+     detailRows[index]||[]
+    );
+   },
+   plugins:{
+    legend:{position:'top',labels:{padding:20,boxWidth:34,boxHeight:12}},
+    tooltip:{
+     callbacks:{
+      title:items=>{
+       const index=items?.[0]?.dataIndex;
+       if(!Number.isInteger(index))return '';
+       if(labels[index]==='Pending')return 'Plan Date Pending';
+       return visibleMonths[index]?.[2]+' ┬╖ '+labels[index];
+      },
+      label:c=>`Planned Revenue: ${money(c.raw)}`
+     }
+    }
+   },
+   scales:{
+    x:{grid:{display:false},border:{display:false},
+     ticks:{color:'#334155',font:{weight:'700'},padding:12,autoSkip:false,maxRotation:0,minRotation:0}
+    },
+    y:{
+     beginAtZero:true, grid:{display:false},border:{display:false}, grace:'16%',
+     title:{
+      display:true,
+      text:'Planned Revenue (Γé╣)',
+      color:'#475569',
+      font:{weight:'700'}
+     },
+     ticks:{
+      callback:v=>chartLabelMoneyV76A(v)
+     }
+    }
+   }
+  }
+ });
+
+ const drilldown=document.getElementById('pmisRevenueDrilldownV77H');
+ if(drilldown){
+  drilldown.innerHTML=`
+   <div style="padding:12px 14px;border:1px dashed #cbd5e1;border-radius:12px;color:#64748b;font-size:.82rem;background:#f8fafc;">
+    Click any month bar to view the projects contributing to that month's planned revenue.
+   </div>
+  `;
+ }
+}
+
 function renderAll(){
  renderKpis();
 
@@ -2452,7 +3953,7 @@ function renderAll(){
  }
 
  try{
-  renderCharts();
+  renderCharts();renderPlannedRevenueV77G();
  }catch(error){
   console.error('[PMIS V75Y] Cashflow chart render failed:',error);
  }
@@ -2471,7 +3972,7 @@ function receiptSummaryV77M(p,term,index){
   exp,got,
   balance:Math.max(0,exp-got),
   excess:Math.max(0,got-exp),
-  html:`<strong>${esc(p.code||p.name)} — Milestone M${index+1}</strong><br>${esc(stageLabel(p,term.linked_stage_id))}<br><span class="text-secondary">Planned Gross: ${money(exp)} &nbsp;•&nbsp; Received: ${money(got)} &nbsp;•&nbsp; Outstanding: ${money(Math.max(0,exp-got))}${got-exp>0.5?` &nbsp;•&nbsp; <strong style="color:#047857;">Excess Cash In: ${money(got-exp)}</strong>`:''}</span>`
+  html:`<strong>${esc(p.code||p.name)} ΓÇö Milestone M${index+1}</strong><br>${esc(stageLabel(p,term.linked_stage_id))}<br><span class="text-secondary">Planned Gross: ${money(exp)} &nbsp;ΓÇó&nbsp; Received: ${money(got)} &nbsp;ΓÇó&nbsp; Outstanding: ${money(Math.max(0,exp-got))}${got-exp>0.5?` &nbsp;ΓÇó&nbsp; <strong style="color:#047857;">Excess Cash In: ${money(got-exp)}</strong>`:''}</span>`
  };
 }
 function resetReceiptEntryV77M(p,term,index){
@@ -2592,9 +4093,9 @@ if(!window.__PMIS_V77M_CASHFLOW_RECEIPT_ACTIONS__){
  });
 }
 async function load(){
- $('tableArea').className='loading';$('tableArea').innerHTML='<span class="spinner-border spinner-border-sm me-2"></span>Loading payment data…';
+ $('tableArea').className='loading';$('tableArea').innerHTML='<span class="spinner-border spinner-border-sm me-2"></span>Loading payment dataΓÇª';
  try{
-  const res=await fetch('/api/projects?t='+Date.now(),{headers:headers(false),cache:'no-store'});const data=await res.json().catch(()=>[]);if(!res.ok)throw new Error(data.error||data.message||('Unable to load projects (HTTP '+res.status+')'));if(!Array.isArray(data))throw new Error('Projects API returned an invalid response.');projects=data.filter(canAccess);buildRows();populateFilters();applyFilters();$('scopeLabel').textContent=(isAdmin()?'Admin — ':isFinanceV77T()?'Finance — ':'Associated projects — ')+projects.length+' project'+(projects.length===1?'':'s');
+  const res=await fetch('/api/projects?t='+Date.now(),{headers:headers(false),cache:'no-store'});const data=await res.json().catch(()=>[]);if(!res.ok)throw new Error(data.error||data.message||('Unable to load projects (HTTP '+res.status+')'));if(!Array.isArray(data))throw new Error('Projects API returned an invalid response.');projects=data.filter(canAccess);buildRows();populateFilters();applyFilters();$('scopeLabel').textContent=(isAdmin()?'Admin ΓÇö ':isFinanceV77T()?'Finance ΓÇö ':'Associated projects ΓÇö ')+projects.length+' project'+(projects.length===1?'':'s');
  }catch(error){$('tableArea').className='empty';$('tableArea').innerHTML='<i class="bi bi-exclamation-triangle fs-2 d-block mb-2 text-danger"></i>'+esc(error.message||'Unable to load cashflow data.');}
 }
 function clearFilters(){['fProject','fCustomer','fManager','fStatus','fFy'].forEach(id=>$(id).value='');$('fDateBasis').value='planned';$('fFrom').value='';$('fTo').value='';applyFilters()}
@@ -2623,7 +4124,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 .pmis-v75y-project-head:hover{background:#f3f8fd}
 
 /* PMIS_PROJECT_HEADER_PAYMENT_COLOR_V77O */
-/* Whole project header pane — commercial receipt status */
+/* Whole project header pane ΓÇö commercial receipt status */
 #tableArea .pmis-v75y-project-head.pmis-v77o-payment-total{
  background:#ecfdf5!important;
  box-shadow:inset 4px 0 0 #34d399;
@@ -2833,12 +4334,12 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
         const cr = num(value) / CR;
 
         if (short) {
-            if (Math.abs(cr) >= 100) return '₹' + cr.toFixed(0) + 'Cr';
-            if (Math.abs(cr) >= 10) return '₹' + cr.toFixed(1) + 'Cr';
-            return '₹' + cr.toFixed(2) + 'Cr';
+            if (Math.abs(cr) >= 100) return 'Γé╣' + cr.toFixed(0) + 'Cr';
+            if (Math.abs(cr) >= 10) return 'Γé╣' + cr.toFixed(1) + 'Cr';
+            return 'Γé╣' + cr.toFixed(2) + 'Cr';
         }
 
-        return '₹' + cr.toLocaleString(
+        return 'Γé╣' + cr.toLocaleString(
             'en-IN',
             {
                 minimumFractionDigits: 2,
@@ -3067,7 +4568,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
                                     : 0;
 
                             label +=
-                                ' · ' +
+                                ' ┬╖ ' +
                                 pct.toFixed(0) +
                                 '%';
                         }
@@ -3309,7 +4810,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
                         return {
                             text:
                                 label +
-                                ' — ' +
+                                ' ΓÇö ' +
                                 moneyCr(value, true) +
                                 ' (' +
                                 pct.toFixed(0) +
@@ -3833,8 +5334,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
         return txt(value)
             .replace(/\u00a0/g,' ')
             .replace(/\u20b9/g,'Rs. ')
-            .replace(/[–—]/g,'-')
-            .replace(/[·•]/g,' | ')
+            .replace(/[ΓÇôΓÇö]/g,'-')
+            .replace(/[┬╖ΓÇó]/g,' | ')
             .replace(/\s*\|\s*/g,' | ')
             .replace(/\s+/g,' ')
             .trim();
@@ -4636,7 +6137,7 @@ async function exportPdf() {
                     )
             };
 
-            /* PAGE 1 — compact dashboard */
+            /* PAGE 1 ΓÇö compact dashboard */
             addHeader(
                     doc,
                     'PROJECT FINANCIAL PERFORMANCE REPORT',
@@ -5984,7 +7485,7 @@ const $=id=>document.getElementById(id);
 const num=v=>{const n=Number(v);return Number.isFinite(n)?n:0};
 const norm=v=>String(v??'').trim().toLowerCase();
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const money=v=>'₹'+new Intl.NumberFormat('en-IN',{maximumFractionDigits:0}).format(Math.round(num(v)));
+const money=v=>'Γé╣'+new Intl.NumberFormat('en-IN',{maximumFractionDigits:0}).format(Math.round(num(v)));
 const fmtDate=v=>{
  const s=String(v||'').slice(0,10),m=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
  return m?`${m[3]}/${m[2]}/${m[1]}`:(s||'-');
@@ -6166,7 +7667,7 @@ function render(){
 
  const access=$('pmisFinanceAccessBadgeV77T');
  if(access){
-  access.textContent=canEdit()?'Finance / Admin · Edit Access':'Project Team · View Only';
+  access.textContent=canEdit()?'Finance / Admin ┬╖ Edit Access':'Project Team ┬╖ View Only';
   access.className='pmis-v77t-access-badge '+(canEdit()?'edit':'view');
  }
 
@@ -6194,10 +7695,10 @@ function render(){
     <div class="pmis-v77t-project-title">
      <i class="bi bi-building-check"></i>
      <div><strong>${esc(group.p?.code||group.p?.tracking_code||group.p?.name||'Project')}</strong>
-      <span> · ${esc(group.p?.name||'')} · ${esc(group.p?.customer_name||'-')}</span></div>
+      <span> ┬╖ ${esc(group.p?.name||'')} ┬╖ ${esc(group.p?.customer_name||'-')}</span></div>
     </div>
     <div class="pmis-v77t-project-summary">
-      Planned <b>${money(planned)}</b> · Invoiced <b>${money(invoice)}</b> · Received <b>${money(got)}</b>
+      Planned <b>${money(planned)}</b> ┬╖ Invoiced <b>${money(invoice)}</b> ┬╖ Received <b>${money(got)}</b>
     </div>
    </summary>
    <div class="pmis-v77t-table-wrap">
@@ -6215,7 +7716,7 @@ function render(){
        const receivable=Math.max(0,ig-rg);
        const lastHtml=last
         ? `<span class="pmis-v77t-doc ${esc(norm(last.document_type))}">${esc(norm(last.document_type)==='invoice'?'Invoice':'Proforma')}</span>
-           <div class="mt-1">${esc(last.invoice_number||'-')} · ${fmtDate(last.invoice_date)}</div>`
+           <div class="mt-1">${esc(last.invoice_number||'-')} ┬╖ ${fmtDate(last.invoice_date)}</div>`
         : '-';
        return `<tr>
         <td><strong>M${index+1}</strong>${term?.remarks?`<div class="text-secondary mt-1">${esc(term.remarks)}</div>`:''}</td>
@@ -6282,9 +7783,9 @@ function renderHistory(){
    <span class="text-secondary">${esc(r.remarks||'No remarks')}</span>
   </div>
   <div class="pmis-v77t-history-money">
-   Net <strong>${money(r.invoice_amount)}</strong> · GST <strong>${money(r.invoice_gst)}</strong><br>
+   Net <strong>${money(r.invoice_amount)}</strong> ┬╖ GST <strong>${money(r.invoice_gst)}</strong><br>
    Gross <strong>${money(docGross(r))}</strong><br>
-   <span class="text-secondary">${esc(r.recorded_by||'-')}${r.edited_at?' · edited':''}</span>
+   <span class="text-secondary">${esc(r.recorded_by||'-')}${r.edited_at?' ┬╖ edited':''}</span>
   </div>
   <div class="pmis-v77t-history-actions">
    ${canEdit()?`<button type="button" data-pmis-invoice-edit="${esc(r.id)}"><i class="bi bi-pencil-square me-1"></i>Edit</button>
@@ -6298,10 +7799,10 @@ function openInvoice(projectId,index){
  const p=activeProject(),term=activeTerm();if(!p||!term)return;
  const pg=plannedGross(p,term),ig=taxGross(p,index),pf=proformaGross(p,index),rg=received(term);
  if($('pmisInvoiceContextV77T'))$('pmisInvoiceContextV77T').innerHTML=
-  `<strong>${esc(p?.code||p?.name||'Project')} · Milestone M${index+1}</strong><br>
-   ${esc(stageLabel(p,term?.linked_stage_id))}${term?.remarks?' · '+esc(term.remarks):''}<br>
-   <span class="text-secondary">Planned Gross: ${money(pg)} &nbsp;•&nbsp; Proforma: ${money(pf)}
-   &nbsp;•&nbsp; Tax Invoiced: ${money(ig)} &nbsp;•&nbsp; Received: ${money(rg)}</span>`;
+  `<strong>${esc(p?.code||p?.name||'Project')} ┬╖ Milestone M${index+1}</strong><br>
+   ${esc(stageLabel(p,term?.linked_stage_id))}${term?.remarks?' ┬╖ '+esc(term.remarks):''}<br>
+   <span class="text-secondary">Planned Gross: ${money(pg)} &nbsp;ΓÇó&nbsp; Proforma: ${money(pf)}
+   &nbsp;ΓÇó&nbsp; Tax Invoiced: ${money(ig)} &nbsp;ΓÇó&nbsp; Received: ${money(rg)}</span>`;
  const entry=$('pmisInvoiceEntryBlockV77T'),save=$('pmisInvoiceSaveV77T');
  if(entry)entry.style.display=canEdit()?'':'none';
  if(save)save.style.display=canEdit()?'':'none';
@@ -6428,7 +7929,7 @@ async function deleteRecord(id){
 
 async function load(){
  const area=$('pmisFinanceInvoiceAreaV77T');
- if(area){area.className='pmis-v77t-loading';area.innerHTML='<span class="spinner-border spinner-border-sm me-2"></span>Loading invoice register…'}
+ if(area){area.className='pmis-v77t-loading';area.innerHTML='<span class="spinner-border spinner-border-sm me-2"></span>Loading invoice registerΓÇª'}
  try{
   const res=await fetch('/api/projects?t='+Date.now(),{headers:headers(false),cache:'no-store'});
   const data=await res.json().catch(()=>[]);
@@ -6860,5 +8361,484 @@ window.addEventListener(
 
 <script src="pmis-menu-exact-dashboard-v4.js"></script>
 <script src="pmis-finance-menu-access-v41.js"></script>
+
+<!-- PMIS_SEPARATE_PLANNED_REVENUE_GRAPH_V77G
+Separate Planned Revenue graph only.
+Revenue Amount = existing planned gross milestone amount.
+Revenue Date = Stage Plan Date.
+Credit Days are not applied to Planned Revenue.
+FY quarters:
+Q1 Apr-Jun
+Q2 Jul-Sep
+Q3 Oct-Dec
+Q4 Jan-Mar
+Existing Cashflow/Cumulative/Status/Outstanding charts are unchanged.
+-->
+
+<!-- PMIS_PLANNED_REVENUE_RECONCILIATION_V77G2
+All Quarters Planned Revenue Total = Planned Collection.
+Milestones without a Stage Plan Date remain visible as Plan Date Pending.
+Quarter views remain revenue-date quarter subsets.
+-->
+
+<!-- PMIS_REVENUE_QUARTER_MONTH_DRILLDOWN_V77H
+Default Planned Revenue graph:
+Q1 / Q2 / Q3 / Q4 + Plan Date Pending.
+Quarter selection:
+month-wise revenue for that quarter + Plan Date Pending.
+Plan Date Pending is highlighted red.
+Clicking any bar opens project-wise and stage-wise milestone details.
+All Quarters Planned Revenue Total reconciles with Planned Collection.
+-->
+
+<!-- PMIS_REVENUE_DRILLDOWN_MINIMIZE_V77H2
+Revenue drilldown table now supports Minimize / Expand.
+Collapsed state keeps selected period, milestone count and revenue total visible.
+No graph, calculation, filter, receipt, database or export logic changed.
+-->
+
+<!-- PMIS_REVENUE_DRILLDOWN_SYMBOLS_V77H3
+Revenue drilldown toggle uses symbols only:
+ΓêÆ = collapse
++ = expand
+No revenue calculation or graph logic changed.
+-->
+
+<script id="pmis-project-phase-filter-v77i-ui">
+(function(){
+'use strict';
+
+const PARAM='pmis_phase';
+
+function phases(){
+ return Array.isArray(
+  window.PMIS_PHASE_FILTERS_V77I
+ )
+  ?window.PMIS_PHASE_FILTERS_V77I
+  :[];
+}
+
+function current(){
+ return String(
+  new URLSearchParams(
+   location.search
+  ).get(PARAM)||
+  ''
+ );
+}
+
+function findFilterGrid(){
+ const direct=
+  document.querySelector(
+   '.filter-grid'
+  );
+
+ if(direct)return direct;
+
+ const labels=
+  Array.from(
+   document.querySelectorAll(
+    'label'
+   )
+  );
+
+ const financialYearLabel=
+  labels.find(label=>
+   /financial\s*year|fiscal\s*year|\bfy\b/i.test(
+    String(
+     label.textContent||
+     ''
+    )
+   )
+  );
+
+ if(
+  financialYearLabel?.parentElement?.parentElement
+ ){
+  return financialYearLabel
+   .parentElement
+   .parentElement;
+ }
+
+ const projectLabel=
+  labels.find(label=>
+   /^project$/i.test(
+    String(
+     label.textContent||
+     ''
+    ).trim()
+   )
+  );
+
+ if(
+  projectLabel?.parentElement?.parentElement
+ ){
+  return projectLabel
+   .parentElement
+   .parentElement;
+ }
+
+ return null;
+}
+
+function createStandaloneHost(){
+ let panel=
+  document.getElementById(
+   'pmisPhaseFilterStandaloneV77I'
+  );
+
+ if(panel)return panel;
+
+ panel=
+  document.createElement(
+   'section'
+  );
+
+ panel.id=
+  'pmisPhaseFilterStandaloneV77I';
+
+ panel.className=
+  'panel';
+
+ panel.style.cssText=
+  'margin-bottom:14px;padding:14px 16px;';
+
+ const main=
+  document.querySelector(
+   'main'
+  )||
+  document.body;
+
+ const titleRow=
+  main.querySelector(
+   '.title-row'
+  );
+
+ if(titleRow){
+  titleRow.insertAdjacentElement(
+   'afterend',
+   panel
+  );
+ }
+ else{
+  main.prepend(
+   panel
+  );
+ }
+
+ return panel;
+}
+
+function setPhase(value){
+ const url=
+  new URL(
+   location.href
+  );
+
+ if(value){
+  url.searchParams.set(
+   PARAM,
+   value
+  );
+ }
+ else{
+  url.searchParams.delete(
+   PARAM
+  );
+ }
+
+ location.href=
+  url.toString();
+}
+
+function install(){
+ if(
+  document.getElementById(
+   'pmisPhaseFilterV77I'
+  )
+ ){
+  return;
+ }
+
+ const list=
+  phases();
+
+ if(!list.length)return;
+
+ const host=
+  findFilterGrid();
+
+ const wrapper=
+  document.createElement(
+   'div'
+  );
+
+ wrapper.id=
+  'pmisPhaseFilterWrapV77I';
+
+ wrapper.innerHTML=`
+  <label
+   for="pmisPhaseFilterV77I"
+  >
+   Project Phase
+  </label>
+
+  <select
+   id="pmisPhaseFilterV77I"
+   class="form-select"
+  >
+   <option value="">
+    All Phases
+   </option>
+
+   ${list.map(item=>`
+    <option value="${item.key}">
+     ${item.label}
+    </option>
+   `).join('')}
+  </select>
+ `;
+
+ if(host){
+  host.appendChild(
+   wrapper
+  );
+ }
+ else{
+  const standalone=
+   createStandaloneHost();
+
+  standalone.appendChild(
+   wrapper
+  );
+ }
+
+ const select=
+  document.getElementById(
+   'pmisPhaseFilterV77I'
+  );
+
+ if(!select)return;
+
+ const active=current();
+
+ if(
+  Array.from(
+   select.options
+  ).some(option=>
+   option.value===active
+  )
+ ){
+  select.value=active;
+ }
+
+ select.addEventListener(
+  'change',
+  ()=>{
+   setPhase(
+    String(
+     select.value||
+     ''
+    )
+   );
+  }
+ );
+
+ /*
+  * Existing page Clear / Reset button also clears Project Phase.
+  * Capture phase first, then allow the native handler to run.
+  */
+ const scope=
+  host?.closest(
+   'section'
+  )||
+  host||
+  document;
+
+ Array.from(
+  scope.querySelectorAll(
+   'button'
+  )
+ ).forEach(button=>{
+  const text=
+   String(
+    button.textContent||
+    ''
+   ).trim();
+
+  if(
+   !/^(clear|clear filters|reset|reset filters)$/i.test(
+    text
+   )
+  ){
+   return;
+  }
+
+  button.addEventListener(
+   'click',
+   ()=>{
+    if(!current())return;
+
+    const url=
+     new URL(
+      location.href
+     );
+
+    url.searchParams.delete(
+     PARAM
+    );
+
+    setTimeout(
+     ()=>{
+      location.href=
+       url.toString();
+     },
+     0
+    );
+   },
+   {
+    capture:true
+   }
+  );
+ });
+}
+
+if(
+ document.readyState==='loading'
+){
+ document.addEventListener(
+  'DOMContentLoaded',
+  install,
+  {
+   once:true
+  }
+ );
+}
+else{
+ install();
+}
+
+})();
+</script>
+<!-- /PMIS_PROJECT_PHASE_FILTER_V77I -->
+
+<!-- PMIS_PHASE_MILESTONE_FILTER_V77I2
+Project Phase filters PAYMENT MILESTONES by linked stage / sub-stage.
+Includes fixed child stages and project-specific V74Q custom substages.
+Does not filter by current project lifecycle phase.
+-->
+
+<!-- PMIS_DISPATCH_END_FULL_PO_PLANNED_REVENUE_V77K
+Planned Revenue:
+- amount = full project po_value
+- date = Machine Dispatch parent phase planned/revised END date
+- one revenue entry per project
+- Plan Date Pending remains red
+Cashflow / Planned Collection remains unchanged.
+-->
+
+<!-- PMIS_PLANNED_REVENUE_NET_PO_SCOPE_ALIGNMENT_V77K5
+Planned Revenue now mirrors the main Net PO Value KPI project scope.
+
+Revenue amount:
+  full NET project.po_value once per project.
+
+Revenue date:
+  Machine Dispatch parent phase planned/revised END date.
+
+Missing Machine Dispatch END date:
+  Plan Date Pending.
+
+All Quarters reconciliation:
+  Q1 + Q2 + Q3 + Q4 + Plan Date Pending = Net PO Value.
+-->
+
+<!-- PMIS_PLANNED_REVENUE_DATED_TOTAL_V77K6
+Planned Revenue Total now EXCLUDES Plan Date Pending.
+
+Planned Revenue Total:
+  Sum of full NET PO value only for projects with a valid
+  Machine Dispatch planned/revised END date.
+
+Plan Date Pending:
+  Sum of full NET PO value for projects without a valid
+  Machine Dispatch planned/revised END date.
+
+Reconciliation:
+  Q1 + Q2 + Q3 + Q4 = Planned Revenue Total
+  Planned Revenue Total + Plan Date Pending = Net PO Value
+-->
+
+<!-- PMIS_PLANNED_REVENUE_MONTHS_INSIDE_QUARTERS_V77K7
+Default: Apr-May-Jun inside Q1, Jul-Aug-Sep inside Q2,
+Oct-Nov-Dec inside Q3, Jan-Feb-Mar inside Q4.
+Pending is separate. Y-axis begins at zero and auto-scales to actual revenue values.
+12 dated months = Planned Revenue Total.
+Planned Revenue Total + Pending = Net PO Value.
+-->
+
+<!-- PMIS_PLANNED_REVENUE_CHART_SPACING_LABELS_V77K8B
+Presentation-only refinement for the V77K7 Planned Revenue chart:
+- 500px chart height
+- legend at top
+- 82px bottom band for month labels + quarter brackets
+- 46px top padding
+- month labels never auto-skip or rotate
+- 22% Y-axis headroom for top data labels
+- narrower bars for clearer separation
+Revenue calculations are unchanged.
+-->
+
+<!-- PMIS_PLANNED_REVENUE_CLICK_TARGET_V77K9
+Revenue month bars made easier to click:
+- bars widened slightly
+- category width increased
+- maxBarThickness added
+- click interaction relaxed to intersect:false with axis:x
+No revenue calculation logic changed.
+-->
+
+<!-- PMIS_PLANNED_REVENUE_TOP_QUARTER_CLEAN_GRID_V77K11B
+Revenue chart visual refinement:
+- Q1/Q2/Q3/Q4 brackets moved above month bars
+- quarter side separators remain visible through plot
+- ordinary X/Y grid lines removed
+- chart height increased to 640px
+- Y-axis remains linear and begins at zero
+- Y-axis grace reduced to 8% so lakh-level bars are more visible
+- no artificial minimum bar height is used
+No Revenue calculation changed.
+-->
+
+<!-- PMIS_PLANNED_REVENUE_QUARTERS_BOTTOM_EXTENDED_SIDES_V77K11C
+Quarter grouping restored to bottom:
+- Q1/Q2/Q3/Q4 stay below Apr-Mar
+- bottom horizontal quarter bracket retained
+- only the left/right side lines are extended upward slightly
+- no full-height quarter separators
+- existing grid/visibility/revenue logic remains unchanged
+-->
+
+<!-- PMIS_REVENUE_DEDICATED_LABELS_V77K12B
+Planned Revenue uses its own collision-safe label renderer:
+- shared PMIS label renderer skips only plannedRevenueChartV77G
+- every positive Revenue value is drawn above its bar
+- multiple upward positions are tried before fallback
+- label boxes are collision checked
+- small white backing plate improves readability
+- Y-axis grace = 18%
+No Revenue calculation changed.
+-->
+
+<!-- PMIS_REVENUE_PLAIN_ABOVE_LABELS_V77K12D
+Revenue data labels:
+- plain text only
+- no border
+- no background rectangle
+- positioned above positive bars
+- collision-aware upward offsets
+- shared PMIS label plugin skips this Revenue canvas
+No Revenue calculation changed.
+-->
 </body>
 </html>
