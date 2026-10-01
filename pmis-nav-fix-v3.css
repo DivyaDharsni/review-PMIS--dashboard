@@ -1,0 +1,236 @@
+/* PMIS_NAV_FIX_V3
+   Loaded ONLY on finance pages.
+   Mirrors the native Project Dashboard sidebar styling.
+*/
+
+.sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: -320px !important;
+    width: 320px !important;
+    height: 100% !important;
+    background: linear-gradient(180deg,#001f3f 0%,#003366 100%) !important;
+    z-index: 1100 !important;
+    transition: all .4s cubic-bezier(.4,0,.2,1) !important;
+    padding: 30px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    box-shadow: 20px 0 60px rgba(0,31,63,.30) !important;
+    overflow-y: auto !important;
+}
+
+.sidebar.active {
+    left: 0 !important;
+}
+
+.sidebar-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    background: rgba(0,31,63,.60) !important;
+    backdrop-filter: blur(4px) !important;
+    z-index: 1090 !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    transition: .3s !important;
+}
+
+.sidebar-overlay.active {
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+.sidebar-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    margin-bottom: 30px !important;
+    padding-bottom: 20px !important;
+    border-bottom: 1px solid rgba(255,255,255,.10) !important;
+}
+
+.pmis-v3-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    cursor: pointer;
+}
+
+.pmis-v3-brand .brand-logo-wrap {
+    width: 46px !important;
+    height: 46px !important;
+    border-radius: 14px !important;
+    background: #fff !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 6px !important;
+    box-shadow: 0 7px 20px rgba(0,0,0,.12) !important;
+    flex: 0 0 46px;
+}
+
+.pmis-v3-brand .brand-logo-wrap img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+}
+
+.pmis-v3-brand-name {
+    color: #fff;
+    font-size: 1.1rem;
+    line-height: 1.05;
+    font-weight: 900;
+}
+
+.pmis-v3-brand-sub {
+    color: #94a3b8;
+    font-size: .6rem;
+    line-height: 1.25;
+    text-transform: uppercase;
+    margin-top: 4px;
+    white-space: nowrap;
+}
+
+.pmis-v3-close {
+    border: 0;
+    background: transparent;
+    color: #94a3b8;
+    font-size: 2.25rem;
+    line-height: 1;
+    font-weight: 300;
+    cursor: pointer;
+    padding: 0;
+    margin-left: 10px;
+}
+
+.sidebar-section-title {
+    font-size: .6rem !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1.5px !important;
+    color: rgba(255,255,255,.35) !important;
+    margin: 20px 0 8px !important;
+    padding: 0 5px !important;
+}
+
+.sidebar-btn {
+    display: flex !important;
+    align-items: center !important;
+    gap: 15px !important;
+    padding: 14px 20px !important;
+    color: rgba(255,255,255,.70) !important;
+    text-decoration: none !important;
+    font-weight: 700 !important;
+    font-size: .9rem !important;
+    border-radius: 16px !important;
+    margin: 0 0 6px !important;
+    transition: all .25s !important;
+    cursor: pointer !important;
+    border: none !important;
+    background: none !important;
+    width: 100% !important;
+    min-height: 0 !important;
+    text-align: left !important;
+    box-shadow: none !important;
+    font-family: inherit !important;
+}
+
+.sidebar-btn:hover {
+    background: rgba(255,255,255,.08) !important;
+    color: #fff !important;
+    transform: translateX(5px) !important;
+}
+
+.sidebar-btn.active {
+    background: #14b8a6 !important;
+    color: #fff !important;
+    box-shadow: 0 8px 16px rgba(20,184,166,.30) !important;
+}
+
+.sidebar-btn .sb-icon {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 10px !important;
+    background: rgba(255,255,255,.10) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 1rem !important;
+    flex: 0 0 36px !important;
+}
+
+.sidebar-btn .sb-icon i {
+    color: inherit !important;
+    font-size: 1rem !important;
+}
+
+.sidebar-btn.active .sb-icon {
+    background: rgba(255,255,255,.25) !important;
+}
+
+.pmis-v3-feedback {
+    padding: 0 0 4px;
+}
+
+.pmis-v3-feedback textarea {
+    width: 100%;
+    min-height: 130px;
+    border: 0;
+    outline: 0;
+    resize: vertical;
+    border-radius: 18px;
+    background: #fff;
+    color: #334155;
+    padding: 16px;
+    font: inherit;
+    font-size: .86rem;
+    line-height: 1.5;
+    box-sizing: border-box;
+}
+
+.pmis-v3-feedback button {
+    width: 100%;
+    border: 0;
+    border-radius: 16px;
+    margin: 14px 0 4px;
+    padding: 15px 16px;
+    background: #14b8a6;
+    color: #fff;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.admin-only {
+    display: none !important;
+}
+
+body.pmis-admin .admin-only {
+    display: flex !important;
+}
+
+.employee-only {
+    display: flex !important;
+}
+
+body.pmis-admin .employee-only {
+    display: none !important;
+}
+
+/* The analytics page originally uses #side/#shade. V3 normalizes it to
+   the same #sidebar/#sidebarOverlay shell as the PMIS dashboard. */
+#side,
+#shade {
+    all: unset;
+}
+
+@media (max-width: 768px) {
+    .sidebar {
+        width: min(320px,90vw) !important;
+        left: -100vw !important;
+        padding: 24px !important;
+    }
+
+    .sidebar.active {
+        left: 0 !important;
+    }
+}

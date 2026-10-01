@@ -2678,6 +2678,18 @@
             return '';
         }
 
+        /* PMIS_KICKOFF_FIRST_STAGE_DATE_UNLOCK_V77R */
+        function pmisPlanMinDateForPhaseV77R(phaseId) {
+            // kickoff_1 establishes the Kickoff baseline itself.
+            // It must never be restricted by a minimum date derived from its
+            // own current plan date.
+            if (String(phaseId || '') === 'kickoff_1') {
+                return '';
+            }
+
+            return getGlobalMinDateString();
+        }
+
         function getProgColor(val, data = null) {
             if (Number(val) === 100) return '#22c55e'; // Green
 
@@ -2931,6 +2943,15 @@
                 let data = project.detailed_phases[ph.id] || { progress: 0, actual_start: '', plan_start: '', plan_end: '', remarks: '', is_excluded: false };
                 const isExcluded = data.is_excluded === true;
 
+                // PMIS_KICKOFF_FIRST_STAGE_DATE_UNLOCK_V77R
+                // Plan dates for kickoff_1 are intentionally unrestricted.
+                // All other stages retain the existing global minimum-date rule.
+                const planMinV77R = pmisPlanMinDateForPhaseV77R(ph.id);
+                const planMinAttrV77R =
+                    planMinV77R
+                        ? `min="${planMinV77R}"`
+                        : '';
+
                 if (ph.type === 'parent') {
                     const subs = defaultPhases.filter(s => s.parent === ph.id);
                     let subTotal = 0;
@@ -3121,11 +3142,11 @@
 
 
                 const planStartInput = !isPlanLocked && !isParent && !isExcluded ?
-                    `<div class="revision-stack"><div class="revision-row"><input type="date" class="inline-date pmis-native-date-v75j ${hasRevisions ? 'old-date-strike' : ''}" data-phase-id="${ph.id}" data-field="plan_start" value="${data.plan_start || ''}" ${minAttr} onchange="saveInlineField('${ph.id}', 'plan_start', this.value, this)" onkeydown="if(event.key==='Enter') syncProject(this)"></div>${originalRowSpacer}${nextStartDisplay}</div>` :
+                    `<div class="revision-stack"><div class="revision-row"><input type="date" class="inline-date pmis-native-date-v75j ${hasRevisions ? 'old-date-strike' : ''}" data-phase-id="${ph.id}" data-field="plan_start" value="${data.plan_start || ''}" ${planMinAttrV77R} onchange="saveInlineField('${ph.id}', 'plan_start', this.value, this)" onkeydown="if(event.key==='Enter') syncProject(this)"></div>${originalRowSpacer}${nextStartDisplay}</div>` :
                     `<div class="revision-stack"><div class="revision-row"><div><div class="inline-date d-flex align-items-center justify-content-center assigned-date ${hasRevisions ? 'old-date-strike' : ''}" style="cursor:default; background: ${data.plan_start ? '#edf2f7' : '#fff'}; border-color: ${data.plan_start ? '#cbd5e1' : '#e2e8f0'};">${formatDate(data.plan_start)}</div></div></div>${originalRowSpacer}${nextStartDisplay}</div>`;
 
                 const planEndInput = !isPlanLocked && !isParent && !isExcluded ?
-                    `<div class="revision-stack"><div class="revision-row"><input type="date" class="inline-date pmis-native-date-v75j ${hasRevisions ? 'old-date-strike' : ''}" data-phase-id="${ph.id}" data-field="plan_end" value="${data.plan_end || ''}" ${minAttr} onchange="saveInlineField('${ph.id}', 'plan_end', this.value, this)" onkeydown="if(event.key==='Enter') syncProject(this)"></div>${originalRowSpacer}${nextEndDisplay}</div>` :
+                    `<div class="revision-stack"><div class="revision-row"><input type="date" class="inline-date pmis-native-date-v75j ${hasRevisions ? 'old-date-strike' : ''}" data-phase-id="${ph.id}" data-field="plan_end" value="${data.plan_end || ''}" ${planMinAttrV77R} onchange="saveInlineField('${ph.id}', 'plan_end', this.value, this)" onkeydown="if(event.key==='Enter') syncProject(this)"></div>${originalRowSpacer}${nextEndDisplay}</div>` :
                     `<div class="revision-stack"><div class="revision-row"><div><div class="inline-date d-flex align-items-center justify-content-center assigned-date ${hasRevisions ? 'old-date-strike' : ''}" style="cursor:default; background: ${data.plan_end ? '#edf2f7' : '#fff'}; border-color: ${data.plan_end ? '#cbd5e1' : '#e2e8f0'};">${formatDate(data.plan_end)}</div></div></div>${originalRowSpacer}${nextEndDisplay}</div>`;
 
                 const respValue = data.responsibility || '';
@@ -3683,9 +3704,17 @@
             const revs = data.revisions || [];
             const latest = revs.length > 0 ? revs[revs.length - 1] : null;
 
-            const globalMin = getGlobalMinDateString();
-            document.getElementById('mRescheduleStart').min = globalMin;
-            document.getElementById('mRescheduleEnd').min = globalMin;
+            // PMIS_KICKOFF_FIRST_STAGE_DATE_UNLOCK_V77R
+            // Rescheduling kickoff_1 must also be able to move earlier than
+            // the currently stored Kickoff date.
+            const planMinV77R =
+                pmisPlanMinDateForPhaseV77R(phaseId);
+
+            document.getElementById('mRescheduleStart').min =
+                planMinV77R;
+
+            document.getElementById('mRescheduleEnd').min =
+                planMinV77R;
 
             document.getElementById('mRescheduleId').value = phaseId;
             document.getElementById('modalTitle').innerText = 'Reschedule: ' + ph.name;
@@ -16043,6 +16072,1219 @@ function expectedAmount(term) {
     }
 }
 </style>
+
+<!-- PMIS_REVIEW_ADMIN_BASELINE_UNLOCK_REVISION_DELETE_V77X -->
+<style id="pmis-review-admin-baseline-v77x-style">
+
+.pmis-v77x-admin-btn{
+    border:none;
+    border-radius:999px;
+    padding:7px 12px;
+    font-size:.67rem;
+    font-weight:900;
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    white-space:nowrap;
+    box-shadow:0 4px 12px rgba(15,23,42,.12);
+}
+.pmis-v77x-unlock{
+    background:#f59e0b;
+    color:#fff;
+}
+.pmis-v77x-revisions{
+    background:#fff;
+    color:#0f172a;
+    border:1px solid rgba(255,255,255,.45);
+}
+.pmis-v77x-admin-note{
+    font-size:.62rem;
+    color:#cbd5e1;
+    font-weight:700;
+    margin-top:5px;
+    text-align:right;
+}
+.pmis-v77x-modal .modal-content{
+    border:0;
+    border-radius:18px;
+    overflow:hidden;
+    box-shadow:0 24px 70px rgba(15,23,42,.28);
+}
+.pmis-v77x-modal .modal-header{
+    background:#001f3f;
+    color:#fff;
+    border:0;
+}
+.pmis-v77x-modal-sub{
+    font-size:.72rem;
+    color:#bfdbfe;
+    margin-top:2px;
+}
+.pmis-v77x-warning{
+    font-size:.75rem;
+}
+.pmis-v77x-revision-row{
+    display:grid;
+    grid-template-columns:1.25fr .85fr .85fr 1.5fr auto;
+    gap:10px;
+    align-items:center;
+    padding:10px 12px;
+    border:1px solid #e2e8f0;
+    border-radius:12px;
+    background:#fff;
+    margin-bottom:8px;
+}
+.pmis-v77x-revision-row small{
+    color:#64748b;
+}
+.pmis-v77x-phase-name{
+    color:#001f3f;
+}
+.pmis-v77x-delete{
+    border:1px solid #fecaca;
+    background:#fff1f2;
+    color:#b91c1c;
+    width:34px;
+    height:34px;
+    border-radius:10px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+}
+@media(max-width:900px){
+    .pmis-v77x-revision-row{
+        grid-template-columns:1fr 1fr;
+    }
+}
+
+</style>
+<script id="pmis-review-admin-baseline-v77x">
+
+(function () {
+    'use strict';
+
+    if (window.__PMIS_REVIEW_ADMIN_BASELINE_UNLOCK_REVISION_DELETE_V77X__) return;
+    window.__PMIS_REVIEW_ADMIN_BASELINE_UNLOCK_REVISION_DELETE_V77X__ = true;
+
+    const REVIEW_ADMIN_V77X = 'review@danprel';
+
+    function normV77X(value) {
+        return String(value ?? '').trim().toLowerCase();
+    }
+
+    function isReviewAdminV77X() {
+        return normV77X(
+            localStorage.getItem('danprel_username')
+        ) === REVIEW_ADMIN_V77X;
+    }
+
+    function escV77X(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function fmtV77X(value) {
+        if (!value) return '-';
+
+        try {
+            if (typeof formatDate === 'function') {
+                return formatDate(value);
+            }
+        } catch (_) {}
+
+        const match = String(value)
+            .slice(0, 10)
+            .match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+        return match
+            ? `${match[3]}/${match[2]}/${match[1]}`
+            : String(value);
+    }
+
+    function phaseByIdV77X(phaseId) {
+        try {
+            return Array.isArray(defaultPhases)
+                ? defaultPhases.find(
+                    phase => String(phase?.id || '') === String(phaseId || '')
+                  ) || null
+                : null;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    function leafRevisionsV77X() {
+        if (!project?.detailed_phases) return [];
+
+        const rows = [];
+
+        const phases = Array.isArray(defaultPhases)
+            ? defaultPhases
+            : [];
+
+        phases.forEach(phase => {
+            if (!phase?.id || phase?.type === 'parent') return;
+
+            const data =
+                project.detailed_phases?.[phase.id] || {};
+
+            const revisions =
+                Array.isArray(data?.revisions)
+                    ? data.revisions
+                    : [];
+
+            revisions.forEach((revision, index) => {
+                rows.push({
+                    phase,
+                    data,
+                    revision,
+                    index
+                });
+            });
+        });
+
+        return rows;
+    }
+
+    function approvedRequestMatchesRevisionV77X(
+        request,
+        phaseId,
+        revision
+    ) {
+        if (
+            String(request?.phaseId || '') !==
+            String(phaseId || '')
+        ) {
+            return false;
+        }
+
+        if (normV77X(request?.status) !== 'approved') {
+            return false;
+        }
+
+        const sameStart =
+            String(request?.newStart || '') ===
+            String(revision?.start || '');
+
+        const sameEnd =
+            String(request?.newEnd || '') ===
+            String(revision?.end || '');
+
+        if (!sameStart || !sameEnd) return false;
+
+        const requestReason =
+            normV77X(request?.reason || '');
+
+        const revisionReason =
+            normV77X(
+                revision?.remark ??
+                revision?.reason ??
+                ''
+            );
+
+        return (
+            !requestReason ||
+            !revisionReason ||
+            requestReason === revisionReason
+        );
+    }
+
+    function parseDateV77X(value) {
+        if (!value) return null;
+
+        try {
+            if (typeof parseDate === 'function') {
+                const parsed = parseDate(value);
+                if (parsed) {
+                    const copy = new Date(parsed);
+                    copy.setHours(0, 0, 0, 0);
+                    return copy;
+                }
+            }
+        } catch (_) {}
+
+        const parts =
+            String(value)
+                .slice(0, 10)
+                .split('-')
+                .map(Number);
+
+        if (
+            parts.length !== 3 ||
+            parts.some(Number.isNaN)
+        ) {
+            return null;
+        }
+
+        const result =
+            new Date(
+                parts[0],
+                parts[1] - 1,
+                parts[2]
+            );
+
+        result.setHours(0, 0, 0, 0);
+        return result;
+    }
+
+    function isoDateV77X(date) {
+        if (!date) return '';
+
+        try {
+            if (typeof formatDateLocalISO === 'function') {
+                return formatDateLocalISO(date);
+            }
+        } catch (_) {}
+
+        const value = new Date(date);
+
+        return [
+            value.getFullYear(),
+            String(value.getMonth() + 1).padStart(2, '0'),
+            String(value.getDate()).padStart(2, '0')
+        ].join('-');
+    }
+
+    function scheduleItemV77X(start, end) {
+        const s = parseDateV77X(start);
+        const e = parseDateV77X(end);
+
+        if (!s || !e || e < s) return null;
+
+        return {
+            start: s,
+            end: e,
+            duration:
+                Math.round(
+                    (e - s) / 86400000
+                ) + 1
+        };
+    }
+
+    function effectiveChildDatesAtLevelV77X(
+        data,
+        revisionLevel
+    ) {
+        const revisions =
+            Array.isArray(data?.revisions)
+                ? data.revisions
+                : [];
+
+        if (revisionLevel === null) {
+            const latest =
+                revisions.length
+                    ? revisions[revisions.length - 1]
+                    : null;
+
+            return {
+                start:
+                    latest?.start ||
+                    data?.plan_start ||
+                    '',
+                end:
+                    latest?.end ||
+                    data?.plan_end ||
+                    ''
+            };
+        }
+
+        let selected = null;
+
+        for (
+            let index = 0;
+            index <= revisionLevel &&
+            index < revisions.length;
+            index++
+        ) {
+            selected = revisions[index] || selected;
+        }
+
+        return {
+            start:
+                selected?.start ||
+                data?.plan_start ||
+                '',
+            end:
+                selected?.end ||
+                data?.plan_end ||
+                ''
+        };
+    }
+
+    function computeParentRangeV77X(
+        parentId,
+        items
+    ) {
+        const valid =
+            items.filter(Boolean);
+
+        if (!valid.length) {
+            return {
+                start: '',
+                end: ''
+            };
+        }
+
+        try {
+            if (typeof calcCpmDuration === 'function') {
+                const result =
+                    calcCpmDuration(valid);
+
+                if (
+                    result?.pStart &&
+                    Number(result?.totalDuration) > 0
+                ) {
+                    const end =
+                        new Date(result.pStart);
+
+                    end.setDate(
+                        end.getDate() +
+                        Number(result.totalDuration) -
+                        1
+                    );
+
+                    return {
+                        start:
+                            isoDateV77X(
+                                result.pStart
+                            ),
+                        end:
+                            isoDateV77X(end)
+                    };
+                }
+            }
+        } catch (error) {
+            console.warn(
+                '[PMIS V77X] Existing CPM calculation failed; using fallback.',
+                error
+            );
+        }
+
+        let isParallel = false;
+
+        try {
+            isParallel =
+                typeof getTimelineType === 'function' &&
+                getTimelineType(parentId) === 'parallel';
+        } catch (_) {}
+
+        const first =
+            new Date(
+                Math.min(
+                    ...valid.map(
+                        item => item.start.getTime()
+                    )
+                )
+            );
+
+        const duration =
+            isParallel
+                ? Math.max(
+                    ...valid.map(
+                        item => item.duration
+                    )
+                  )
+                : valid.reduce(
+                    (sum, item) =>
+                        sum + item.duration,
+                    0
+                  );
+
+        const end =
+            new Date(first);
+
+        end.setDate(
+            end.getDate() +
+            Math.max(1, duration) -
+            1
+        );
+
+        return {
+            start: isoDateV77X(first),
+            end: isoDateV77X(end)
+        };
+    }
+
+    function rebuildParentAfterRevisionDeleteV77X(
+        parentId
+    ) {
+        if (
+            !parentId ||
+            !project?.detailed_phases
+        ) {
+            return;
+        }
+
+        const phases =
+            Array.isArray(defaultPhases)
+                ? defaultPhases
+                : [];
+
+        const children =
+            phases
+                .filter(
+                    phase =>
+                        String(phase?.parent || '') ===
+                        String(parentId)
+                )
+                .filter(
+                    phase =>
+                        !project
+                            .detailed_phases
+                            ?.[phase.id]
+                            ?.is_excluded
+                );
+
+        if (!children.length) return;
+
+        const parent =
+            project.detailed_phases[parentId] ||
+            (
+                project.detailed_phases[parentId] = {}
+            );
+
+        const currentItems =
+            children.map(phase => {
+                const data =
+                    project
+                        .detailed_phases
+                        ?.[phase.id] ||
+                    {};
+
+                const dates =
+                    effectiveChildDatesAtLevelV77X(
+                        data,
+                        null
+                    );
+
+                return scheduleItemV77X(
+                    dates.start,
+                    dates.end
+                );
+            });
+
+        const current =
+            computeParentRangeV77X(
+                parentId,
+                currentItems
+            );
+
+        const anyChildRevision =
+            children.some(phase => {
+                const revisions =
+                    project
+                        .detailed_phases
+                        ?.[phase.id]
+                        ?.revisions;
+
+                return (
+                    Array.isArray(revisions) &&
+                    revisions.length > 0
+                );
+            });
+
+        parent.reassign_start =
+            anyChildRevision
+                ? current.start
+                : '';
+
+        parent.reassign_end =
+            anyChildRevision
+                ? current.end
+                : '';
+
+        const maxRevisionCount =
+            Math.max(
+                0,
+                ...children.map(phase => {
+                    const revisions =
+                        project
+                            .detailed_phases
+                            ?.[phase.id]
+                            ?.revisions;
+
+                    return Array.isArray(revisions)
+                        ? revisions.length
+                        : 0;
+                })
+            );
+
+        const parentRevisions = [];
+
+        for (
+            let level = 0;
+            level < maxRevisionCount;
+            level++
+        ) {
+            const levelItems =
+                children.map(phase => {
+                    const data =
+                        project
+                            .detailed_phases
+                            ?.[phase.id] ||
+                        {};
+
+                    const dates =
+                        effectiveChildDatesAtLevelV77X(
+                            data,
+                            level
+                        );
+
+                    return scheduleItemV77X(
+                        dates.start,
+                        dates.end
+                    );
+                });
+
+            const range =
+                computeParentRangeV77X(
+                    parentId,
+                    levelItems
+                );
+
+            parentRevisions.push({
+                label: 'R' + (level + 1),
+                start: range.start,
+                end: range.end
+            });
+        }
+
+        parent.revisions =
+            parentRevisions;
+
+        if (parentId === 'kickoff') {
+            project.start_date =
+                parent.reassign_start ||
+                parent.plan_start ||
+                '';
+
+            project.reassign_start_date =
+                (
+                    parent.reassign_start &&
+                    parent.reassign_start !==
+                        parent.plan_start
+                )
+                    ? parent.reassign_start
+                    : '';
+        }
+
+        if (parentId === 'dispatch_parent') {
+            project.dispatch_date =
+                parent.reassign_end ||
+                parent.plan_end ||
+                '';
+
+            project.reassign_dispatch_date =
+                (
+                    parent.reassign_end &&
+                    parent.reassign_end !==
+                        parent.plan_end
+                )
+                    ? parent.reassign_end
+                    : '';
+        }
+
+        if (parentId === 'inc_parent') {
+            project.mq2_date =
+                parent.reassign_end ||
+                parent.plan_end ||
+                '';
+
+            project.reassign_mq2_date =
+                (
+                    parent.reassign_end &&
+                    parent.reassign_end !==
+                        parent.plan_end
+                )
+                    ? parent.reassign_end
+                    : '';
+        }
+    }
+
+    function revisionCountV77X() {
+        return leafRevisionsV77X().length;
+    }
+
+    function ensureRevisionModalV77X() {
+        let modal =
+            document.getElementById(
+                'pmisRevisionDeleteModalV77X'
+            );
+
+        if (modal) return modal;
+
+        document.body.insertAdjacentHTML(
+            'beforeend',
+            `
+            <div
+                class="modal fade pmis-v77x-modal"
+                id="pmisRevisionDeleteModalV77X"
+                tabindex="-1"
+                aria-hidden="true"
+            >
+                <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+                    <div class="modal-content">
+                        <div class="modal-header px-4 py-3">
+                            <div>
+                                <div class="fw-900">Manage Revised Dates</div>
+                                <div class="pmis-v77x-modal-sub">
+                                    review@danprel administration
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                class="btn-close btn-close-white"
+                                data-bs-dismiss="modal"
+                            ></button>
+                        </div>
+
+                        <div class="modal-body p-4">
+                            <div class="alert alert-warning border-0 rounded-3 py-2 px-3 mb-3 pmis-v77x-warning">
+                                Deleting an approved revised date is permanent for this project.
+                                The original baseline remains unchanged.
+                                Remaining revisions are renumbered automatically.
+                            </div>
+
+                            <div id="pmisRevisionDeleteListV77X"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            `
+        );
+
+        return document.getElementById(
+            'pmisRevisionDeleteModalV77X'
+        );
+    }
+
+    function renderRevisionDeleteListV77X() {
+        const list =
+            document.getElementById(
+                'pmisRevisionDeleteListV77X'
+            );
+
+        if (!list) return;
+
+        const rows =
+            leafRevisionsV77X();
+
+        if (!rows.length) {
+            list.innerHTML =
+                '<div class="text-center text-muted py-5 fw-700">No approved revised dates are available to delete.</div>';
+            return;
+        }
+
+        list.innerHTML =
+            rows.map(row => {
+                const reason =
+                    row.revision?.remark ??
+                    row.revision?.reason ??
+                    '-';
+
+                return `
+                    <div class="pmis-v77x-revision-row">
+                        <div>
+                            <div class="fw-900 pmis-v77x-phase-name">
+                                ${escV77X(
+                                    row.phase?.name ||
+                                    row.phase?.id ||
+                                    'Phase'
+                                )}
+                            </div>
+                            <small>
+                                ${escV77X(
+                                    row.revision?.label ||
+                                    ('R' + (row.index + 1))
+                                )}
+                            </small>
+                        </div>
+
+                        <div>
+                            <small>Revised Start</small>
+                            <div class="fw-800">
+                                ${escV77X(
+                                    fmtV77X(
+                                        row.revision?.start
+                                    )
+                                )}
+                            </div>
+                        </div>
+
+                        <div>
+                            <small>Revised End</small>
+                            <div class="fw-800">
+                                ${escV77X(
+                                    fmtV77X(
+                                        row.revision?.end
+                                    )
+                                )}
+                            </div>
+                        </div>
+
+                        <div>
+                            <small>Reason</small>
+                            <div class="fw-700">
+                                ${escV77X(reason)}
+                            </div>
+                        </div>
+
+                        <button
+                            type="button"
+                            class="pmis-v77x-delete"
+                            title="Delete revised date"
+                            onclick="pmisDeleteApprovedRevisionV77X('${escV77X(row.phase.id)}', ${row.index})"
+                        >
+                            <i class="bi bi-trash3-fill"></i>
+                        </button>
+                    </div>
+                `;
+            }).join('');
+    }
+
+    window.pmisManageApprovedRevisionsV77X =
+        function () {
+            if (!isReviewAdminV77X()) {
+                alert(
+                    'Only review@danprel can delete approved revised dates.'
+                );
+                return;
+            }
+
+            const modal =
+                ensureRevisionModalV77X();
+
+            renderRevisionDeleteListV77X();
+
+            bootstrap
+                .Modal
+                .getOrCreateInstance(modal)
+                .show();
+        };
+
+    window.pmisDeleteApprovedRevisionV77X =
+        async function (
+            phaseId,
+            revisionIndex
+        ) {
+            if (!isReviewAdminV77X()) {
+                alert(
+                    'Only review@danprel can delete approved revised dates.'
+                );
+                return;
+            }
+
+            const data =
+                project
+                    ?.detailed_phases
+                    ?.[phaseId];
+
+            const revisions =
+                Array.isArray(data?.revisions)
+                    ? data.revisions
+                    : [];
+
+            const index =
+                Number(revisionIndex);
+
+            if (
+                !Number.isInteger(index) ||
+                index < 0 ||
+                index >= revisions.length
+            ) {
+                alert(
+                    'The selected revised date could not be found.'
+                );
+                return;
+            }
+
+            const revision =
+                revisions[index];
+
+            const phase =
+                phaseByIdV77X(phaseId);
+
+            const label =
+                revision?.label ||
+                ('R' + (index + 1));
+
+            const okay =
+                confirm(
+                    'Delete ' +
+                    label +
+                    ' revised date for "' +
+                    (phase?.name || phaseId) +
+                    '"?\n\n' +
+                    'Start: ' +
+                    fmtV77X(revision?.start) +
+                    '\nEnd: ' +
+                    fmtV77X(revision?.end) +
+                    '\n\nThe original baseline date will remain.'
+                );
+
+            if (!okay) return;
+
+            /*
+             * Keep a local snapshot so an unsuccessful save can be
+             * rolled back immediately without requiring a page refresh.
+             */
+            const before =
+                JSON.stringify({
+                    detailed_phases:
+                        project?.detailed_phases || {},
+                    revision_requests:
+                        project?.revision_requests || [],
+                    start_date:
+                        project?.start_date || '',
+                    dispatch_date:
+                        project?.dispatch_date || '',
+                    mq2_date:
+                        project?.mq2_date || '',
+                    reassign_start_date:
+                        project?.reassign_start_date || '',
+                    reassign_dispatch_date:
+                        project?.reassign_dispatch_date || '',
+                    reassign_mq2_date:
+                        project?.reassign_mq2_date || ''
+                });
+
+            try {
+                if (
+                    Array.isArray(
+                        project?.revision_requests
+                    )
+                ) {
+                    const matches = [];
+
+                    project
+                        .revision_requests
+                        .forEach(
+                            (request, requestIndex) => {
+                                if (
+                                    approvedRequestMatchesRevisionV77X(
+                                        request,
+                                        phaseId,
+                                        revision
+                                    )
+                                ) {
+                                    matches.push(
+                                        requestIndex
+                                    );
+                                }
+                            }
+                        );
+
+                    if (matches.length) {
+                        project
+                            .revision_requests
+                            .splice(
+                                matches[
+                                    matches.length - 1
+                                ],
+                                1
+                            );
+                    }
+                }
+
+                revisions.splice(index, 1);
+
+                revisions.forEach(
+                    (item, itemIndex) => {
+                        item.label =
+                            'R' + (itemIndex + 1);
+                    }
+                );
+
+                data.revisions =
+                    revisions;
+
+                const latest =
+                    revisions.length
+                        ? revisions[
+                            revisions.length - 1
+                          ]
+                        : null;
+
+                data.reassign_start =
+                    latest?.start || '';
+
+                data.reassign_end =
+                    latest?.end || '';
+
+                rebuildParentAfterRevisionDeleteV77X(
+                    phase?.parent || ''
+                );
+
+                const saved =
+                    await syncProject();
+
+                if (saved === false) {
+                    throw new Error(
+                        'Project save did not complete.'
+                    );
+                }
+
+                if (
+                    typeof renderTable === 'function'
+                ) {
+                    renderTable();
+                }
+
+                renderRevisionDeleteListV77X();
+
+                if (
+                    typeof showToast === 'function'
+                ) {
+                    showToast(
+                        label +
+                        ' revised date deleted.',
+                        false
+                    );
+                }
+            }
+            catch (error) {
+                console.error(
+                    '[PMIS V77X] Revised-date deletion failed:',
+                    error
+                );
+
+                try {
+                    const restore =
+                        JSON.parse(before);
+
+                    project.detailed_phases =
+                        restore.detailed_phases;
+
+                    project.revision_requests =
+                        restore.revision_requests;
+
+                    project.start_date =
+                        restore.start_date;
+
+                    project.dispatch_date =
+                        restore.dispatch_date;
+
+                    project.mq2_date =
+                        restore.mq2_date;
+
+                    project.reassign_start_date =
+                        restore.reassign_start_date;
+
+                    project.reassign_dispatch_date =
+                        restore.reassign_dispatch_date;
+
+                    project.reassign_mq2_date =
+                        restore.reassign_mq2_date;
+
+                    if (
+                        typeof renderTable ===
+                        'function'
+                    ) {
+                        renderTable();
+                    }
+
+                    renderRevisionDeleteListV77X();
+                }
+                catch (_) {}
+
+                alert(
+                    'The revised date could not be deleted. No local change was retained.'
+                );
+            }
+        };
+
+    window.pmisReviewUnlockBaselineV77X =
+        async function () {
+            if (!isReviewAdminV77X()) {
+                alert(
+                    'Only review@danprel can unlock a submitted baseline.'
+                );
+                return;
+            }
+
+            if (
+                normV77X(
+                    project?.plan_status
+                ) !== 'submitted'
+            ) {
+                alert(
+                    'This baseline is not currently locked.'
+                );
+                return;
+            }
+
+            const okay =
+                confirm(
+                    'Unlock this submitted baseline?\n\n' +
+                    'Existing baseline dates and approved revision history will be retained.\n\n' +
+                    'The PM will be able to correct or add missing Plan dates and submit the baseline again.'
+                );
+
+            if (!okay) return;
+
+            try {
+                await setPlanStatus('saved');
+
+                if (
+                    typeof showToast === 'function'
+                ) {
+                    showToast(
+                        'Baseline unlocked by review@danprel.',
+                        false
+                    );
+                }
+            }
+            catch (error) {
+                console.error(
+                    '[PMIS V77X] Baseline unlock failed:',
+                    error
+                );
+
+                alert(
+                    'Baseline unlock failed. Please refresh and try again.'
+                );
+            }
+        };
+
+    const oldRenderPlanHeaderV77X =
+        window.renderPlanHeader;
+
+    if (
+        typeof oldRenderPlanHeaderV77X ===
+        'function'
+    ) {
+        window.renderPlanHeader =
+            function () {
+                const result =
+                    oldRenderPlanHeaderV77X
+                        .apply(
+                            this,
+                            arguments
+                        );
+
+                if (
+                    !isReviewAdminV77X() ||
+                    !project
+                ) {
+                    return result;
+                }
+
+                const container =
+                    document.getElementById(
+                        'planHeaderActions'
+                    );
+
+                if (!container) {
+                    return result;
+                }
+
+                document
+                    .getElementById(
+                        'pmisReviewAdminPlanControlsV77X'
+                    )
+                    ?.remove();
+
+                const status =
+                    normV77X(
+                        project?.plan_status ||
+                        'pending'
+                    );
+
+                const count =
+                    revisionCountV77X();
+
+                if (
+                    status !== 'submitted' &&
+                    count < 1
+                ) {
+                    return result;
+                }
+
+                const wrap =
+                    document.createElement(
+                        'div'
+                    );
+
+                wrap.id =
+                    'pmisReviewAdminPlanControlsV77X';
+
+                wrap.className =
+                    'd-flex flex-column align-items-end ms-2';
+
+                const buttons = [];
+
+                if (status === 'submitted') {
+                    buttons.push(`
+                        <button
+                            type="button"
+                            class="pmis-v77x-admin-btn pmis-v77x-unlock"
+                            onclick="pmisReviewUnlockBaselineV77X()"
+                            title="Unlock baseline so Plan dates can be corrected"
+                        >
+                            <i class="bi bi-unlock-fill"></i>
+                            UNLOCK BASELINE
+                        </button>
+                    `);
+                }
+
+                if (count > 0) {
+                    buttons.push(`
+                        <button
+                            type="button"
+                            class="pmis-v77x-admin-btn pmis-v77x-revisions"
+                            onclick="pmisManageApprovedRevisionsV77X()"
+                            title="Delete an approved revised date"
+                        >
+                            <i class="bi bi-calendar-x-fill"></i>
+                            MANAGE REVISED DATES
+                        </button>
+                    `);
+                }
+
+                wrap.innerHTML = `
+                    <div class="d-flex gap-2 flex-wrap justify-content-end">
+                        ${buttons.join('')}
+                    </div>
+                    <div class="pmis-v77x-admin-note">
+                        review@danprel administration
+                    </div>
+                `;
+
+                container.appendChild(wrap);
+
+                return result;
+            };
+    }
+
+    /*
+     * The current table render calls renderPlanHeader().
+     * Re-render once so review@danprel sees the new controls immediately.
+     */
+    setTimeout(() => {
+        try {
+            if (
+                isReviewAdminV77X() &&
+                project &&
+                typeof renderTable ===
+                    'function'
+            ) {
+                renderTable();
+            }
+        }
+        catch (error) {
+            console.warn(
+                '[PMIS V77X] Initial admin control render skipped:',
+                error
+            );
+        }
+    }, 180);
+})();
+
+</script>
 </body>
 
 </html>

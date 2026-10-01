@@ -56,6 +56,496 @@
 
     <link rel="stylesheet" href="pmis-menu-exact-dashboard-v4.css">
     <link rel="stylesheet" href="pmis-finance-menu-access-v41.css">
+
+<!-- PMIS_PROJECT_PHASE_FILTER_V77I -->
+<script id="pmis-project-phase-filter-v77i-early">
+(function(){
+'use strict';
+
+/*
+ * PMIS V77I2
+ *
+ * Project Phase means:
+ * "show finance linked to payment milestones inside this phase".
+ *
+ * It DOES NOT filter by the project's current lifecycle phase.
+ *
+ * A parent phase includes:
+ * - its own parent-stage ID,
+ * - all fixed child/sub-stage IDs,
+ * - all custom V74Q substages whose parent matches the phase.
+ */
+
+if(window.__PMIS_PROJECT_PHASE_FILTER_V77I__)return;
+window.__PMIS_PROJECT_PHASE_FILTER_V77I__=true;
+
+const PARAM='pmis_phase';
+
+const PHASES=[
+ {
+  key:'kickoff',
+  label:'1. Kickoff',
+  children:[
+   'kickoff_1',
+   'kickoff_2'
+  ]
+ },
+ {
+  key:'design',
+  label:'2. Design',
+  children:[
+   'design_1',
+   'design_2',
+   'design_critical_approval',
+   'design_3',
+   'design_4',
+   'design_5',
+   'design_6'
+  ]
+ },
+ {
+  key:'purchase',
+  label:'3. Purchase',
+  children:[
+   'purchase_1',
+   'purchase_2'
+  ]
+ },
+ {
+  key:'mech_assembly',
+  label:'4. Machine Assembly',
+  children:[
+   'mech_assembly_1',
+   'mech_assembly_2'
+  ]
+ },
+ {
+  key:'program',
+  label:'5. Programming',
+  children:[
+   'prog_plc_offline',
+   'prog_plc',
+   'prog_robot',
+   'prog_labview'
+  ]
+ },
+ {
+  key:'inhouse',
+  label:'6. Inhouse Trials',
+  children:[
+   'inhouse_1',
+   'inhouse_2'
+  ]
+ },
+ {
+  key:'mq1_fat',
+  label:'7. MQ1/FAT (Machine Qualification)',
+  children:[
+   'mq1_fat_1',
+   'mq1_fat_2',
+   'mq1_fat_3'
+  ]
+ },
+ {
+  key:'dispatch_parent',
+  label:'8. Machine Dispatch',
+  children:[
+   'dispatch_1',
+   'dispatch_2'
+  ]
+ },
+ {
+  key:'inc_parent',
+  label:'9. Installation & Commissioning',
+  children:[
+   'inc_1',
+   'inc_2',
+   'inc_3',
+   'inc_4'
+  ]
+ }
+];
+
+window.PMIS_PHASE_FILTERS_V77I=
+ PHASES.map(item=>({
+  key:item.key,
+  label:item.label
+ }));
+
+function text(value){
+ return String(
+  value??''
+ ).trim();
+}
+
+function linkedStageId(milestone){
+ return text(
+  milestone?.linked_stage_id ??
+  milestone?.linkedStageId ??
+  milestone?.stage_id ??
+  milestone?.stageId ??
+  milestone?.phase_id ??
+  milestone?.phaseId ??
+  milestone?.linked_phase_id ??
+  milestone?.linkedPhaseId
+ );
+}
+
+function customDefinitions(project){
+ const rows=
+  project
+   ?.detailed_phases
+   ?.__custom_substages_v74q;
+
+ return Array.isArray(rows)
+  ?rows
+  :[];
+}
+
+function parentPhaseForStage(
+ project,
+ stageId
+){
+ const id=
+  text(
+   stageId
+  );
+
+ if(!id)return '';
+
+ /*
+  * Advance / PO-date milestone is treated as Kickoff finance,
+  * because it occurs at project commencement.
+  */
+ if(id==='po_date'){
+  return 'kickoff';
+ }
+
+ const direct=
+  PHASES.find(item=>
+   item.key===id
+  );
+
+ if(direct){
+  return direct.key;
+ }
+
+ for(const item of PHASES){
+  if(
+   item.children.includes(
+    id
+   )
+  ){
+   return item.key;
+  }
+ }
+
+ /*
+  * Project-specific custom substages:
+  * { id:'custom_...', parent:'design', ... }
+  */
+ const custom=
+  customDefinitions(
+   project
+  ).find(item=>
+   text(item?.id)===id
+  );
+
+ if(custom){
+  const parent=
+   text(
+    custom?.parent
+   );
+
+  if(
+   PHASES.some(item=>
+    item.key===parent
+   )
+  ){
+   return parent;
+  }
+ }
+
+ /*
+  * Safe prefix fallback for known PMIS fixed IDs.
+  */
+ if(/^kickoff(?:_|$)/.test(id))return 'kickoff';
+ if(/^design(?:_|$)/.test(id))return 'design';
+ if(/^purchase(?:_|$)/.test(id))return 'purchase';
+ if(/^mech_assembly(?:_|$)/.test(id))return 'mech_assembly';
+ if(/^prog(?:_|$)/.test(id))return 'program';
+ if(/^inhouse(?:_|$)/.test(id))return 'inhouse';
+ if(/^mq1_fat(?:_|$)/.test(id))return 'mq1_fat';
+ if(/^dispatch(?:_|$)/.test(id))return 'dispatch_parent';
+ if(/^inc(?:_|$)/.test(id))return 'inc_parent';
+
+ return '';
+}
+
+function matchesPhase(
+ project,
+ milestone,
+ phaseKey
+){
+ return (
+  parentPhaseForStage(
+   project,
+   linkedStageId(
+    milestone
+   )
+  )===
+  phaseKey
+ );
+}
+
+window.pmisPaymentParentPhaseV77I2=
+ parentPhaseForStage;
+
+function milestoneSource(project){
+ const candidates=[
+  project?.payment_milestones,
+  project?.paymentMilestones,
+  project?.payment_terms,
+  project?.paymentTerms
+ ];
+
+ return candidates.find(
+  Array.isArray
+ )||
+ [];
+}
+
+function scopeProjectToPhase(
+ project,
+ phaseKey
+){
+ const source=
+  milestoneSource(
+   project
+  );
+
+ if(!source.length){
+  return null;
+ }
+
+ const selected=
+  source.filter(milestone=>
+   matchesPhase(
+    project,
+    milestone,
+    phaseKey
+   )
+  );
+
+ if(!selected.length){
+  return null;
+ }
+
+ const scoped={
+  ...project
+ };
+
+ /*
+  * Keep every supported milestone alias synchronized so both
+  * cashflow.html and financial_analytics.html read the same scope.
+  */
+ scoped.payment_milestones=
+  selected;
+
+ if(
+  Array.isArray(
+   project?.paymentMilestones
+  )
+ ){
+  scoped.paymentMilestones=
+   selected;
+ }
+
+ if(
+  Array.isArray(
+   project?.payment_terms
+  )
+ ){
+  scoped.payment_terms=
+   selected;
+ }
+
+ if(
+  Array.isArray(
+   project?.paymentTerms
+  )
+ ){
+  scoped.paymentTerms=
+   selected;
+ }
+
+ return scoped;
+}
+
+const params=
+ new URLSearchParams(
+  location.search
+ );
+
+const active=
+ text(
+  params.get(
+   PARAM
+  )
+ );
+
+window.PMIS_ACTIVE_PHASE_V77I=
+ active;
+
+if(!active){
+ return;
+}
+
+const valid=
+ PHASES.some(item=>
+  item.key===active
+ );
+
+if(!valid){
+ params.delete(
+  PARAM
+ );
+
+ const clean=
+  location.pathname+
+  (
+   params.toString()
+    ?'?'+params.toString()
+    :''
+  )+
+  location.hash;
+
+ history.replaceState(
+  null,
+  '',
+  clean
+ );
+
+ window.PMIS_ACTIVE_PHASE_V77I='';
+ return;
+}
+
+const nativeFetch=
+ window.fetch.bind(
+  window
+ );
+
+window.fetch=
+ async function(
+  input,
+  init
+ ){
+  const response=
+   await nativeFetch(
+    input,
+    init
+   );
+
+  let url='';
+
+  try{
+   url=
+    typeof input==='string'
+     ?input
+     :String(
+       input?.url||
+       ''
+      );
+  }
+  catch(_){
+   return response;
+  }
+
+  if(
+   !response.ok||
+   !/\/api\/projects(?:[?#]|$)/i.test(
+    url
+   )
+  ){
+   return response;
+  }
+
+  try{
+   const clone=
+    response.clone();
+
+   const payload=
+    await clone.json();
+
+   if(
+    !Array.isArray(
+     payload
+    )
+   ){
+    return response;
+   }
+
+   const scoped=
+    payload
+     .map(project=>
+      scopeProjectToPhase(
+       project,
+       active
+      )
+     )
+     .filter(Boolean);
+
+   const headers=
+    new Headers(
+     response.headers
+    );
+
+   try{
+    headers.delete(
+     'content-length'
+    );
+   }
+   catch(_){}
+
+   try{
+    headers.delete(
+     'content-encoding'
+    );
+   }
+   catch(_){}
+
+   headers.set(
+    'content-type',
+    'application/json; charset=utf-8'
+   );
+
+   return new Response(
+    JSON.stringify(
+     scoped
+    ),
+    {
+     status:
+      response.status,
+
+     statusText:
+      response.statusText,
+
+     headers
+    }
+   );
+  }
+  catch(error){
+   console.warn(
+    '[PMIS V77I2] Payment-phase scope fallback:',
+    error
+   );
+
+   return response;
+  }
+ };
+
+})();
+</script>
 </head>
 <body>
 <div class="side" id="side">
@@ -759,4 +1249,328 @@ async function xlsx(){if(!model)return alert('Financial data is not loaded.');co
 
 <script src="pmis-menu-exact-dashboard-v4.js"></script>
 <script src="pmis-finance-menu-access-v41.js"></script>
+
+<script id="pmis-project-phase-filter-v77i-ui">
+(function(){
+'use strict';
+
+const PARAM='pmis_phase';
+
+function phases(){
+ return Array.isArray(
+  window.PMIS_PHASE_FILTERS_V77I
+ )
+  ?window.PMIS_PHASE_FILTERS_V77I
+  :[];
+}
+
+function current(){
+ return String(
+  new URLSearchParams(
+   location.search
+  ).get(PARAM)||
+  ''
+ );
+}
+
+function findFilterGrid(){
+ const direct=
+  document.querySelector(
+   '.filter-grid'
+  );
+
+ if(direct)return direct;
+
+ const labels=
+  Array.from(
+   document.querySelectorAll(
+    'label'
+   )
+  );
+
+ const financialYearLabel=
+  labels.find(label=>
+   /financial\s*year|fiscal\s*year|\bfy\b/i.test(
+    String(
+     label.textContent||
+     ''
+    )
+   )
+  );
+
+ if(
+  financialYearLabel?.parentElement?.parentElement
+ ){
+  return financialYearLabel
+   .parentElement
+   .parentElement;
+ }
+
+ const projectLabel=
+  labels.find(label=>
+   /^project$/i.test(
+    String(
+     label.textContent||
+     ''
+    ).trim()
+   )
+  );
+
+ if(
+  projectLabel?.parentElement?.parentElement
+ ){
+  return projectLabel
+   .parentElement
+   .parentElement;
+ }
+
+ return null;
+}
+
+function createStandaloneHost(){
+ let panel=
+  document.getElementById(
+   'pmisPhaseFilterStandaloneV77I'
+  );
+
+ if(panel)return panel;
+
+ panel=
+  document.createElement(
+   'section'
+  );
+
+ panel.id=
+  'pmisPhaseFilterStandaloneV77I';
+
+ panel.className=
+  'panel';
+
+ panel.style.cssText=
+  'margin-bottom:14px;padding:14px 16px;';
+
+ const main=
+  document.querySelector(
+   'main'
+  )||
+  document.body;
+
+ const titleRow=
+  main.querySelector(
+   '.title-row'
+  );
+
+ if(titleRow){
+  titleRow.insertAdjacentElement(
+   'afterend',
+   panel
+  );
+ }
+ else{
+  main.prepend(
+   panel
+  );
+ }
+
+ return panel;
+}
+
+function setPhase(value){
+ const url=
+  new URL(
+   location.href
+  );
+
+ if(value){
+  url.searchParams.set(
+   PARAM,
+   value
+  );
+ }
+ else{
+  url.searchParams.delete(
+   PARAM
+  );
+ }
+
+ location.href=
+  url.toString();
+}
+
+function install(){
+ if(
+  document.getElementById(
+   'pmisPhaseFilterV77I'
+  )
+ ){
+  return;
+ }
+
+ const list=
+  phases();
+
+ if(!list.length)return;
+
+ const host=
+  findFilterGrid();
+
+ const wrapper=
+  document.createElement(
+   'div'
+  );
+
+ wrapper.id=
+  'pmisPhaseFilterWrapV77I';
+
+ wrapper.innerHTML=`
+  <label
+   for="pmisPhaseFilterV77I"
+  >
+   Project Phase
+  </label>
+
+  <select
+   id="pmisPhaseFilterV77I"
+   class="form-select"
+  >
+   <option value="">
+    All Phases
+   </option>
+
+   ${list.map(item=>`
+    <option value="${item.key}">
+     ${item.label}
+    </option>
+   `).join('')}
+  </select>
+ `;
+
+ if(host){
+  host.appendChild(
+   wrapper
+  );
+ }
+ else{
+  const standalone=
+   createStandaloneHost();
+
+  standalone.appendChild(
+   wrapper
+  );
+ }
+
+ const select=
+  document.getElementById(
+   'pmisPhaseFilterV77I'
+  );
+
+ if(!select)return;
+
+ const active=current();
+
+ if(
+  Array.from(
+   select.options
+  ).some(option=>
+   option.value===active
+  )
+ ){
+  select.value=active;
+ }
+
+ select.addEventListener(
+  'change',
+  ()=>{
+   setPhase(
+    String(
+     select.value||
+     ''
+    )
+   );
+  }
+ );
+
+ /*
+  * Existing page Clear / Reset button also clears Project Phase.
+  * Capture phase first, then allow the native handler to run.
+  */
+ const scope=
+  host?.closest(
+   'section'
+  )||
+  host||
+  document;
+
+ Array.from(
+  scope.querySelectorAll(
+   'button'
+  )
+ ).forEach(button=>{
+  const text=
+   String(
+    button.textContent||
+    ''
+   ).trim();
+
+  if(
+   !/^(clear|clear filters|reset|reset filters)$/i.test(
+    text
+   )
+  ){
+   return;
+  }
+
+  button.addEventListener(
+   'click',
+   ()=>{
+    if(!current())return;
+
+    const url=
+     new URL(
+      location.href
+     );
+
+    url.searchParams.delete(
+     PARAM
+    );
+
+    setTimeout(
+     ()=>{
+      location.href=
+       url.toString();
+     },
+     0
+    );
+   },
+   {
+    capture:true
+   }
+  );
+ });
+}
+
+if(
+ document.readyState==='loading'
+){
+ document.addEventListener(
+  'DOMContentLoaded',
+  install,
+  {
+   once:true
+  }
+ );
+}
+else{
+ install();
+}
+
+})();
+</script>
+<!-- /PMIS_PROJECT_PHASE_FILTER_V77I -->
+
+<!-- PMIS_PHASE_MILESTONE_FILTER_V77I2
+Project Phase filters PAYMENT MILESTONES by linked stage / sub-stage.
+Includes fixed child stages and project-specific V74Q custom substages.
+Does not filter by current project lifecycle phase.
+-->
 </body></html>

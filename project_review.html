@@ -24395,6 +24395,175 @@ async function sendReport(payload,button,originalHtml) {
  document.addEventListener('DOMContentLoaded',()=>setTimeout(install,0),{once:true});
 })();
 </script>
+
+<!-- PMIS_LOCAL_MANUAL_MODE_ONLY_V1 -->
+<script>
+(function () {
+    'use strict';
+
+    /*
+     * LOCAL TESTING ONLY
+     * 1. Disable automatic Customer Feedback reconciliation.
+     * 2. Keep manual Customer Feedback workflow untouched.
+     * 3. Force Invoice Register + Financial Analytics menu visibility.
+     * 4. No backend/database changes.
+     */
+
+    const originalFetch = window.fetch.bind(window);
+
+    window.fetch = function(input, options) {
+        const url =
+            typeof input === 'string'
+                ? input
+                : String(input?.url || '');
+
+        if (
+            url.includes('/api/customer-feedback/sync')
+        ) {
+            console.info(
+                '[PMIS LOCAL] Automatic Customer Feedback sync blocked.'
+            );
+
+            return Promise.resolve(
+                new Response(
+                    JSON.stringify({
+                        ok: true,
+                        persisted: false,
+                        projects: []
+                    }),
+                    {
+                        status: 200,
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    }
+                )
+            );
+        }
+
+        return originalFetch(input, options);
+    };
+
+
+    function ensureLocalFinanceMenus() {
+
+        const sidebar =
+            document.getElementById('sidebar');
+
+        if (!sidebar) return;
+
+
+        function ensureLink(id, href, icon, text) {
+
+            let link =
+                document.getElementById(id);
+
+            if (!link) {
+                link =
+                    document.createElement('a');
+
+                link.id = id;
+                link.href = href;
+                link.className = 'sidebar-btn';
+
+                link.innerHTML =
+                    '<div class="sb-icon">' +
+                    '<i class="bi ' + icon + '"></i>' +
+                    '</div>' +
+                    text;
+            }
+
+            const links =
+                Array.from(
+                    sidebar.querySelectorAll(
+                        'a.sidebar-btn'
+                    )
+                );
+
+            const cashflow =
+                links.find(a =>
+                    String(
+                        a.getAttribute('href') || ''
+                    )
+                    .replace('./','')
+                    .split('?')[0]
+                    === 'cashflow.html'
+                );
+
+            if (!link.isConnected) {
+                if (cashflow) {
+                    cashflow.insertAdjacentElement(
+                        'afterend',
+                        link
+                    );
+                }
+                else {
+                    sidebar.appendChild(link);
+                }
+            }
+
+            return link;
+        }
+
+
+        const invoice =
+            ensureLink(
+                'pmisLocalInvoiceRegister',
+                'invoice_register.html',
+                'bi-receipt-cutoff',
+                'Invoice Register'
+            );
+
+        const analytics =
+            ensureLink(
+                'pmisLocalFinancialAnalytics',
+                'financial_analytics.html',
+                'bi-bar-chart-line-fill',
+                'Financial Analytics'
+            );
+
+        if (
+            invoice &&
+            analytics &&
+            invoice.nextElementSibling !== analytics
+        ) {
+            invoice.insertAdjacentElement(
+                'afterend',
+                analytics
+            );
+        }
+    }
+
+
+    if (document.readyState === 'loading') {
+        document.addEventListener(
+            'DOMContentLoaded',
+            ensureLocalFinanceMenus,
+            { once:true }
+        );
+    }
+    else {
+        ensureLocalFinanceMenus();
+    }
+
+    // Existing PMIS scripts may rebuild/remove sidebar items.
+    // Re-check for a few seconds locally.
+    let attempts = 0;
+
+    const timer =
+        setInterval(() => {
+            attempts++;
+            ensureLocalFinanceMenus();
+
+            if (attempts >= 20) {
+                clearInterval(timer);
+            }
+        },500);
+
+})();
+</script>
+<!-- /PMIS_LOCAL_MANUAL_MODE_ONLY_V1 -->
+
 <script src="pmis-nav-fix-v3.js"></script>
 <script src="pmis-finance-menu-access-v41.js"></script>
 </body>

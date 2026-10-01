@@ -6172,11 +6172,71 @@ async function patchInvoices(p,next){
   finance_invoice_updated_at:new Date().toISOString(),
   finance_invoice_updated_by:identityName()
  };
- const res=await fetch('/api/projects/'+encodeURIComponent(p._id),{
-  method:'PATCH',headers:headers(true),cache:'no-store',body:JSON.stringify(payload)
- });
+
+ const res=await fetch(
+  '/api/projects/'+
+  encodeURIComponent(p._id)+
+  '/finance-invoices',
+  {
+   method:'PATCH',
+   headers:headers(true),
+   cache:'no-store',
+   body:JSON.stringify(payload)
+  }
+ );
+
  const data=await res.json().catch(()=>({}));
- if(!res.ok)throw new Error(data.error||data.message||('Invoice update failed (HTTP '+res.status+')'));
+
+ if(!res.ok){
+  throw new Error(
+   data.error||
+   data.message||
+   ('Invoice update failed (HTTP '+res.status+')')
+  );
+ }
+
+ // PMIS_INVOICE_SAVE_PERSISTENCE_V77J2
+ // A 200 response is not enough: confirm DB-backed invoice data came back.
+ if(!Array.isArray(data?.finance_invoices)){
+  throw new Error(
+   'Invoice save was not persisted by the server. '+
+   'Restart the PMIS backend and try again.'
+  );
+ }
+
+ if(data.finance_invoices.length!==next.length){
+  throw new Error(
+   'Invoice persistence verification failed. Expected '+
+   next.length+
+   ' billing record(s), server returned '+
+   data.finance_invoices.length+
+   '.'
+  );
+ }
+
+ const expectedIds=
+  next
+   .map(row=>String(row?.id||''))
+   .filter(Boolean);
+
+ const returnedIds=
+  new Set(
+   data.finance_invoices
+    .map(row=>String(row?.id||''))
+    .filter(Boolean)
+  );
+
+ if(
+  expectedIds.some(id=>
+   !returnedIds.has(id)
+  )
+ ){
+  throw new Error(
+   'Invoice persistence verification failed. '+
+   'The saved billing record was not returned by the database.'
+  );
+ }
+
  return data;
 }
 
@@ -8074,5 +8134,7 @@ window.addEventListener(
 
 <script src="pmis-menu-exact-dashboard-v4.js"></script>
 <script src="pmis-finance-menu-access-v41.js"></script>
+
+<!-- PMIS_INVOICE_SAVE_PERSISTENCE_V77J2 -->
 </body>
 </html>

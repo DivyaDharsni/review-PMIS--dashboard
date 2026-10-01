@@ -87,8 +87,16 @@ app.use('/api', (req, res, next) => {
     const isExistingRecordEdit =
         (req.method === 'PATCH' && /^\/api\/projects\/[^/]+$/.test(requestPath)) ||
         (req.method === 'PATCH' && /^\/api\/action-points\/[^/]+$/.test(requestPath));
+
+    // PMIS_INVOICE_SAVE_PERSISTENCE_V77J2
+    // Narrow exception for Invoice Register only.
+    const isFinanceInvoiceWriteV77J2 =
+        req.method === 'PATCH' &&
+        /^\/api\/projects\/[^/]+\/finance-invoices$/.test(requestPath);
+
     const isAllowedLocalWrite =
         isLoginRequest ||
+        isFinanceInvoiceWriteV77J2 ||
         (ALLOW_LOCAL_FEEDBACK_WRITES && isFeedbackWrite) ||
         isCustomerFeedbackRequirementWrite ||
         isCustomerFeedbackManualStatusWrite ||
@@ -227,6 +235,21 @@ const ProjectSchema = new mongoose.Schema({
     po_value: Number,
     // PMIS_FINANCEMIS_V77D2
     po_reference: { type: String, default: '' },
+
+    // PMIS_INVOICE_SAVE_PERSISTENCE_V77J2
+    // Invoice Register persistence fields.
+    finance_invoices: {
+        type: [mongoose.Schema.Types.Mixed],
+        default: []
+    },
+    finance_invoice_updated_at: {
+        type: String,
+        default: ''
+    },
+    finance_invoice_updated_by: {
+        type: String,
+        default: ''
+    },
     // PMIS_GROSS_CASHFLOW_GST_OVERRECEIPT_V76F4
     cashflow_order_type: {
         type: String,
@@ -1152,6 +1175,69 @@ async function pmisAuthorizeProjectWriteV24(req, res, next) {
     }
 
     const segments = String(req.path || '').split('/').filter(Boolean);
+
+    // PMIS_INVOICE_SAVE_PERSISTENCE_V77J2
+    // Invoice Register is editable by Admin / Finance / Accounts only.
+    const isFinanceInvoiceRouteV77J2 =
+        method === 'PATCH' &&
+        segments.length === 2 &&
+        segments[1] === 'finance-invoices';
+
+    if (isFinanceInvoiceRouteV77J2) {
+        const identityFiltersV77J2 = [];
+
+        const employeeIdV77J2 =
+            String(user.employeeId || '').trim();
+
+        const usernameV77J2 =
+            String(user.username || '').trim();
+
+        if (employeeIdV77J2) {
+            identityFiltersV77J2.push({
+                employee_id: employeeIdV77J2
+            });
+        }
+
+        if (usernameV77J2) {
+            identityFiltersV77J2.push({
+                username: usernameV77J2
+            });
+        }
+
+        let employeeV77J2 = null;
+
+        if (identityFiltersV77J2.length) {
+            employeeV77J2 =
+                await Employee.findOne({
+                    $or: identityFiltersV77J2
+                }).lean();
+        }
+
+        const financeIdentityV77J2 = [
+            user.authRole,
+            user.designation,
+            employeeV77J2?.authRole,
+            employeeV77J2?.role
+        ]
+            .map(value => String(value || '').trim().toLowerCase())
+            .join(' ');
+
+        const isFinanceV77J2 =
+            /(^|\s)(finance|accounts?|account)(\s|$)/i
+                .test(financeIdentityV77J2);
+
+        if (!isFinanceV77J2) {
+            return pmisUnauthorizedV24(
+                res,
+                403,
+                'Only Admin / Finance / Accounts can manage Invoice Register billing records.'
+            );
+        }
+
+        req.pmisUser = user;
+        return next();
+    }
+
     const projectId = String(req.body?._id || segments[0] || '').trim();
 
     // Individual logins cannot create a brand-new project because it is not yet
@@ -1500,6 +1586,71 @@ app.post('/api/projects', async (req, res) => {
     } catch (err) {
         console.error('❌ [POST] /api/projects Error:', err.message);
         res.status(500).json({ error: err.message });
+    }
+});
+
+
+// PMIS_INVOICE_SAVE_PERSISTENCE_V77J2
+// Dedicated Invoice Register persistence endpoint.
+// This avoids mixing billing writes with generic project editing.
+app.patch('/api/projects/:id/finance-invoices', async (req, res) => {
+    try {
+        const invoices =
+            req.body?.finance_invoices;
+
+        if (!Array.isArray(invoices)) {
+            return res.status(400).json({
+                error: 'finance_invoices must be an array.'
+            });
+        }
+
+        const updatedAt =
+            String(
+                req.body?.finance_invoice_updated_at ||
+                new Date().toISOString()
+            );
+
+        const updatedBy =
+            String(
+                req.body?.finance_invoice_updated_by ||
+                ''
+            ).slice(0,160);
+
+        const p =
+            await Project.findByIdAndUpdate(
+                req.params.id,
+                {
+                    $set: {
+                        finance_invoices: invoices,
+                        finance_invoice_updated_at: updatedAt,
+                        finance_invoice_updated_by: updatedBy
+                    }
+                },
+                {
+                    returnDocument: 'after',
+                    runValidators: true
+                }
+            );
+
+        if (!p) {
+            return res.status(404).json({
+                error: 'Project not found.'
+            });
+        }
+
+        return res.json(p);
+    }
+    catch (err) {
+        console.error(
+            '[INVOICE REGISTER] Save failed:',
+            err.message
+        );
+
+        return res.status(500).json({
+            error:
+                err.message ||
+                'Unable to save Invoice Register billing record.'
+        });
     }
 });
 
@@ -3886,3 +4037,5 @@ module.exports = app;
 /* PMIS_GROSS_CASHFLOW_GST_OVERRECEIPT_V76F4 */
 
 /* PMIS_PROJECT_GST_PERCENT_V76I5 */
+// PMIS_INVOICE_SAVE_PERSISTENCE_V77J2
+// V77J2 COMPLETE
