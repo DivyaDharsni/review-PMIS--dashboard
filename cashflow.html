@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <script id="pmis-lead-view-cashflow-direct-access-guard-v75p">
@@ -704,20 +704,20 @@ window.fetch=
         </section>
 
         <div class="kpis">
-            <div class="panel kpi"><small>Net PO Value</small><b id="kPo">Γé╣0</b><div class="sub">Net PO value; Domestic plan includes 18% GST</div></div>
+            <div class="panel kpi"><small>Net PO Value</small><b id="kPo">₹0</b><div class="sub">Net PO value; Domestic plan includes 18% GST</div></div>
             <div class="panel kpi">
                 <small>GST Value</small>
-                <b id="kGst">Γé╣0</b>
+                <b id="kGst">₹0</b>
                 <div class="sub">18% for Domestic orders; zero for International</div>
             </div>
             <div class="panel kpi">
                 <small>Gross PO Value</small>
-                <b id="kGrossPo">Γé╣0</b>
+                <b id="kGrossPo">₹0</b>
                 <div class="sub">Net PO Value + applicable GST</div>
             </div>
-            <div class="panel kpi"><small>Planned Collection</small><b id="kPlanned">Γé╣0</b><div class="sub">Filtered payment milestones</div></div>
-            <div class="panel kpi"><small>Actual Collected</small><b id="kActual">Γé╣0</b><div class="sub">Customer receipts recorded</div></div>
-            <div class="panel kpi"><small>Outstanding</small><b id="kOutstanding">Γé╣0</b><div class="sub">Planned amount less receipts</div></div>
+            <div class="panel kpi"><small>Planned Collection</small><b id="kPlanned">₹0</b><div class="sub">Filtered payment milestones</div></div>
+            <div class="panel kpi"><small>Actual Collected</small><b id="kActual">₹0</b><div class="sub">Customer receipts recorded</div></div>
+            <div class="panel kpi"><small>Outstanding</small><b id="kOutstanding">₹0</b><div class="sub">Planned amount less receipts</div></div>
             <div class="panel kpi"><small>Collection %</small><b id="kCollection">0%</b><div class="sub">Actual / planned collection</div></div>
         </div>
 
@@ -736,27 +736,27 @@ window.fetch=
             <div class="pmis-v77t-kpis">
                 <div class="pmis-v77t-kpi">
                     <small>Planned Gross</small>
-                    <b id="pmisInvPlannedV77T">Γé╣0</b>
+                    <b id="pmisInvPlannedV77T">₹0</b>
                     <span>Milestone gross in scope</span>
                 </div>
                 <div class="pmis-v77t-kpi">
                     <small>Tax Invoiced</small>
-                    <b id="pmisInvTaxV77T">Γé╣0</b>
+                    <b id="pmisInvTaxV77T">₹0</b>
                     <span>Invoice gross only; Proforma excluded</span>
                 </div>
                 <div class="pmis-v77t-kpi">
                     <small>Yet to Invoice</small>
-                    <b id="pmisInvYetV77T">Γé╣0</b>
+                    <b id="pmisInvYetV77T">₹0</b>
                     <span>Planned gross less tax invoices</span>
                 </div>
                 <div class="pmis-v77t-kpi">
                     <small>Actual Received</small>
-                    <b id="pmisInvReceivedV77T">Γé╣0</b>
+                    <b id="pmisInvReceivedV77T">₹0</b>
                     <span>Existing receipt realization</span>
                 </div>
                 <div class="pmis-v77t-kpi">
                     <small>Invoice Receivable</small>
-                    <b id="pmisInvReceivableV77T">Γé╣0</b>
+                    <b id="pmisInvReceivableV77T">₹0</b>
                     <span>Tax invoiced less receipts</span>
                 </div>
             </div>
@@ -889,7 +889,7 @@ window.fetch=
                         <div class="col-md-4">
                             <label class="form-label fw-bold">Invoice Gross</label>
                             <input type="text" id="pmisInvoiceGrossV77T" class="form-control fw-bold"
-                                   value="Γé╣0" readonly>
+                                   value="₹0" readonly>
                         </div>
 
                         <div class="col-md-8">
@@ -931,7 +931,7 @@ window.fetch=
                         <div><div class="fw-bold"><i class="bi bi-plus-circle me-1"></i>Add Split Payment</div><div class="small text-secondary">Use this again whenever another part-payment is realized.</div></div>
                     </div>
                     <div class="row g-3">
-                        <div class="col-md-6"><label class="form-label">Amount Received (Γé╣)</label><input id="rAmount" type="number" min="0.01" step="0.01" class="form-control"></div>
+                        <div class="col-md-6"><label class="form-label">Amount Received (₹)</label><input id="rAmount" type="number" min="0.01" step="0.01" class="form-control"></div>
                         <div class="col-md-6"><label class="form-label">Received Date</label><input id="rDate" type="date" class="form-control"></div>
                         <div class="col-12"><label class="form-label">Payment / UTR Reference <span class="text-secondary fw-normal">(Optional)</span></label><input id="rReference" maxlength="120" class="form-control" placeholder="Optional ΓÇö UTR / cheque / bank reference"></div>
                     <!-- PMIS_OPTIONAL_REFERENCE_ALWAYS_ADD_RECEIPT_V77N -->
@@ -990,7 +990,7 @@ function chartLabelMoneyV76A(value){
 
  if(Math.abs(amount)>=10000000){
   const cr=amount/10000000;
-  return 'Γé╣'+cr.toLocaleString(
+  return '₹'+cr.toLocaleString(
    'en-IN',
    {
     minimumFractionDigits:cr>=10?1:2,
@@ -1001,7 +1001,7 @@ function chartLabelMoneyV76A(value){
 
  if(Math.abs(amount)>=100000){
   const lakh=amount/100000;
-  return 'Γé╣'+lakh.toLocaleString(
+  return '₹'+lakh.toLocaleString(
    'en-IN',
    {
     minimumFractionDigits:lakh>=10?1:2,
@@ -1010,7 +1010,7 @@ function chartLabelMoneyV76A(value){
   )+'L';
  }
 
- return 'Γé╣'+Math.round(amount).toLocaleString('en-IN');
+ return '₹'+Math.round(amount).toLocaleString('en-IN');
 }
 
 const pmisV75ZDataLabels={
@@ -1481,7 +1481,7 @@ function canAccess(p){
  return !!assignment&&identities().some(id=>assignment.includes(id)||id.includes(assignment));
 }
 function money(v){
- const n=num(v);return 'Γé╣'+new Intl.NumberFormat('en-IN',{maximumFractionDigits:0}).format(Math.round(n));
+ const n=num(v);return '₹'+new Intl.NumberFormat('en-IN',{maximumFractionDigits:0}).format(Math.round(n));
 }
 function fmtDate(v){if(!v)return '-';const m=String(v).slice(0,10).match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?`${m[3]}/${m[2]}/${m[1]}`:String(v)}
 function addDays(v,days){if(!v)return '';const p=String(v).slice(0,10).split('-').map(Number);if(p.length!==3||p.some(Number.isNaN))return '';const d=new Date(p[0],p[1]-1,p[2]);d.setDate(d.getDate()+Math.max(0,Math.trunc(num(days))));return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')}
@@ -3099,7 +3099,7 @@ function ensurePlannedRevenueCardV77G(){
         color:#0b2b4a;
        "
       >
-       Γé╣0
+       ₹0
       </div>
      </div>
     </div>
@@ -3329,7 +3329,7 @@ function ensurePlannedRevenuePendingBadgeV77H(){
     color:#b91c1c;
    "
   >
-   Γé╣0
+   ₹0
   </div>
  `;
 
@@ -3917,7 +3917,7 @@ charts.revenueV77G=new Chart(canvas,{
      beginAtZero:true, grid:{display:false},border:{display:false}, grace:'16%',
      title:{
       display:true,
-      text:'Planned Revenue (Γé╣)',
+      text:'Planned Revenue (₹)',
       color:'#475569',
       font:{weight:'700'}
      },
@@ -4334,12 +4334,12 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
         const cr = num(value) / CR;
 
         if (short) {
-            if (Math.abs(cr) >= 100) return 'Γé╣' + cr.toFixed(0) + 'Cr';
-            if (Math.abs(cr) >= 10) return 'Γé╣' + cr.toFixed(1) + 'Cr';
-            return 'Γé╣' + cr.toFixed(2) + 'Cr';
+            if (Math.abs(cr) >= 100) return '₹' + cr.toFixed(0) + 'Cr';
+            if (Math.abs(cr) >= 10) return '₹' + cr.toFixed(1) + 'Cr';
+            return '₹' + cr.toFixed(2) + 'Cr';
         }
 
-        return 'Γé╣' + cr.toLocaleString(
+        return '₹' + cr.toLocaleString(
             'en-IN',
             {
                 minimumFractionDigits: 2,
@@ -7485,7 +7485,7 @@ const $=id=>document.getElementById(id);
 const num=v=>{const n=Number(v);return Number.isFinite(n)?n:0};
 const norm=v=>String(v??'').trim().toLowerCase();
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const money=v=>'Γé╣'+new Intl.NumberFormat('en-IN',{maximumFractionDigits:0}).format(Math.round(num(v)));
+const money=v=>'₹'+new Intl.NumberFormat('en-IN',{maximumFractionDigits:0}).format(Math.round(num(v)));
 const fmtDate=v=>{
  const s=String(v||'').slice(0,10),m=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
  return m?`${m[3]}/${m[2]}/${m[1]}`:(s||'-');
