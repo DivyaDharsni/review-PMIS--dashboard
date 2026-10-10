@@ -11980,25 +11980,27 @@ function getFilteredProjects() {
 
 <!-- PMIS_MAIN_PROJECT_STICKY_V50_START -->
 <style id="pmis-main-project-sticky-v50-style">
-    /* V50 affects ONLY the Main Project List card. */
+    /* PMIS_MAIN_PROJECT_STICKY_V50B
+       Freeze the complete Project List control/header area while project rows scroll.
+       No filtering, sorting, project data or export logic is changed.
+    */
+
     .pmis-main-project-card-v50 {
         overflow: visible !important;
     }
 
-    /* Keep the top filter pane visible during page scrolling. */
     .pmis-main-filter-v50 {
         position: sticky !important;
         top: 8px !important;
-        z-index: 120 !important;
+        z-index: 160 !important;
         isolation: isolate;
     }
 
-    /* Give the floating filter area a clean backing layer. */
     .pmis-main-filter-v50::before {
         content: "";
         position: absolute;
         inset: -8px -12px;
-        background: rgba(245, 248, 252, 0.96);
+        background: rgba(245, 248, 252, 0.97);
         backdrop-filter: blur(8px);
         -webkit-backdrop-filter: blur(8px);
         border-radius: 24px;
@@ -12006,72 +12008,76 @@ function getFilteredProjects() {
         pointer-events: none;
     }
 
-    /* PROJECT LIST title / search / export bar stays below the filter pane. */
     .pmis-main-project-card-v50 > .ui-card-header.pmis-main-card-head-v50 {
         position: sticky !important;
-        top: var(--pmis-v50-card-top, 82px) !important;
-        z-index: 110 !important;
+        top: var(--pmis-v50-card-top, 0px) !important;
+        z-index: 150 !important;
         border-radius: var(--radius-card, 20px) var(--radius-card, 20px) 0 0;
-        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.14);
+        transform: translateZ(0);
     }
 
-    /*
-      Rows scroll inside the project table area.
-      This allows the column titles to remain fixed at the top of the list.
-    */
     .pmis-main-project-card-v50 .table-responsive.pmis-main-table-scroll-v50 {
         position: relative !important;
         overflow: auto !important;
         max-height: var(--pmis-v50-table-height, 62vh) !important;
         overscroll-behavior: contain;
         scrollbar-gutter: stable;
+        isolation: isolate;
     }
 
-    /* Freeze ALL table titles while vertically scrolling project rows. */
-    .pmis-main-project-card-v50 #registryTable thead th {
+    .pmis-main-project-card-v50 #registryTable thead tr:nth-child(1) > th {
         position: sticky !important;
         top: 0 !important;
-        z-index: 60 !important;
+        z-index: 100 !important;
     }
 
-    /*
-      Tracking Code + Project Code remain visible while horizontally scrolling.
-      Left offsets are calculated from the live rendered column widths.
-    */
-    .pmis-main-project-card-v50 #registryTable .pmis-v50-tracking-col {
+    .pmis-main-project-card-v50 #registryTable thead tr:nth-child(2) > th {
+        position: sticky !important;
+        top: var(--pmis-v50-head-row1-height, 74px) !important;
+        z-index: 99 !important;
+    }
+
+    .pmis-main-project-card-v50 #registryTable .pmis-v50-sno-col {
         position: sticky !important;
         left: 0 !important;
-        z-index: 48 !important;
+        z-index: 88 !important;
+        background: #ffffff !important;
+    }
+
+    .pmis-main-project-card-v50 #registryTable .pmis-v50-tracking-col {
+        position: sticky !important;
+        left: var(--pmis-v50-sno-width, 70px) !important;
+        z-index: 87 !important;
         background: #ffffff !important;
     }
 
     .pmis-main-project-card-v50 #registryTable .pmis-v50-project-code-col {
         position: sticky !important;
-        left: var(--pmis-v50-tracking-width, 120px) !important;
-        z-index: 47 !important;
+        left: calc(
+            var(--pmis-v50-sno-width, 70px) +
+            var(--pmis-v50-tracking-width, 220px)
+        ) !important;
+        z-index: 86 !important;
         background: #ffffff !important;
         box-shadow: 8px 0 12px -10px rgba(15, 23, 42, 0.45);
         border-right: 1px solid #dbe4ee !important;
     }
 
-    /* Frozen header cells must sit above frozen body cells. */
-    .pmis-main-project-card-v50 #registryTable thead .pmis-v50-tracking-col {
-        z-index: 85 !important;
-        background: #ffffff !important;
-    }
-
+    .pmis-main-project-card-v50 #registryTable thead .pmis-v50-sno-col,
+    .pmis-main-project-card-v50 #registryTable thead .pmis-v50-tracking-col,
     .pmis-main-project-card-v50 #registryTable thead .pmis-v50-project-code-col {
-        z-index: 84 !important;
+        z-index: 130 !important;
         background: #ffffff !important;
     }
 
-    /* Preserve row hover feedback on the frozen columns. */
+    .pmis-main-project-card-v50 #registryTable tbody tr:hover > .pmis-v50-sno-col,
     .pmis-main-project-card-v50 #registryTable tbody tr:hover > .pmis-v50-tracking-col,
     .pmis-main-project-card-v50 #registryTable tbody tr:hover > .pmis-v50-project-code-col {
         background: #f8fafc !important;
     }
 
-    /* Keep frozen columns visually solid if a row/cell has transparent styling. */
+    .pmis-main-project-card-v50 #registryTable tbody > tr > .pmis-v50-sno-col,
     .pmis-main-project-card-v50 #registryTable tbody > tr > .pmis-v50-tracking-col,
     .pmis-main-project-card-v50 #registryTable tbody > tr > .pmis-v50-project-code-col {
         background-clip: padding-box !important;
@@ -12092,7 +12098,9 @@ function getFilteredProjects() {
 (function () {
     "use strict";
 
-    if (window.__PMIS_MAIN_PROJECT_STICKY_V50__) return;
+    /* PMIS_MAIN_PROJECT_STICKY_V50B */
+    if (window.__PMIS_MAIN_PROJECT_STICKY_V50B__) return;
+    window.__PMIS_MAIN_PROJECT_STICKY_V50B__ = true;
     window.__PMIS_MAIN_PROJECT_STICKY_V50__ = true;
 
     function cleanText(value) {
@@ -12102,15 +12110,17 @@ function getFilteredProjects() {
             .toLowerCase();
     }
 
-    function findHeaderIndex(table, label) {
+    function findHeaderIndex(table, labels) {
         if (!table || !table.tHead || !table.tHead.rows.length) return -1;
 
-        const wanted = cleanText(label);
+        const wanted = (Array.isArray(labels) ? labels : [labels])
+            .map(cleanText);
+
         const firstRow = table.tHead.rows[0];
 
         for (let i = 0; i < firstRow.cells.length; i += 1) {
             const cell = firstRow.cells[i];
-            if (cleanText(cell.textContent) === wanted) {
+            if (wanted.includes(cleanText(cell.textContent))) {
                 return cell.cellIndex;
             }
         }
@@ -12122,9 +12132,12 @@ function getFilteredProjects() {
         if (!table) return;
 
         table.querySelectorAll(
-            ".pmis-v50-tracking-col, .pmis-v50-project-code-col"
+            ".pmis-v50-sno-col, " +
+            ".pmis-v50-tracking-col, " +
+            ".pmis-v50-project-code-col"
         ).forEach(function (cell) {
             cell.classList.remove(
+                "pmis-v50-sno-col",
                 "pmis-v50-tracking-col",
                 "pmis-v50-project-code-col"
             );
@@ -12134,59 +12147,76 @@ function getFilteredProjects() {
     function applyFrozenColumns(table) {
         if (!table) return;
 
-        const trackingIndex = findHeaderIndex(table, "Tracking Code");
-        const projectCodeIndex = findHeaderIndex(table, "Project Code");
+        const snoIndex = findHeaderIndex(
+            table,
+            ["S.No", "S.NO", "S No", "SNO"]
+        );
 
-        if (trackingIndex < 0 || projectCodeIndex < 0) {
+        const trackingIndex = findHeaderIndex(
+            table,
+            "Tracking Code"
+        );
+
+        const projectCodeIndex = findHeaderIndex(
+            table,
+            "Project Code"
+        );
+
+        if (
+            snoIndex < 0 ||
+            trackingIndex < 0 ||
+            projectCodeIndex < 0
+        ) {
             console.warn(
-                "[PMIS V50] Tracking Code / Project Code headers were not found."
+                "[PMIS V50B] S.No / Tracking Code / Project Code headers were not found."
             );
             return;
         }
 
         clearFrozenClasses(table);
 
-        const firstHeaderRow = table.tHead && table.tHead.rows
-            ? table.tHead.rows[0]
-            : null;
+        const firstHeaderRow =
+            table.tHead && table.tHead.rows
+                ? table.tHead.rows[0]
+                : null;
 
         if (!firstHeaderRow) return;
 
-        const trackingHeader = Array.from(firstHeaderRow.cells).find(function (cell) {
-            return cell.cellIndex === trackingIndex;
-        });
+        const byIndex = function (index) {
+            return Array.from(firstHeaderRow.cells)
+                .find(function (cell) {
+                    return cell.cellIndex === index;
+                }) || null;
+        };
 
-        const projectCodeHeader = Array.from(firstHeaderRow.cells).find(function (cell) {
-            return cell.cellIndex === projectCodeIndex;
-        });
+        const snoHeader = byIndex(snoIndex);
+        const trackingHeader = byIndex(trackingIndex);
+        const projectCodeHeader = byIndex(projectCodeIndex);
 
-        if (trackingHeader) {
-            trackingHeader.classList.add("pmis-v50-tracking-col");
-        }
-
-        if (projectCodeHeader) {
-            projectCodeHeader.classList.add("pmis-v50-project-code-col");
-        }
+        snoHeader?.classList.add("pmis-v50-sno-col");
+        trackingHeader?.classList.add("pmis-v50-tracking-col");
+        projectCodeHeader?.classList.add("pmis-v50-project-code-col");
 
         if (table.tBodies && table.tBodies[0]) {
             Array.from(table.tBodies[0].rows).forEach(function (row) {
-                if (row.cells[trackingIndex]) {
-                    row.cells[trackingIndex].classList.add(
-                        "pmis-v50-tracking-col"
-                    );
-                }
-
-                if (row.cells[projectCodeIndex]) {
-                    row.cells[projectCodeIndex].classList.add(
-                        "pmis-v50-project-code-col"
-                    );
-                }
+                row.cells[snoIndex]?.classList.add("pmis-v50-sno-col");
+                row.cells[trackingIndex]?.classList.add("pmis-v50-tracking-col");
+                row.cells[projectCodeIndex]?.classList.add("pmis-v50-project-code-col");
             });
         }
 
+        const snoWidth = snoHeader
+            ? Math.ceil(snoHeader.getBoundingClientRect().width)
+            : 70;
+
         const trackingWidth = trackingHeader
             ? Math.ceil(trackingHeader.getBoundingClientRect().width)
-            : 120;
+            : 220;
+
+        table.style.setProperty(
+            "--pmis-v50-sno-width",
+            snoWidth + "px"
+        );
 
         table.style.setProperty(
             "--pmis-v50-tracking-width",
@@ -12200,33 +12230,58 @@ function getFilteredProjects() {
         const cardHeader = parts.cardHeader;
         const tableWrap = parts.tableWrap;
 
-        if (filter) {
+        if (
+            filter &&
+            !(cardHeader && cardHeader.contains(filter))
+        ) {
             filter.classList.add("pmis-main-filter-v50");
         }
 
-        if (card) {
-            card.classList.add("pmis-main-project-card-v50");
+        card?.classList.add("pmis-main-project-card-v50");
+        cardHeader?.classList.add("pmis-main-card-head-v50");
+        tableWrap?.classList.add("pmis-main-table-scroll-v50");
+    }
+
+    function measureTableHeader(table) {
+        if (!table || !table.tHead || !table.tHead.rows.length) {
+            return;
         }
 
-        if (cardHeader) {
-            cardHeader.classList.add("pmis-main-card-head-v50");
-        }
+        const firstRow = table.tHead.rows[0];
 
-        if (tableWrap) {
-            tableWrap.classList.add("pmis-main-table-scroll-v50");
-        }
+        const rowHeight =
+            Math.ceil(
+                firstRow.getBoundingClientRect().height ||
+                firstRow.offsetHeight ||
+                0
+            );
+
+        table.style.setProperty(
+            "--pmis-v50-head-row1-height",
+            Math.max(1,rowHeight) + "px"
+        );
     }
 
     function recalcLayout(parts) {
         const filter = parts.filter;
         const cardHeader = parts.cardHeader;
         const tableWrap = parts.tableWrap;
+        const table = parts.table;
 
-        let cardTop = 12;
+        let cardTop = 0;
 
-        if (filter) {
-            const rect = filter.getBoundingClientRect();
-            const height = Math.ceil(rect.height || filter.offsetHeight || 0);
+        const separateFilter =
+            filter &&
+            !(cardHeader && cardHeader.contains(filter));
+
+        if (separateFilter) {
+            const height =
+                Math.ceil(
+                    filter.getBoundingClientRect().height ||
+                    filter.offsetHeight ||
+                    0
+                );
+
             cardTop = 8 + height + 10;
         }
 
@@ -12235,26 +12290,32 @@ function getFilteredProjects() {
             cardTop + "px"
         );
 
-        let available = Math.floor(window.innerHeight * 0.62);
+        let available =
+            Math.floor(window.innerHeight * 0.66);
 
         if (cardHeader) {
-            const headerHeight = Math.ceil(
-                cardHeader.getBoundingClientRect().height ||
-                cardHeader.offsetHeight ||
-                0
-            );
+            const headerHeight =
+                Math.ceil(
+                    cardHeader.getBoundingClientRect().height ||
+                    cardHeader.offsetHeight ||
+                    0
+                );
 
             available =
                 window.innerHeight -
                 cardTop -
                 headerHeight -
-                18;
+                14;
         }
 
-        available = Math.max(
-            280,
-            Math.min(available, Math.floor(window.innerHeight * 0.72))
-        );
+        available =
+            Math.max(
+                280,
+                Math.min(
+                    available,
+                    Math.floor(window.innerHeight * 0.76)
+                )
+            );
 
         document.documentElement.style.setProperty(
             "--pmis-v50-table-height",
@@ -12264,6 +12325,8 @@ function getFilteredProjects() {
         if (tableWrap) {
             tableWrap.style.maxHeight = available + "px";
         }
+
+        measureTableHeader(table);
     }
 
     function resolveParts() {
@@ -12284,11 +12347,11 @@ function getFilteredProjects() {
             table.parentElement;
 
         return {
-            table: table,
-            card: card,
-            cardHeader: cardHeader,
-            filter: filter,
-            tableWrap: tableWrap
+            table,
+            card,
+            cardHeader,
+            filter,
+            tableWrap
         };
     }
 
@@ -12296,8 +12359,10 @@ function getFilteredProjects() {
     let bodyObserver = null;
     let resizeObserver = null;
 
-    function install() {
-        parts = resolveParts();
+    function refresh() {
+        if (!parts) {
+            parts = resolveParts();
+        }
 
         if (!parts || !parts.table) {
             return false;
@@ -12307,14 +12372,19 @@ function getFilteredProjects() {
         applyFrozenColumns(parts.table);
         recalcLayout(parts);
 
+        return true;
+    }
+
+    function install() {
+        if (!refresh()) {
+            return false;
+        }
+
         const tbody = document.getElementById("projectTableBody");
 
         if (tbody && !bodyObserver) {
             bodyObserver = new MutationObserver(function () {
-                window.requestAnimationFrame(function () {
-                    applyFrozenColumns(parts.table);
-                    recalcLayout(parts);
-                });
+                window.requestAnimationFrame(refresh);
             });
 
             bodyObserver.observe(tbody, {
@@ -12325,10 +12395,7 @@ function getFilteredProjects() {
 
         if (window.ResizeObserver && !resizeObserver) {
             resizeObserver = new ResizeObserver(function () {
-                window.requestAnimationFrame(function () {
-                    applyFrozenColumns(parts.table);
-                    recalcLayout(parts);
-                });
+                window.requestAnimationFrame(refresh);
             });
 
             if (parts.filter) resizeObserver.observe(parts.filter);
@@ -12352,19 +12419,15 @@ function getFilteredProjects() {
     }
 
     window.addEventListener("resize", function () {
-        if (!parts) parts = resolveParts();
-        if (!parts) return;
-
-        window.requestAnimationFrame(function () {
-            applyFrozenColumns(parts.table);
-            recalcLayout(parts);
-        });
+        window.requestAnimationFrame(refresh);
     });
 
     if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", retryInstall, {
-            once: true
-        });
+        document.addEventListener(
+            "DOMContentLoaded",
+            retryInstall,
+            { once: true }
+        );
     } else {
         retryInstall();
     }
@@ -24566,6 +24629,1718 @@ async function sendReport(payload,button,originalHtml) {
 
 <script src="pmis-nav-fix-v3.js"></script>
 <script src="pmis-finance-menu-access-v41.js"></script>
+
+<script id="pmis-project-handoff-v78p8">
+/* PMIS_PROJECT_HANDOFF_V78P8 */
+(function(){
+ 'use strict';
+
+ const KEY='pmis_project_handoff_v78p8';
+ const MAX_AGE_MS=10*60*1000;
+
+ function findProject(id){
+  try{
+   if(typeof projects!=='undefined'&&Array.isArray(projects)){
+    return projects.find(item=>String(item?._id||'')===String(id||''))||null;
+   }
+  }catch(_){ }
+  return null;
+ }
+
+ window.goToPhases=function(id){
+  if(!id){
+   alert('No Project ID found!');
+   return;
+  }
+
+  const selected=findProject(id);
+
+  if(selected){
+   try{
+    sessionStorage.setItem(
+     KEY,
+     JSON.stringify({
+      id:String(id),
+      ts:Date.now(),
+      project:selected
+     })
+    );
+
+    console.log('[PMIS V78P8] Project handoff cached',String(id));
+   }
+   catch(error){
+    console.warn('[PMIS V78P8] Project handoff cache skipped:',error?.message||error);
+   }
+  }
+
+  window.location.href=
+   'project_phases.html?id='+encodeURIComponent(id);
+ };
+
+ window.PMIS_PROJECT_HANDOFF_V78P8={KEY,MAX_AGE_MS};
+})();
+</script>
+
+<!-- PMIS_ADMIN_LOGIN_MANAGEMENT_V80A -->
+<style id="pmis-admin-login-management-v80a-style">
+#pmisLoginManagementModalV80A .modal-content{
+    border:0;
+    border-radius:24px;
+    overflow:hidden;
+    box-shadow:0 24px 70px rgba(15,23,42,.24);
+}
+#pmisLoginManagementModalV80A .modal-header{
+    background:linear-gradient(135deg,#0b2b4a,#164e63);
+    color:#fff;
+    border:0;
+    padding:18px 22px;
+}
+#pmisLoginManagementModalV80A .modal-title{
+    font-weight:900;
+}
+#pmisLoginManagementModalV80A .pmis-v80a-card{
+    border:1px solid #dbe5ef;
+    border-radius:18px;
+    background:#fff;
+    padding:18px;
+}
+#pmisLoginManagementModalV80A .pmis-v80a-label{
+    font-size:.72rem;
+    font-weight:900;
+    color:#475569;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+    margin-bottom:6px;
+}
+#pmisLoginManagementModalV80A .pmis-v80a-help{
+    font-size:.72rem;
+    color:#64748b;
+}
+#pmisLoginManagementModalV80A .pmis-v80a-security{
+    background:#fff7ed;
+    border:1px solid #fed7aa;
+    border-radius:14px;
+    padding:12px 14px;
+}
+#pmisLoginManagementModalV80A .pmis-v80a-credential{
+    display:none;
+    background:#ecfdf5;
+    border:1px solid #a7f3d0;
+    border-radius:16px;
+    padding:14px;
+}
+#pmisLoginManagementModalV80A .pmis-v80a-credential.show{
+    display:block;
+}
+#pmisLoginManagementModalV80A .pmis-v80a-table-wrap{
+    max-height:520px;
+    overflow:auto;
+    border:1px solid #e2e8f0;
+    border-radius:16px;
+}
+#pmisLoginManagementModalV80A table{
+    margin:0;
+    font-size:.78rem;
+}
+#pmisLoginManagementModalV80A thead th{
+    position:sticky;
+    top:0;
+    z-index:2;
+    background:#f8fafc;
+    color:#334155;
+    white-space:nowrap;
+}
+#pmisLoginManagementModalV80A .pmis-v80a-actions{
+    display:flex;
+    gap:5px;
+    flex-wrap:wrap;
+}
+#pmisLoginManagementModalV80A .pmis-v80a-empty{
+    text-align:center;
+    color:#64748b;
+    padding:30px 12px;
+}
+#pmisLoginManagementModalV80A .badge{
+    font-size:.67rem;
+}
+@media(max-width:991px){
+    #pmisLoginManagementModalV80A .modal-dialog{
+        margin:.6rem;
+    }
+}
+</style>
+
+<script id="pmis-admin-login-management-v80a">
+(function(){
+'use strict';
+
+if(window.__PMIS_ADMIN_LOGIN_MANAGEMENT_V80A__)return;
+window.__PMIS_ADMIN_LOGIN_MANAGEMENT_V80A__=true;
+// PMIS_ADMIN_LOGIN_MANAGEMENT_V80C
+// PMIS_ADMIN_LOGIN_MANAGEMENT_SESSION_RECOVERY_V80E
+
+const API='/api/admin/login-management';
+
+const state={
+    accounts:[],
+    editingId:'',
+    lastPassword:'',
+    lastUsername:'',
+    lastRole:''
+};
+
+function text(value){
+    return String(value??'').trim();
+}
+
+function esc(value){
+    return String(value??'')
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;')
+        .replace(/'/g,'&#039;');
+}
+
+function isReviewAdmin(){
+    /*
+     * Frontend visibility follows the existing PMIS admin role.
+     * The backend separately verifies that the username is the
+     * configured main Review Admin account before exposing data.
+     */
+    return (
+        text(
+            localStorage.getItem(
+                'danprel_role'
+            )
+        ).toLowerCase()==='admin'
+    );
+}
+
+function headers(json=false){
+    const out={
+        'x-pmis-role':
+            localStorage.getItem(
+                'danprel_role'
+            )||'',
+        'x-pmis-username':
+            localStorage.getItem(
+                'danprel_username'
+            )||'',
+        'x-pmis-employee-id':
+            localStorage.getItem(
+                'danprel_employee_id'
+            )||'',
+        'x-pmis-display-name':
+            localStorage.getItem(
+                'danprel_display_name'
+            )||''
+    };
+
+    if(json){
+        out['Content-Type']='application/json';
+    }
+
+    return out;
+}
+
+
+// PMIS_ADMIN_LOGIN_MANAGEMENT_SESSION_RECOVERY_V80E
+function adminUsernameV80E(){
+    return (
+        text(
+            document.getElementById(
+                'pmisLoginAdminUsernameV80E'
+            )?.value
+        )||
+        text(
+            localStorage.getItem(
+                'danprel_username'
+            )
+        )||
+        'review@danprel'
+    );
+}
+
+function storeAdminSessionV80E(result, fallbackUsername){
+    localStorage.setItem('danprel_auth','true');
+    localStorage.setItem('danprel_role',result?.role||'admin');
+    localStorage.setItem(
+        'danprel_auth_role',
+        result?.authRole||result?.role||'admin'
+    );
+    localStorage.setItem(
+        'danprel_username',
+        result?.username||fallbackUsername||'review@danprel'
+    );
+    localStorage.setItem(
+        'danprel_employee_id',
+        result?.employeeId||''
+    );
+    localStorage.setItem(
+        'danprel_display_name',
+        result?.displayName||'Project Management Admin'
+    );
+    localStorage.setItem(
+        'danprel_designation',
+        result?.designation||'Project Management Admin'
+    );
+    localStorage.setItem(
+        'danprel_access_token',
+        result?.accessToken||''
+    );
+}
+
+async function ensureAdminSessionV80E({quiet=false}={}){
+    if(
+        isReviewAdmin() &&
+        text(localStorage.getItem('danprel_username'))
+    ){
+        return true;
+    }
+
+    const username=
+        adminUsernameV80E();
+
+    const password=
+        adminPassword();
+
+    if(!password){
+        if(!quiet){
+            showMessage(
+                'warning',
+                'Your PMIS Admin session is missing. Enter the Review Admin password and click Verify Admin.'
+            );
+        }
+
+        document.getElementById(
+            'pmisLoginAdminPasswordV80A'
+        )?.focus();
+
+        return false;
+    }
+
+    try{
+        const response=
+            await fetch(
+                '/api/auth/login',
+                {
+                    method:'POST',
+                    headers:{
+                        'Content-Type':'application/json'
+                    },
+                    body:
+                        JSON.stringify({
+                            username,
+                            password
+                        })
+                }
+            );
+
+        const data=
+            await response
+                .json()
+                .catch(()=>null);
+
+        if(
+            !response.ok ||
+            !data?.success ||
+            text(data?.role).toLowerCase()!=='admin'
+        ){
+            throw new Error(
+                data?.error||
+                'Review Admin verification failed.'
+            );
+        }
+
+        storeAdminSessionV80E(data,username);
+
+        const field=
+            document.getElementById(
+                'pmisLoginAdminUsernameV80E'
+            );
+
+        if(field){
+            field.value=
+                data?.username||
+                username;
+        }
+
+        if(!quiet){
+            showMessage(
+                'success',
+                'Review Admin verified. Login Management is ready.'
+            );
+        }
+
+        return true;
+    }
+    catch(error){
+        if(!quiet){
+            showMessage(
+                'danger',
+                error?.message||
+                'Unable to verify Review Admin.'
+            );
+        }
+
+        return false;
+    }
+}
+
+function createSidebarEntry(){
+    if(
+        !isReviewAdmin() ||
+        document.getElementById(
+            'pmisLoginManagementMenuV80A'
+        )
+    ){
+        return;
+    }
+
+    const sidebar=
+        document.getElementById('sidebar');
+
+    if(!sidebar)return;
+
+    // PMIS_LOGIN_MANAGEMENT_SIDEBAR_POSITION_V80F
+    // Keep Login Management immediately above the Share Feedback pane.
+    const feedbackTitle=
+        Array.from(
+            sidebar.querySelectorAll(
+                '.sidebar-section-title'
+            )
+        ).find(node=>
+            text(node.textContent)
+                .toLowerCase()==='share feedback'
+        );
+
+    const accountTitle=
+        Array.from(
+            sidebar.querySelectorAll(
+                '.sidebar-section-title'
+            )
+        ).find(node=>
+            text(node.textContent)
+                .toLowerCase()==='account'
+        );
+
+    const section=
+        document.createElement('div');
+
+    section.id=
+        'pmisLoginManagementSectionV80A';
+
+    section.className=
+        'sidebar-section-title';
+
+    section.style.marginTop=
+        '18px';
+
+    section.textContent=
+        'Administration';
+
+    const button=
+        document.createElement('button');
+
+    button.type='button';
+
+    button.id=
+        'pmisLoginManagementMenuV80A';
+
+    button.className=
+        'sidebar-btn';
+
+    button.innerHTML=
+        '<div class="sb-icon" style="background:rgba(99,102,241,.18);">'+
+        '<i class="bi bi-person-gear" style="color:#a5b4fc;"></i>'+
+        '</div>'+
+        'Login Management';
+
+    button.addEventListener(
+        'click',
+        openLoginManagementV80A
+    );
+
+    if(feedbackTitle){
+        feedbackTitle.before(
+            section,
+            button
+        );
+    }
+    else if(accountTitle){
+        accountTitle.before(
+            section,
+            button
+        );
+    }
+    else{
+        sidebar.append(
+            section,
+            button
+        );
+    }
+}
+
+function modalHtml(){
+    return `
+<div class="modal fade" id="pmisLoginManagementModalV80A" tabindex="-1" aria-hidden="true">
+ <div class="modal-dialog modal-xl modal-dialog-scrollable">
+  <div class="modal-content">
+   <div class="modal-header">
+    <div>
+     <h5 class="modal-title"><i class="bi bi-person-gear me-2"></i>PMIS Login Management</h5>
+     <div style="font-size:.72rem;color:#cbd5e1;margin-top:3px;">Main Review Admin only · Create, reset, enable, disable or revoke PM / PC logins</div>
+    </div>
+    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+   </div>
+
+   <div class="modal-body" style="background:#f8fafc;">
+    <div id="pmisLoginMessageV80A" class="alert d-none"></div>
+
+    <div class="pmis-v80a-security mb-3">
+     <div class="row g-2 align-items-end">
+      <div class="col-lg-8">
+       <div class="fw-bold text-dark"><i class="bi bi-shield-lock-fill me-1"></i>Admin confirmation</div>
+       <div class="pmis-v80a-help">Enter the main Review Admin password before any create/reset/disable/revoke action. It is kept only in this open page and is never written to localStorage.</div>
+      </div>
+      <div class="col-lg-4">
+       <label class="pmis-v80a-label">Review Admin Username</label>
+       <input id="pmisLoginAdminUsernameV80E" class="form-control mb-2" autocomplete="username" value="review@danprel" placeholder="review@danprel">
+       <label class="pmis-v80a-label">Review Admin Password</label>
+       <div class="input-group">
+        <input id="pmisLoginAdminPasswordV80A" type="password" class="form-control" autocomplete="current-password" placeholder="Confirm admin password">
+        <button type="button" class="btn btn-outline-secondary" id="pmisLoginToggleAdminPasswordV80A" title="Show / hide"><i class="bi bi-eye"></i></button>
+        <button type="button" class="btn btn-primary" id="pmisLoginVerifyAdminV80E"><i class="bi bi-shield-check me-1"></i>Verify Admin</button>
+       </div>
+      </div>
+     </div>
+    </div>
+
+    <div class="row g-3">
+     <div class="col-xl-5">
+      <div class="pmis-v80a-card h-100">
+       <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
+        <div>
+         <div class="fw-bold fs-6" id="pmisLoginFormTitleV80A">Create Login</div>
+         <div class="pmis-v80a-help">Create a new employee + login, or choose an existing employee from the list.</div>
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="pmisLoginClearV80A"><i class="bi bi-arrow-counterclockwise me-1"></i>Clear</button>
+       </div>
+
+       <input id="pmisLoginRecordIdV80A" type="hidden">
+
+       <div class="row g-3">
+        <div class="col-md-6">
+         <label class="pmis-v80a-label">Employee ID *</label>
+         <input id="pmisLoginEmployeeIdV80A" class="form-control" maxlength="50" placeholder="e.g. DPL1234">
+        </div>
+        <div class="col-md-6">
+         <label class="pmis-v80a-label">Name *</label>
+         <input id="pmisLoginNameV80A" class="form-control" maxlength="120" placeholder="Employee name">
+        </div>
+        <div class="col-md-6">
+         <label class="pmis-v80a-label">Email</label>
+         <input id="pmisLoginEmailV80A" type="email" class="form-control" maxlength="160" placeholder="name@company.com">
+        </div>
+        <div class="col-md-6">
+         <label class="pmis-v80a-label">Department</label>
+         <input id="pmisLoginDeptV80A" class="form-control" maxlength="80" placeholder="Projects">
+        </div>
+        <div class="col-md-6">
+         <label class="pmis-v80a-label">PMIS Role *</label>
+         <select id="pmisLoginRoleV80A" class="form-select">
+          <option value="project_manager">Project Manager</option>
+          <option value="project_coordinator">Project Coordinator</option>
+         </select>
+        </div>
+        <div class="col-md-6">
+         <label class="pmis-v80a-label">Username *</label>
+         <input id="pmisLoginUsernameV80A" class="form-control" maxlength="80" placeholder="Defaults to Employee ID">
+        </div>
+        <div class="col-12">
+         <label class="pmis-v80a-label">Temporary Password <span class="text-secondary text-lowercase">(required for new login)</span></label>
+         <div class="input-group">
+          <input id="pmisLoginPasswordV80A" type="text" class="form-control" minlength="8" autocomplete="new-password" placeholder="Leave blank to keep existing password">
+          <button type="button" class="btn btn-outline-primary" id="pmisLoginGenerateV80A"><i class="bi bi-stars me-1"></i>Generate</button>
+         </div>
+         <div class="pmis-v80a-help mt-1">The plain password is shown only here so you can share it. PMIS stores only its hash.</div>
+        </div>
+        <div class="col-12">
+         <div class="form-check form-switch">
+          <input id="pmisLoginEnabledV80A" class="form-check-input" type="checkbox" checked>
+          <label class="form-check-label fw-bold" for="pmisLoginEnabledV80A">Login enabled</label>
+         </div>
+        </div>
+        <div class="col-12 d-grid">
+         <button type="button" class="btn btn-primary fw-bold" id="pmisLoginSaveV80A"><i class="bi bi-person-check-fill me-1"></i>Create / Update Login</button>
+        </div>
+       </div>
+
+       <div id="pmisLoginCredentialV80A" class="pmis-v80a-credential mt-3">
+        <div class="fw-bold text-success-emphasis mb-2"><i class="bi bi-check-circle-fill me-1"></i>Credentials ready to share</div>
+        <div id="pmisLoginCredentialTextV80A" style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.78rem;white-space:pre-wrap;"></div>
+        <button type="button" class="btn btn-sm btn-success mt-2" id="pmisLoginCopyCredentialV80A"><i class="bi bi-copy me-1"></i>Copy Credentials</button>
+       </div>
+      </div>
+     </div>
+
+     <div class="col-xl-7">
+      <div class="pmis-v80a-card h-100">
+       <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-3">
+        <div>
+         <div class="fw-bold fs-6">Employee Login Accounts</div>
+         <div class="pmis-v80a-help">Employees without a login are also shown so you can activate them directly.</div>
+        </div>
+        <div class="d-flex gap-2">
+         <input id="pmisLoginSearchV80A" class="form-control form-control-sm" style="min-width:210px" placeholder="Search name / ID / username">
+         <button type="button" class="btn btn-sm btn-outline-primary" id="pmisLoginRefreshV80A"><i class="bi bi-arrow-clockwise"></i></button>
+        </div>
+       </div>
+
+       <div class="pmis-v80a-table-wrap">
+        <table class="table table-hover align-middle">
+         <thead>
+          <tr>
+           <th>Employee</th>
+           <th>Username</th>
+           <th>Role</th>
+           <th>Status</th>
+           <th>Actions</th>
+          </tr>
+         </thead>
+         <tbody id="pmisLoginRowsV80A">
+          <tr><td colspan="5" class="pmis-v80a-empty">Loading...</td></tr>
+         </tbody>
+        </table>
+       </div>
+
+       <div class="pmis-v80a-help mt-2">
+        <i class="bi bi-info-circle me-1"></i>
+        Revoking a login does <strong>not</strong> delete the employee or project history. The main Review Admin account is system-managed through environment variables and is not editable here.
+       </div>
+      </div>
+     </div>
+    </div>
+   </div>
+  </div>
+ </div>
+</div>`;
+}
+
+function ensureModal(){
+    if(
+        document.getElementById(
+            'pmisLoginManagementModalV80A'
+        )
+    ){
+        return;
+    }
+
+    document.body.insertAdjacentHTML(
+        'beforeend',
+        modalHtml()
+    );
+
+    bindModal();
+}
+
+function showMessage(kind,message){
+    const el=
+        document.getElementById(
+            'pmisLoginMessageV80A'
+        );
+
+    if(!el)return;
+
+    el.className=
+        'alert alert-'+kind;
+
+    el.textContent=
+        message;
+
+    el.classList.remove('d-none');
+}
+
+function hideMessage(){
+    document.getElementById(
+        'pmisLoginMessageV80A'
+    )?.classList.add('d-none');
+}
+
+function generatePassword(){
+    const chars=
+        'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+
+    const bytes=
+        new Uint32Array(10);
+
+    crypto.getRandomValues(bytes);
+
+    const body=
+        Array.from(
+            bytes,
+            value=>
+                chars[
+                    value %
+                    chars.length
+                ]
+        ).join('');
+
+    return 'Dp!'+body+'7';
+}
+
+function adminPassword(){
+    return document.getElementById(
+        'pmisLoginAdminPasswordV80A'
+    )?.value||'';
+}
+
+function requireAdminPassword(){
+    if(!adminPassword()){
+        showMessage(
+            'warning',
+            'Enter the Review Admin password first.'
+        );
+
+        document.getElementById(
+            'pmisLoginAdminPasswordV80A'
+        )?.focus();
+
+        return false;
+    }
+
+    return true;
+}
+
+function accountRoleLabel(row){
+    return row?.authRole==='project_coordinator'
+        ? 'Project Coordinator'
+        : row?.authRole==='project_manager'
+            ? 'Project Manager'
+            : '-';
+}
+
+function statusBadge(row){
+    if(!row?.hasLogin){
+        return '<span class="badge text-bg-secondary">No Login</span>';
+    }
+
+    if(row?.loginEnabled){
+        return '<span class="badge text-bg-success">Active</span>';
+    }
+
+    return '<span class="badge text-bg-warning">Disabled</span>';
+}
+
+function renderRows(){
+    const tbody=
+        document.getElementById(
+            'pmisLoginRowsV80A'
+        );
+
+    if(!tbody)return;
+
+    const query=
+        text(
+            document.getElementById(
+                'pmisLoginSearchV80A'
+            )?.value
+        ).toLowerCase();
+
+    const rows=
+        state.accounts.filter(row=>{
+            if(!query)return true;
+
+            return [
+                row?.name,
+                row?.employee_id,
+                row?.username,
+                row?.email,
+                row?.role
+            ]
+                .join(' ')
+                .toLowerCase()
+                .includes(query);
+        });
+
+    if(!rows.length){
+        tbody.innerHTML=
+            '<tr><td colspan="5" class="pmis-v80a-empty">No matching employees.</td></tr>';
+
+        return;
+    }
+
+    tbody.innerHTML=
+        rows.map(row=>{
+            const hasLogin=
+                row?.hasLogin===true;
+
+            const enabled=
+                row?.loginEnabled===true;
+
+            return `
+<tr data-id="${esc(row._id)}">
+ <td>
+  <div class="fw-bold">${esc(row.name||'Unnamed')}</div>
+  <div class="text-secondary small">${esc(row.employee_id||'-')}${row.email?' · '+esc(row.email):''}</div>
+ </td>
+ <td>${row.username?'<code>'+esc(row.username)+'</code>':'<span class="text-secondary">Not created</span>'}</td>
+ <td>${esc(accountRoleLabel(row))}</td>
+ <td>${statusBadge(row)}</td>
+ <td>
+  <div class="pmis-v80a-actions">
+   <button type="button" class="btn btn-sm btn-outline-primary" data-v80a-action="edit" data-id="${esc(row._id)}">${hasLogin?'Edit':'Create Login'}</button>
+   ${hasLogin?`
+   <button type="button" class="btn btn-sm btn-outline-secondary" data-v80a-action="reset" data-id="${esc(row._id)}">Reset Password</button>
+   <button type="button" class="btn btn-sm ${enabled?'btn-outline-warning':'btn-outline-success'}" data-v80a-action="toggle" data-id="${esc(row._id)}">${enabled?'Disable':'Enable'}</button>
+   <button type="button" class="btn btn-sm btn-outline-danger" data-v80a-action="revoke" data-id="${esc(row._id)}">Revoke</button>
+   `:''}
+  </div>
+ </td>
+</tr>`;
+        }).join('');
+}
+
+function resetForm(){
+    state.editingId='';
+
+    [
+        'pmisLoginRecordIdV80A',
+        'pmisLoginEmployeeIdV80A',
+        'pmisLoginNameV80A',
+        'pmisLoginEmailV80A',
+        'pmisLoginDeptV80A',
+        'pmisLoginUsernameV80A',
+        'pmisLoginPasswordV80A'
+    ].forEach(id=>{
+        const el=
+            document.getElementById(id);
+
+        if(el)el.value='';
+    });
+
+    const role=
+        document.getElementById(
+            'pmisLoginRoleV80A'
+        );
+
+    if(role){
+        role.value=
+            'project_manager';
+    }
+
+    const enabled=
+        document.getElementById(
+            'pmisLoginEnabledV80A'
+        );
+
+    if(enabled){
+        enabled.checked=true;
+    }
+
+    const title=
+        document.getElementById(
+            'pmisLoginFormTitleV80A'
+        );
+
+    if(title){
+        title.textContent=
+            'Create Login';
+    }
+
+    document.getElementById(
+        'pmisLoginCredentialV80A'
+    )?.classList.remove('show');
+}
+
+function fillForm(row){
+    if(!row)return;
+
+    state.editingId=
+        row._id||'';
+
+    document.getElementById(
+        'pmisLoginRecordIdV80A'
+    ).value=
+        row._id||'';
+
+    document.getElementById(
+        'pmisLoginEmployeeIdV80A'
+    ).value=
+        row.employee_id||'';
+
+    document.getElementById(
+        'pmisLoginNameV80A'
+    ).value=
+        row.name||'';
+
+    document.getElementById(
+        'pmisLoginEmailV80A'
+    ).value=
+        row.email||'';
+
+    document.getElementById(
+        'pmisLoginDeptV80A'
+    ).value=
+        row.dept||'';
+
+    document.getElementById(
+        'pmisLoginRoleV80A'
+    ).value=
+        row.authRole||
+        (
+            /coordinator/i.test(
+                row.role||''
+            )
+                ?'project_coordinator'
+                :'project_manager'
+        );
+
+    document.getElementById(
+        'pmisLoginUsernameV80A'
+    ).value=
+        row.username||
+        row.employee_id||
+        '';
+
+    document.getElementById(
+        'pmisLoginPasswordV80A'
+    ).value=
+        row.hasLogin
+            ?''
+            :generatePassword();
+
+    document.getElementById(
+        'pmisLoginEnabledV80A'
+    ).checked=
+        row.hasLogin
+            ?row.loginEnabled===true
+            :true;
+
+    document.getElementById(
+        'pmisLoginFormTitleV80A'
+    ).textContent=
+        row.hasLogin
+            ?'Edit Login'
+            :'Create Login for Existing Employee';
+
+    document.getElementById(
+        'pmisLoginCredentialV80A'
+    )?.classList.remove('show');
+
+    document.getElementById(
+        'pmisLoginEmployeeIdV80A'
+    )?.focus();
+}
+
+async function loadAccounts(){
+    hideMessage();
+
+    if(
+        !isReviewAdmin() ||
+        !text(
+            localStorage.getItem(
+                'danprel_username'
+            )
+        )
+    ){
+        const verified=
+            await ensureAdminSessionV80E();
+
+        if(!verified){
+            return;
+        }
+    }
+
+    const tbody=
+        document.getElementById(
+            'pmisLoginRowsV80A'
+        );
+
+    if(tbody){
+        tbody.innerHTML=
+            '<tr><td colspan="5" class="pmis-v80a-empty"><span class="spinner-border spinner-border-sm me-2"></span>Loading employee logins...</td></tr>';
+    }
+
+    try{
+        const response=
+            await fetch(
+                API+'?t='+Date.now(),
+                {
+                    headers:
+                        headers(false),
+                    cache:
+                        'no-store'
+                }
+            );
+
+        const data=
+            await response
+                .json()
+                .catch(()=>null);
+
+        if(!response.ok){
+            throw new Error(
+                data?.error||
+                'Unable to load PMIS login accounts.'
+            );
+        }
+
+        state.accounts=
+            Array.isArray(data?.accounts)
+                ?data.accounts
+                :[];
+
+        renderRows();
+    }
+    catch(error){
+        showMessage(
+            'danger',
+            error?.message||
+            'Unable to load PMIS login accounts.'
+        );
+
+        if(tbody){
+            tbody.innerHTML=
+                '<tr><td colspan="5" class="pmis-v80a-empty text-danger">Unable to load login accounts.</td></tr>';
+        }
+    }
+}
+
+function payloadFromForm(){
+    const employeeId=
+        text(
+            document.getElementById(
+                'pmisLoginEmployeeIdV80A'
+            )?.value
+        );
+
+    const username=
+        text(
+            document.getElementById(
+                'pmisLoginUsernameV80A'
+            )?.value
+        )||
+        employeeId;
+
+    return {
+        adminUsername:
+            adminUsernameV80E(),
+        adminPassword:
+            adminPassword(),
+        employeeRecordId:
+            text(
+                document.getElementById(
+                    'pmisLoginRecordIdV80A'
+                )?.value
+            ),
+        employeeId,
+        name:
+            text(
+                document.getElementById(
+                    'pmisLoginNameV80A'
+                )?.value
+            ),
+        email:
+            text(
+                document.getElementById(
+                    'pmisLoginEmailV80A'
+                )?.value
+            ),
+        dept:
+            text(
+                document.getElementById(
+                    'pmisLoginDeptV80A'
+                )?.value
+            ),
+        authRole:
+            document.getElementById(
+                'pmisLoginRoleV80A'
+            )?.value||
+            'project_manager',
+        username:
+            username.toUpperCase(),
+        password:
+            document.getElementById(
+                'pmisLoginPasswordV80A'
+            )?.value||
+            '',
+        loginEnabled:
+            document.getElementById(
+                'pmisLoginEnabledV80A'
+            )?.checked===true
+    };
+}
+
+function roleLabel(value){
+    return value==='project_coordinator'
+        ?'Project Coordinator'
+        :'Project Manager';
+}
+
+function showCredentials({
+    username,
+    password,
+    authRole
+}){
+    state.lastUsername=
+        username||'';
+
+    state.lastPassword=
+        password||'';
+
+    state.lastRole=
+        roleLabel(authRole);
+
+    const url=
+        location.origin+
+        location.pathname.replace(
+            /[^/]*$/,
+            'login.html'
+        );
+
+    const content=
+`PMIS Login
+URL: ${url}
+Username: ${state.lastUsername}
+Temporary Password: ${state.lastPassword}
+Role: ${state.lastRole}`;
+
+    const textArea=
+        document.getElementById(
+            'pmisLoginCredentialTextV80A'
+        );
+
+    if(textArea){
+        textArea.textContent=
+            content;
+    }
+
+    document.getElementById(
+        'pmisLoginCredentialV80A'
+    )?.classList.add('show');
+}
+
+async function saveLogin(){
+    if(!requireAdminPassword())return;
+
+    if(
+        !await ensureAdminSessionV80E()
+    ){
+        return;
+    }
+
+    const payload=
+        payloadFromForm();
+
+    if(
+        !payload.employeeId||
+        !payload.name||
+        !payload.username
+    ){
+        showMessage(
+            'warning',
+            'Employee ID, Name and Username are required.'
+        );
+
+        return;
+    }
+
+    const button=
+        document.getElementById(
+            'pmisLoginSaveV80A'
+        );
+
+    if(button){
+        button.disabled=true;
+        button.innerHTML=
+            '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
+    }
+
+    try{
+        const response=
+            await fetch(
+                API,
+                {
+                    method:'POST',
+                    headers:
+                        headers(true),
+                    body:
+                        JSON.stringify(payload)
+                }
+            );
+
+        const data=
+            await response
+                .json()
+                .catch(()=>null);
+
+        if(!response.ok){
+            throw new Error(
+                data?.error||
+                'Unable to save PMIS login.'
+            );
+        }
+
+        showMessage(
+            'success',
+            data?.message||
+            'PMIS login saved.'
+        );
+
+        if(payload.password){
+            showCredentials({
+                username:
+                    data?.account?.username||
+                    payload.username,
+                password:
+                    payload.password,
+                authRole:
+                    data?.account?.authRole||
+                    payload.authRole
+            });
+        }
+
+        await loadAccounts();
+
+        const refreshed=
+            state.accounts.find(row=>
+                row._id===
+                data?.account?._id
+            );
+
+        if(refreshed){
+            fillForm(refreshed);
+
+            document.getElementById(
+                'pmisLoginPasswordV80A'
+            ).value='';
+        }
+    }
+    catch(error){
+        const message=
+            error?.message||
+            'Unable to save PMIS login.';
+
+        showMessage(
+            'danger',
+            message+
+            (
+                /local safe mode/i.test(message)
+                    ?' Set ALLOW_LOCAL_LOGIN_ADMIN_WRITES=true in the local .env only while intentionally testing this feature.'
+                    :''
+            )
+        );
+    }
+    finally{
+        if(button){
+            button.disabled=false;
+            button.innerHTML=
+                '<i class="bi bi-person-check-fill me-1"></i>Create / Update Login';
+        }
+    }
+}
+
+async function resetPassword(row){
+    if(!row||!requireAdminPassword())return;
+
+    if(
+        !await ensureAdminSessionV80E()
+    ){
+        return;
+    }
+
+    const next=
+        generatePassword();
+
+    if(
+        !confirm(
+            'Reset the password for '+(
+                row.username||
+                row.employee_id||
+                row.name
+            )+'?'
+        )
+    ){
+        return;
+    }
+
+    try{
+        const response=
+            await fetch(
+                API+'/'+
+                encodeURIComponent(
+                    row._id
+                )+
+                '/password',
+                {
+                    method:'PATCH',
+                    headers:
+                        headers(true),
+                    body:
+                        JSON.stringify({
+                            adminUsername:
+                                adminUsernameV80E(),
+                            adminPassword:
+                                adminPassword(),
+                            newPassword:
+                                next
+                        })
+                }
+            );
+
+        const data=
+            await response
+                .json()
+                .catch(()=>null);
+
+        if(!response.ok){
+            throw new Error(
+                data?.error||
+                'Unable to reset password.'
+            );
+        }
+
+        showMessage(
+            'success',
+            data?.message||
+            'Password reset.'
+        );
+
+        showCredentials({
+            username:
+                data?.account?.username||
+                row.username,
+            password:
+                next,
+            authRole:
+                data?.account?.authRole||
+                row.authRole
+        });
+
+        await loadAccounts();
+    }
+    catch(error){
+        showMessage(
+            'danger',
+            error?.message||
+            'Unable to reset password.'
+        );
+    }
+}
+
+async function toggleStatus(row){
+    if(!row||!requireAdminPassword())return;
+
+    if(
+        !await ensureAdminSessionV80E()
+    ){
+        return;
+    }
+
+    const next=
+        !row.loginEnabled;
+
+    try{
+        const response=
+            await fetch(
+                API+'/'+
+                encodeURIComponent(
+                    row._id
+                )+
+                '/status',
+                {
+                    method:'PATCH',
+                    headers:
+                        headers(true),
+                    body:
+                        JSON.stringify({
+                            adminUsername:
+                                adminUsernameV80E(),
+                            adminPassword:
+                                adminPassword(),
+                            loginEnabled:
+                                next
+                        })
+                }
+            );
+
+        const data=
+            await response
+                .json()
+                .catch(()=>null);
+
+        if(!response.ok){
+            throw new Error(
+                data?.error||
+                'Unable to update login status.'
+            );
+        }
+
+        showMessage(
+            'success',
+            data?.message||
+            'Login status updated.'
+        );
+
+        await loadAccounts();
+    }
+    catch(error){
+        showMessage(
+            'danger',
+            error?.message||
+            'Unable to update login status.'
+        );
+    }
+}
+
+async function revokeLogin(row){
+    if(!row||!requireAdminPassword())return;
+
+    if(
+        !await ensureAdminSessionV80E()
+    ){
+        return;
+    }
+
+    if(
+        !confirm(
+            'Revoke PMIS login for '+(
+                row.name||
+                row.employee_id
+            )+
+            '?\n\nThe employee record and project history will be kept.'
+        )
+    ){
+        return;
+    }
+
+    try{
+        const response=
+            await fetch(
+                API+'/'+
+                encodeURIComponent(
+                    row._id
+                ),
+                {
+                    method:'DELETE',
+                    headers:
+                        headers(true),
+                    body:
+                        JSON.stringify({
+                            adminUsername:
+                                adminUsernameV80E(),
+                            adminPassword:
+                                adminPassword()
+                        })
+                }
+            );
+
+        const data=
+            await response
+                .json()
+                .catch(()=>null);
+
+        if(!response.ok){
+            throw new Error(
+                data?.error||
+                'Unable to revoke login.'
+            );
+        }
+
+        showMessage(
+            'success',
+            data?.message||
+            'Login revoked.'
+        );
+
+        resetForm();
+        await loadAccounts();
+    }
+    catch(error){
+        showMessage(
+            'danger',
+            error?.message||
+            'Unable to revoke login.'
+        );
+    }
+}
+
+function bindModal(){
+    document.getElementById(
+        'pmisLoginGenerateV80A'
+    )?.addEventListener(
+        'click',
+        ()=>{
+            document.getElementById(
+                'pmisLoginPasswordV80A'
+            ).value=
+                generatePassword();
+        }
+    );
+
+    document.getElementById(
+        'pmisLoginClearV80A'
+    )?.addEventListener(
+        'click',
+        resetForm
+    );
+
+    document.getElementById(
+        'pmisLoginSaveV80A'
+    )?.addEventListener(
+        'click',
+        saveLogin
+    );
+
+    document.getElementById(
+        'pmisLoginRefreshV80A'
+    )?.addEventListener(
+        'click',
+        loadAccounts
+    );
+
+    document.getElementById(
+        'pmisLoginSearchV80A'
+    )?.addEventListener(
+        'input',
+        renderRows
+    );
+
+    document.getElementById(
+        'pmisLoginVerifyAdminV80E'
+    )?.addEventListener(
+        'click',
+        async ()=>{
+            const verified=
+                await ensureAdminSessionV80E();
+
+            if(verified){
+                await loadAccounts();
+            }
+        }
+    );
+
+    document.getElementById(
+        'pmisLoginToggleAdminPasswordV80A'
+    )?.addEventListener(
+        'click',
+        ()=>{
+            const field=
+                document.getElementById(
+                    'pmisLoginAdminPasswordV80A'
+                );
+
+            if(!field)return;
+
+            field.type=
+                field.type==='password'
+                    ?'text'
+                    :'password';
+        }
+    );
+
+    document.getElementById(
+        'pmisLoginEmployeeIdV80A'
+    )?.addEventListener(
+        'input',
+        event=>{
+            const username=
+                document.getElementById(
+                    'pmisLoginUsernameV80A'
+                );
+
+            if(
+                username &&
+                (
+                    !username.value ||
+                    !state.editingId
+                )
+            ){
+                username.value=
+                    text(
+                        event.target.value
+                    ).toUpperCase();
+            }
+        }
+    );
+
+    document.getElementById(
+        'pmisLoginRowsV80A'
+    )?.addEventListener(
+        'click',
+        event=>{
+            const button=
+                event.target.closest(
+                    '[data-v80a-action]'
+                );
+
+            if(!button)return;
+
+            const row=
+                state.accounts.find(
+                    item=>
+                        item._id===
+                        button.dataset.id
+                );
+
+            if(!row)return;
+
+            const action=
+                button.dataset
+                    .v80aAction;
+
+            if(action==='edit'){
+                fillForm(row);
+            }
+            else if(action==='reset'){
+                resetPassword(row);
+            }
+            else if(action==='toggle'){
+                toggleStatus(row);
+            }
+            else if(action==='revoke'){
+                revokeLogin(row);
+            }
+        }
+    );
+
+    document.getElementById(
+        'pmisLoginCopyCredentialV80A'
+    )?.addEventListener(
+        'click',
+        async ()=>{
+            const content=
+                document.getElementById(
+                    'pmisLoginCredentialTextV80A'
+                )?.textContent||
+                '';
+
+            if(!content)return;
+
+            try{
+                await navigator
+                    .clipboard
+                    .writeText(content);
+
+                showMessage(
+                    'success',
+                    'Credentials copied to clipboard.'
+                );
+            }
+            catch(_){
+                showMessage(
+                    'warning',
+                    'Copy failed. Select the credential text manually.'
+                );
+            }
+        }
+    );
+}
+
+window.openLoginManagementV80A=
+    async function(){
+        ensureModal();
+
+        const usernameField=
+            document.getElementById(
+                'pmisLoginAdminUsernameV80E'
+            );
+
+        if(usernameField){
+            usernameField.value=
+                text(
+                    localStorage.getItem(
+                        'danprel_username'
+                    )
+                )||
+                usernameField.value||
+                'review@danprel';
+        }
+
+        if(
+            document.getElementById(
+                'sidebar'
+            )?.classList.contains(
+                'active'
+            )
+        ){
+            try{
+                toggleSidebar();
+            }
+            catch(_){}
+        }
+
+        const modal=
+            bootstrap.Modal.getOrCreateInstance(
+                document.getElementById(
+                    'pmisLoginManagementModalV80A'
+                )
+            );
+
+        modal.show();
+        resetForm();
+
+        if(
+            isReviewAdmin() &&
+            text(
+                localStorage.getItem(
+                    'danprel_username'
+                )
+            )
+        ){
+            await loadAccounts();
+        }
+        else{
+            showMessage(
+                'warning',
+                'Your PMIS Admin session is missing. Enter the Review Admin password and click Verify Admin.'
+            );
+
+            document.getElementById(
+                'pmisLoginAdminPasswordV80A'
+            )?.focus();
+        }
+    };
+
+function install(){
+    createSidebarEntry();
+
+    /*
+     * Several legacy PMIS scripts can rebuild sidebar links.
+     * Bounded retries preserve the admin control without a permanent observer.
+     */
+    let attempts=0;
+
+    const timer=
+        setInterval(
+            ()=>{
+                attempts+=1;
+                createSidebarEntry();
+
+                if(attempts>=12){
+                    clearInterval(timer);
+                }
+            },
+            500
+        );
+}
+
+if(document.readyState==='loading'){
+    document.addEventListener(
+        'DOMContentLoaded',
+        install,
+        {once:true}
+    );
+}
+else{
+    install();
+}
+
+})();
+</script>
+
 </body>
 
 </html>

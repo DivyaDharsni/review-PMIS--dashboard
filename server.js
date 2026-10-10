@@ -14,6 +14,10 @@ const LOCAL_SAFE_MODE =
     process.env.LOCAL_SAFE_MODE === 'true';
 const ALLOW_LOCAL_EDIT_WRITES =
     process.env.ALLOW_LOCAL_EDIT_WRITES === 'true';
+// PMIS_ADMIN_LOGIN_MANAGEMENT_V80A
+// Explicit opt-in for testing login-account writes from a local safe-mode backend.
+const ALLOW_LOCAL_LOGIN_ADMIN_WRITES =
+    process.env.ALLOW_LOCAL_LOGIN_ADMIN_WRITES === 'true';
 const ALLOW_LOCAL_FEEDBACK_WRITES =
     process.env.ALLOW_LOCAL_FEEDBACK_WRITES === 'true';
 const ALLOW_LOCAL_FEEDBACK_REQUIREMENT_WRITES =
@@ -88,6 +92,11 @@ app.use('/api', (req, res, next) => {
         (req.method === 'PATCH' && /^\/api\/projects\/[^/]+$/.test(requestPath)) ||
         (req.method === 'PATCH' && /^\/api\/action-points\/[^/]+$/.test(requestPath));
 
+    // PMIS_ADMIN_LOGIN_MANAGEMENT_V80A
+    const isLoginAdminWriteV80A =
+        ['POST', 'PATCH', 'DELETE'].includes(req.method) &&
+        /^\/api\/admin\/login-management(?:\/|$)/.test(requestPath);
+
     // PMIS_INVOICE_SAVE_PERSISTENCE_V77J2
     // Narrow exception for Invoice Register only.
     const isFinanceInvoiceWriteV77J2 =
@@ -106,7 +115,8 @@ app.use('/api', (req, res, next) => {
             isCustomerFeedbackCallback
         ) ||
         (ALLOW_LOCAL_CUSTOMER_REPORT_EMAILS && isCustomerReportEmail) ||
-        (ALLOW_LOCAL_EDIT_WRITES && isExistingRecordEdit);
+        (ALLOW_LOCAL_EDIT_WRITES && isExistingRecordEdit) ||
+        (ALLOW_LOCAL_LOGIN_ADMIN_WRITES && isLoginAdminWriteV80A);
 
     if (
         LOCAL_SAFE_MODE &&
@@ -200,8 +210,14 @@ const transporter = nodemailer.createTransport({
     }
 });
 
-// Verify connection
-if (!LOCAL_SAFE_MODE) {
+// PMIS_STARTUP_IO_GUARD_V78P8
+// SMTP verification opens a DNS/TCP/TLS connection during process startup.
+// It is not required for normal PMIS reads; Nodemailer connects when mail is sent.
+// Keep it opt-in so dashboard/project loading does not compete with Gmail startup I/O.
+const PMIS_VERIFY_SMTP_ON_STARTUP_V78P8 =
+    process.env.PMIS_VERIFY_SMTP_ON_STARTUP === 'true';
+
+if (!LOCAL_SAFE_MODE && PMIS_VERIFY_SMTP_ON_STARTUP_V78P8) {
     transporter.verify((error) => {
         if (error) {
             console.error(
@@ -220,7 +236,7 @@ if (!LOCAL_SAFE_MODE) {
     });
 } else {
     console.log(
-        '[LOCAL SAFE MODE] SMTP verification disabled.'
+        '[PMIS V78P8] SMTP startup verification skipped.'
     );
 }
 
@@ -1368,6 +1384,1379 @@ app.use('/api/projects', pmisEnsureWriteDbReadyV77A);
 app.use('/api/action-points', pmisEnsureWriteDbReadyV77A);
 app.use('/api/projects', pmisAuthorizeProjectWriteV24);
 app.use('/api/action-points', pmisAuthorizeActionPointWriteV24);
+
+// PMIS_PROJECT_READ_CACHE_V78P2
+/*
+ * SAFE PERFORMANCE MIDDLEWARE
+ *
+ * This does NOT replace the existing GET /api/projects implementation.
+ * The current route remains the single source of truth.
+ *
+ * It only captures a successful collection response for a short time and:
+ * - serves repeated requests from memory,
+ * - makes simultaneous requests share the first response,
+ * - clears the cache after successful project writes,
+ * - keeps caches separated by PMIS user identity,
+ * - adds timing/cache diagnostics.
+ *
+ * No DB document or schema is changed.
+ */
+const PMIS_PROJECT_CACHE_TTL_V78P2 =
+    Math.max(
+        5000,
+        Number(
+            process.env.PMIS_PROJECT_READ_CACHE_MS ||
+            30000
+        )
+    );
+
+const PMIS_PROJECT_CACHE_MAX_KEYS_V78P2 = 50;
+
+const pmisProjectReadCacheV78P2 =
+    new Map();
+
+function pmisProjectCacheKeyV78P2(req) {
+    return [
+        req.get('x-pmis-role'),
+        req.get('x-pmis-username'),
+        req.get('x-pmis-employee-id'),
+        req.get('x-pmis-display-name')
+    ]
+        .map(value =>
+            String(value || '')
+                .trim()
+                .toLowerCase()
+        )
+        .join('|') ||
+        'anonymous';
+}
+
+function pmisTrimProjectCacheV78P2() {
+    if (
+        pmisProjectReadCacheV78P2.size <=
+        PMIS_PROJECT_CACHE_MAX_KEYS_V78P2
+    ) {
+        return;
+    }
+
+    const rows =
+        Array.from(
+            pmisProjectReadCacheV78P2.entries()
+        )
+            .sort(
+                (a, b) =>
+                    Number(a[1]?.storedAt || 0) -
+                    Number(b[1]?.storedAt || 0)
+            );
+
+    while (
+        rows.length &&
+        pmisProjectReadCacheV78P2.size >
+        PMIS_PROJECT_CACHE_MAX_KEYS_V78P2
+    ) {
+        const [key] = rows.shift();
+        pmisProjectReadCacheV78P2.delete(key);
+    }
+}
+
+function pmisClearProjectCacheV78P2(reason) {
+    pmisProjectReadCacheV78P2.clear();
+
+    console.log(
+        '[PMIS V78P2] Project cache cleared',
+        reason || ''
+    );
+}
+
+app.use('/api/projects', async (req, res, next) => {
+    const method =
+        String(req.method || '')
+            .trim()
+            .toUpperCase();
+
+    const exactPath =
+        String(
+            req.originalUrl ||
+            req.url ||
+            ''
+        )
+            .split('?')[0]
+            .replace(/\/+$/, '') ||
+        '/';
+
+    const isCollectionRead =
+        method === 'GET' &&
+        exactPath === '/api/projects';
+
+    /*
+     * Invalidate after any successful mutation under /api/projects.
+     * This includes ordinary project PATCH/POST/DELETE and dedicated
+     * project sub-routes.
+     */
+    if (
+        [
+            'POST',
+            'PUT',
+            'PATCH',
+            'DELETE'
+        ].includes(method)
+    ) {
+        res.on('finish', () => {
+            if (
+                Number(res.statusCode) >= 200 &&
+                Number(res.statusCode) < 400
+            ) {
+                pmisClearProjectCacheV78P2(
+                    method + ' ' + exactPath
+                );
+            }
+        });
+
+        return next();
+    }
+
+    /*
+     * Never cache /api/projects/:id or any project sub-route.
+     */
+    if (!isCollectionRead) {
+        return next();
+    }
+
+    const key =
+        pmisProjectCacheKeyV78P2(req);
+
+    const now =
+        Date.now();
+
+    let entry =
+        pmisProjectReadCacheV78P2.get(key);
+
+    if (!entry) {
+        entry = {
+            data: null,
+            storedAt: 0,
+            inFlight: null
+        };
+
+        pmisProjectReadCacheV78P2.set(
+            key,
+            entry
+        );
+
+        pmisTrimProjectCacheV78P2();
+    }
+
+    /*
+     * Warm cache hit.
+     */
+    if (
+        Array.isArray(entry.data) &&
+        (
+            now -
+            Number(entry.storedAt || 0)
+        ) < PMIS_PROJECT_CACHE_TTL_V78P2
+    ) {
+        const age =
+            now -
+            Number(entry.storedAt || 0);
+
+        res.setHeader(
+            'X-PMIS-Projects-Cache',
+            'HIT'
+        );
+
+        res.setHeader(
+            'X-PMIS-Projects-Cache-Age-Ms',
+            String(age)
+        );
+
+        res.setHeader(
+            'Server-Timing',
+            'pmis_projects_cache;dur=0'
+        );
+
+        console.log(
+            '[PMIS V78P2] GET /api/projects HIT',
+            'count=' + entry.data.length,
+            'ageMs=' + age
+        );
+
+        return res.json(entry.data);
+    }
+
+    /*
+     * Another identical request is already loading.
+     * Wait for it instead of starting a second Mongo read.
+     */
+    if (entry.inFlight) {
+        const waitStarted =
+            Date.now();
+
+        const shared =
+            await entry.inFlight;
+
+        if (
+            shared?.ok &&
+            Array.isArray(shared.data)
+        ) {
+            const waitMs =
+                Date.now() -
+                waitStarted;
+
+            res.setHeader(
+                'X-PMIS-Projects-Cache',
+                'SHARED'
+            );
+
+            res.setHeader(
+                'Server-Timing',
+                'pmis_projects_shared;dur=' +
+                waitMs
+            );
+
+            console.log(
+                '[PMIS V78P2] GET /api/projects SHARED',
+                'count=' + shared.data.length,
+                'waitMs=' + waitMs
+            );
+
+            return res.json(shared.data);
+        }
+
+        /*
+         * The first request failed. Let this request use the normal
+         * existing route instead of returning stale/error data.
+         */
+        return next();
+    }
+
+    /*
+     * First request: let the ORIGINAL route execute.
+     * Wrap res.json only for this request so a successful array response
+     * can be reused by following requests.
+     */
+    let resolveSharedV78P2;
+
+    const sharedPromiseV78P2 =
+        new Promise(resolve => {
+            resolveSharedV78P2 = resolve;
+        });
+
+    entry.inFlight =
+        sharedPromiseV78P2;
+
+    const requestStarted =
+        Date.now();
+
+    const originalJson =
+        res.json.bind(res);
+
+    let settled =
+        false;
+
+    function settleSharedV78P2(result) {
+        if (settled) {
+            return;
+        }
+
+        settled = true;
+
+        resolveSharedV78P2(
+            result
+        );
+    }
+
+    res.json = function pmisCachedProjectJsonV78P2(payload) {
+        const duration =
+            Date.now() -
+            requestStarted;
+
+        if (
+            Number(res.statusCode) >= 200 &&
+            Number(res.statusCode) < 300 &&
+            Array.isArray(payload)
+        ) {
+            entry.data =
+                payload;
+
+            entry.storedAt =
+                Date.now();
+
+            res.setHeader(
+                'X-PMIS-Projects-Cache',
+                'MISS'
+            );
+
+            res.setHeader(
+                'Server-Timing',
+                'pmis_projects_origin;dur=' +
+                duration
+            );
+
+            console.log(
+                '[PMIS V78P2] GET /api/projects MISS',
+                'count=' + payload.length,
+                'originMs=' + duration
+            );
+
+            settleSharedV78P2({
+                ok: true,
+                data: payload
+            });
+        }
+        else {
+            settleSharedV78P2({
+                ok: false,
+                data: null
+            });
+        }
+
+        return originalJson(payload);
+    };
+
+    function finishV78P2() {
+        settleSharedV78P2({
+            ok: false,
+            data: null
+        });
+
+        if (
+            entry.inFlight ===
+            sharedPromiseV78P2
+        ) {
+            entry.inFlight =
+                null;
+        }
+    }
+
+    res.once(
+        'finish',
+        finishV78P2
+    );
+
+    res.once(
+        'close',
+        finishV78P2
+    );
+
+    return next();
+});
+
+// PMIS_PROJECT_DETAIL_FASTPATH_V78P3
+/*
+ * PROJECT DETAIL NAVIGATION FAST PATH
+ *
+ * The Project Review dashboard already downloads the full project list.
+ * When the user immediately opens project_phases.html, the old flow asks
+ * MongoDB again for GET /api/projects/:id.
+ *
+ * V78P3 first reuses the already-warm V78P2 list cache when possible.
+ * If that is unavailable, it keeps a short per-user/per-project detail
+ * cache and coalesces simultaneous requests.
+ *
+ * The EXISTING GET /api/projects/:id route is untouched and remains the
+ * fallback/source of truth.
+ */
+const PMIS_PROJECT_DETAIL_TTL_V78P3 =
+    Math.max(
+        5000,
+        Number(
+            process.env.PMIS_PROJECT_DETAIL_CACHE_MS ||
+            30000
+        )
+    );
+
+const pmisProjectDetailCacheV78P3 =
+    new Map();
+
+function pmisProjectIdentityKeyV78P3(req) {
+    try {
+        if (
+            typeof pmisProjectCacheKeyV78P2 ===
+            'function'
+        ) {
+            return pmisProjectCacheKeyV78P2(req);
+        }
+    }
+    catch (_) {}
+
+    return [
+        req.get('x-pmis-role'),
+        req.get('x-pmis-username'),
+        req.get('x-pmis-employee-id'),
+        req.get('x-pmis-display-name')
+    ]
+        .map(value =>
+            String(value || '')
+                .trim()
+                .toLowerCase()
+        )
+        .join('|') ||
+        'anonymous';
+}
+
+function pmisProjectIdFromRequestV78P3(req) {
+    const path =
+        String(
+            req.originalUrl ||
+            req.url ||
+            ''
+        )
+            .split('?')[0]
+            .replace(/\/+$/, '');
+
+    const match =
+        path.match(
+            /^\/api\/projects\/([^/]+)$/
+        );
+
+    if (!match) {
+        return '';
+    }
+
+    try {
+        return decodeURIComponent(
+            String(match[1] || '')
+        );
+    }
+    catch (_) {
+        return String(match[1] || '');
+    }
+}
+
+function pmisProjectDetailKeyV78P3(req, projectId) {
+    return (
+        pmisProjectIdentityKeyV78P3(req) +
+        '::' +
+        String(projectId || '')
+    );
+}
+
+function pmisClearProjectDetailCacheV78P3(reason) {
+    pmisProjectDetailCacheV78P3.clear();
+
+    console.log(
+        '[PMIS V78P3] Project detail cache cleared',
+        reason || ''
+    );
+}
+
+function pmisProjectFromWarmListV78P3(req, projectId) {
+    try {
+        if (
+            typeof pmisProjectReadCacheV78P2 ===
+            'undefined' ||
+            !pmisProjectReadCacheV78P2 ||
+            typeof pmisProjectReadCacheV78P2.get !==
+            'function'
+        ) {
+            return null;
+        }
+
+        const key =
+            pmisProjectIdentityKeyV78P3(req);
+
+        const entry =
+            pmisProjectReadCacheV78P2.get(key);
+
+        if (
+            !entry ||
+            !Array.isArray(entry.data)
+        ) {
+            return null;
+        }
+
+        const age =
+            Date.now() -
+            Number(entry.storedAt || 0);
+
+        /*
+         * Reuse only a recent list snapshot.
+         */
+        if (
+            age < 0 ||
+            age > PMIS_PROJECT_DETAIL_TTL_V78P3
+        ) {
+            return null;
+        }
+
+        return (
+            entry.data.find(
+                project =>
+                    String(project?._id || '') ===
+                    String(projectId || '')
+            ) ||
+            null
+        );
+    }
+    catch (_) {
+        return null;
+    }
+}
+
+app.use('/api/projects', async (req, res, next) => {
+    const method =
+        String(req.method || '')
+            .trim()
+            .toUpperCase();
+
+    /*
+     * Clear detail data after successful project changes.
+     */
+    if (
+        [
+            'POST',
+            'PUT',
+            'PATCH',
+            'DELETE'
+        ].includes(method)
+    ) {
+        res.on('finish', () => {
+            if (
+                Number(res.statusCode) >= 200 &&
+                Number(res.statusCode) < 400
+            ) {
+                pmisClearProjectDetailCacheV78P3(
+                    method + ' ' +
+                    String(
+                        req.originalUrl ||
+                        req.url ||
+                        ''
+                    )
+                );
+            }
+        });
+
+        return next();
+    }
+
+    if (method !== 'GET') {
+        return next();
+    }
+
+    const projectId =
+        pmisProjectIdFromRequestV78P3(req);
+
+    /*
+     * Collection route and project sub-routes keep their existing path.
+     */
+    if (!projectId) {
+        return next();
+    }
+
+    const requestStarted =
+        Date.now();
+
+    /*
+     * FASTEST PATH:
+     * dashboard/list data already contains the full project document.
+     */
+    const fromList =
+        pmisProjectFromWarmListV78P3(
+            req,
+            projectId
+        );
+
+    if (fromList) {
+        const elapsed =
+            Date.now() -
+            requestStarted;
+
+        res.setHeader(
+            'X-PMIS-Project-Cache',
+            'LIST-HIT'
+        );
+
+        res.setHeader(
+            'Server-Timing',
+            'pmis_project_list_hit;dur=' +
+            elapsed
+        );
+
+        console.log(
+            '[PMIS V78P3] GET /api/projects/:id LIST-HIT',
+            projectId,
+            'ms=' + elapsed
+        );
+
+        return res.json(fromList);
+    }
+
+    const key =
+        pmisProjectDetailKeyV78P3(
+            req,
+            projectId
+        );
+
+    let entry =
+        pmisProjectDetailCacheV78P3.get(key);
+
+    if (!entry) {
+        entry = {
+            data: null,
+            storedAt: 0,
+            inFlight: null
+        };
+
+        pmisProjectDetailCacheV78P3.set(
+            key,
+            entry
+        );
+    }
+
+    if (
+        entry.data &&
+        (
+            Date.now() -
+            Number(entry.storedAt || 0)
+        ) < PMIS_PROJECT_DETAIL_TTL_V78P3
+    ) {
+        const elapsed =
+            Date.now() -
+            requestStarted;
+
+        res.setHeader(
+            'X-PMIS-Project-Cache',
+            'DETAIL-HIT'
+        );
+
+        res.setHeader(
+            'Server-Timing',
+            'pmis_project_detail_hit;dur=' +
+            elapsed
+        );
+
+        console.log(
+            '[PMIS V78P3] GET /api/projects/:id DETAIL-HIT',
+            projectId,
+            'ms=' + elapsed
+        );
+
+        return res.json(entry.data);
+    }
+
+    if (entry.inFlight) {
+        const sharedStarted =
+            Date.now();
+
+        const shared =
+            await entry.inFlight;
+
+        if (
+            shared?.ok &&
+            shared.data
+        ) {
+            const elapsed =
+                Date.now() -
+                sharedStarted;
+
+            res.setHeader(
+                'X-PMIS-Project-Cache',
+                'SHARED'
+            );
+
+            res.setHeader(
+                'Server-Timing',
+                'pmis_project_shared;dur=' +
+                elapsed
+            );
+
+            console.log(
+                '[PMIS V78P3] GET /api/projects/:id SHARED',
+                projectId,
+                'waitMs=' + elapsed
+            );
+
+            return res.json(shared.data);
+        }
+
+        return next();
+    }
+
+    let resolveSharedV78P3;
+
+    const sharedPromiseV78P3 =
+        new Promise(resolve => {
+            resolveSharedV78P3 = resolve;
+        });
+
+    entry.inFlight =
+        sharedPromiseV78P3;
+
+    const originalJson =
+        res.json.bind(res);
+
+    let settled =
+        false;
+
+    function settleV78P3(result) {
+        if (settled) return;
+        settled = true;
+        resolveSharedV78P3(result);
+    }
+
+    res.json = function pmisProjectDetailJsonV78P3(payload) {
+        const elapsed =
+            Date.now() -
+            requestStarted;
+
+        const successful =
+            Number(res.statusCode) >= 200 &&
+            Number(res.statusCode) < 300 &&
+            payload &&
+            !Array.isArray(payload) &&
+            typeof payload === 'object';
+
+        if (successful) {
+            entry.data =
+                payload;
+
+            entry.storedAt =
+                Date.now();
+
+            res.setHeader(
+                'X-PMIS-Project-Cache',
+                'MISS'
+            );
+
+            res.setHeader(
+                'Server-Timing',
+                'pmis_project_origin;dur=' +
+                elapsed
+            );
+
+            console.log(
+                '[PMIS V78P3] GET /api/projects/:id MISS',
+                projectId,
+                'originMs=' + elapsed
+            );
+
+            settleV78P3({
+                ok: true,
+                data: payload
+            });
+        }
+        else {
+            settleV78P3({
+                ok: false,
+                data: null
+            });
+        }
+
+        return originalJson(payload);
+    };
+
+    function finishV78P3() {
+        settleV78P3({
+            ok: false,
+            data: null
+        });
+
+        if (
+            entry.inFlight ===
+            sharedPromiseV78P3
+        ) {
+            entry.inFlight =
+                null;
+        }
+    }
+
+    res.once(
+        'finish',
+        finishV78P3
+    );
+
+    res.once(
+        'close',
+        finishV78P3
+    );
+
+    return next();
+});
+
+
+// PMIS_PARENT_DATE_ENVELOPE_V81A
+const PMIS_FIXED_PARENT_CHILDREN_V81A = {
+    kickoff: [
+        'kickoff_1',
+        'kickoff_2'
+    ],
+    design: [
+        'design_1',
+        'design_2',
+        'design_critical_approval',
+        'design_3',
+        'design_4',
+        'design_5',
+        'design_6'
+    ],
+    purchase: [
+        'purchase_1',
+        'purchase_2'
+    ],
+    mech_assembly: [
+        'mech_assembly_1',
+        'mech_assembly_2'
+    ],
+    program: [
+        'prog_plc_offline',
+        'prog_plc',
+        'prog_robot',
+        'prog_labview'
+    ],
+    inhouse: [
+        'inhouse_1',
+        'inhouse_2'
+    ],
+    mq1_fat: [
+        'mq1_fat_1',
+        'mq1_fat_2',
+        'mq1_fat_3'
+    ],
+    dispatch_parent: [
+        'dispatch_1',
+        'dispatch_2'
+    ],
+    inc_parent: [
+        'inc_1',
+        'inc_2',
+        'inc_3',
+        'inc_4'
+    ]
+};
+
+function pmisDateV81A(value) {
+    if (!value) return null;
+
+    const raw =
+        String(value)
+            .trim()
+            .slice(0,10);
+
+    const match =
+        raw.match(
+            /^(\d{4})-(\d{2})-(\d{2})$/
+        );
+
+    if (!match) {
+        const fallback =
+            new Date(value);
+
+        return Number.isNaN(
+            fallback.getTime()
+        )
+            ? null
+            : fallback;
+    }
+
+    const date =
+        new Date(
+            Number(match[1]),
+            Number(match[2]) - 1,
+            Number(match[3])
+        );
+
+    date.setHours(
+        0,
+        0,
+        0,
+        0
+    );
+
+    return date;
+}
+
+function pmisIsoV81A(date) {
+    if (
+        !date ||
+        Number.isNaN(
+            date.getTime()
+        )
+    ) {
+        return '';
+    }
+
+    return [
+        date.getFullYear(),
+        String(
+            date.getMonth() + 1
+        ).padStart(2,'0'),
+        String(
+            date.getDate()
+        ).padStart(2,'0')
+    ].join('-');
+}
+
+function pmisEnvelopeV81A(items) {
+    const valid =
+        (Array.isArray(items) ? items : [])
+            .filter(item =>
+                item?.start &&
+                item?.end &&
+                item.end >= item.start
+            );
+
+    if (!valid.length) {
+        return {
+            start: null,
+            end: null
+        };
+    }
+
+    return {
+        start:
+            new Date(
+                Math.min(
+                    ...valid.map(
+                        item =>
+                            item.start.getTime()
+                    )
+                )
+            ),
+        end:
+            new Date(
+                Math.max(
+                    ...valid.map(
+                        item =>
+                            item.end.getTime()
+                    )
+                )
+            )
+    };
+}
+
+function pmisChildIdsV81A(
+    detailed,
+    parentId
+) {
+    const ids =
+        new Set(
+            PMIS_FIXED_PARENT_CHILDREN_V81A[
+                parentId
+            ] || []
+        );
+
+    const custom =
+        Array.isArray(
+            detailed?.__custom_substages_v74q
+        )
+            ? detailed.__custom_substages_v74q
+            : [];
+
+    custom.forEach(item => {
+        if (
+            String(item?.parent || '') ===
+                String(parentId) &&
+            item?.id
+        ) {
+            ids.add(
+                String(item.id)
+            );
+        }
+    });
+
+    return [...ids];
+}
+
+function pmisEffectiveDatesV81A(
+    data,
+    revisionIndex = null
+) {
+    const revisions =
+        Array.isArray(data?.revisions)
+            ? data.revisions
+            : [];
+
+    if (revisionIndex === null) {
+        const latest =
+            revisions.length
+                ? revisions[
+                    revisions.length - 1
+                  ]
+                : null;
+
+        return {
+            start:
+                latest?.start ||
+                data?.plan_start ||
+                '',
+            end:
+                latest?.end ||
+                data?.plan_end ||
+                ''
+        };
+    }
+
+    let selected = null;
+
+    for (
+        let i = 0;
+        i <= revisionIndex &&
+        i < revisions.length;
+        i++
+    ) {
+        selected =
+            revisions[i] ||
+            selected;
+    }
+
+    return {
+        start:
+            selected?.start ||
+            data?.plan_start ||
+            '',
+        end:
+            selected?.end ||
+            data?.plan_end ||
+            ''
+    };
+}
+
+function pmisNormalizeProjectParentDatesV81A(
+    project
+) {
+    if (
+        !project ||
+        typeof project !== 'object' ||
+        !project.detailed_phases ||
+        typeof project.detailed_phases !== 'object'
+    ) {
+        return project;
+    }
+
+    const detailed =
+        project.detailed_phases;
+
+    Object.keys(
+        PMIS_FIXED_PARENT_CHILDREN_V81A
+    ).forEach(parentId => {
+        const childIds =
+            pmisChildIdsV81A(
+                detailed,
+                parentId
+            );
+
+        const active =
+            childIds
+                .map(id => ({
+                    id,
+                    data:
+                        detailed[id] ||
+                        {}
+                }))
+                .filter(item =>
+                    item.data.is_excluded !== true
+                );
+
+        if (!active.length) {
+            return;
+        }
+
+        const parent =
+            detailed[parentId] ||
+            (
+                detailed[parentId] = {}
+            );
+
+        const planRange =
+            pmisEnvelopeV81A(
+                active.map(item => ({
+                    start:
+                        pmisDateV81A(
+                            item.data.plan_start
+                        ),
+                    end:
+                        pmisDateV81A(
+                            item.data.plan_end
+                        )
+                }))
+            );
+
+        parent.plan_start =
+            pmisIsoV81A(
+                planRange.start
+            );
+
+        parent.plan_end =
+            pmisIsoV81A(
+                planRange.end
+            );
+
+        const currentRange =
+            pmisEnvelopeV81A(
+                active.map(item => {
+                    const dates =
+                        pmisEffectiveDatesV81A(
+                            item.data,
+                            null
+                        );
+
+                    return {
+                        start:
+                            pmisDateV81A(
+                                dates.start
+                            ),
+                        end:
+                            pmisDateV81A(
+                                dates.end
+                            )
+                    };
+                })
+            );
+
+        const hasRevision =
+            active.some(item =>
+                Array.isArray(
+                    item.data?.revisions
+                ) &&
+                item.data.revisions.length > 0
+            );
+
+        parent.reassign_start =
+            hasRevision
+                ? pmisIsoV81A(
+                    currentRange.start
+                  )
+                : '';
+
+        parent.reassign_end =
+            hasRevision
+                ? pmisIsoV81A(
+                    currentRange.end
+                  )
+                : '';
+
+        const actualItems =
+            active.map(item => ({
+                start:
+                    pmisDateV81A(
+                        item.data.actual_start
+                    ),
+                end:
+                    pmisDateV81A(
+                        item.data.actual_end
+                    )
+            }));
+
+        const actualRange =
+            pmisEnvelopeV81A(
+                actualItems
+            );
+
+        parent.actual_start =
+            pmisIsoV81A(
+                actualRange.start
+            );
+
+        const allActualComplete =
+            actualItems.every(
+                item =>
+                    item.start &&
+                    item.end
+            );
+
+        parent.actual_end =
+            allActualComplete
+                ? pmisIsoV81A(
+                    actualRange.end
+                  )
+                : '';
+
+        const maxRevisions =
+            Math.max(
+                0,
+                ...active.map(item =>
+                    Array.isArray(
+                        item.data?.revisions
+                    )
+                        ? item.data.revisions.length
+                        : 0
+                )
+            );
+
+        const parentRevisions = [];
+
+        for (
+            let revisionIndex = 0;
+            revisionIndex < maxRevisions;
+            revisionIndex++
+        ) {
+            const range =
+                pmisEnvelopeV81A(
+                    active.map(item => {
+                        const dates =
+                            pmisEffectiveDatesV81A(
+                                item.data,
+                                revisionIndex
+                            );
+
+                        return {
+                            start:
+                                pmisDateV81A(
+                                    dates.start
+                                ),
+                            end:
+                                pmisDateV81A(
+                                    dates.end
+                                )
+                        };
+                    })
+                );
+
+            parentRevisions.push({
+                label:
+                    'R' +
+                    (
+                        revisionIndex +
+                        1
+                    ),
+                start:
+                    pmisIsoV81A(
+                        range.start
+                    ),
+                end:
+                    pmisIsoV81A(
+                        range.end
+                    )
+            });
+        }
+
+        parent.revisions =
+            parentRevisions;
+    });
+
+    const kickoff =
+        detailed.kickoff ||
+        {};
+
+    project.start_date =
+        kickoff.reassign_start ||
+        kickoff.plan_start ||
+        '';
+
+    project.reassign_start_date =
+        (
+            kickoff.reassign_start &&
+            kickoff.reassign_start !==
+                kickoff.plan_start
+        )
+            ? kickoff.reassign_start
+            : '';
+
+    const dispatch =
+        detailed.dispatch_parent ||
+        {};
+
+    project.dispatch_date =
+        dispatch.reassign_end ||
+        dispatch.plan_end ||
+        '';
+
+    project.reassign_dispatch_date =
+        (
+            dispatch.reassign_end &&
+            dispatch.reassign_end !==
+                dispatch.plan_end
+        )
+            ? dispatch.reassign_end
+            : '';
+
+    const inc =
+        detailed.inc_parent ||
+        {};
+
+    project.mq2_date =
+        inc.reassign_end ||
+        inc.plan_end ||
+        '';
+
+    project.reassign_mq2_date =
+        (
+            inc.reassign_end &&
+            inc.reassign_end !==
+                inc.plan_end
+        )
+            ? inc.reassign_end
+            : '';
+
+    return project;
+}
+
+/*
+ * Normalize project data at the API boundary.
+ *
+ * GET:
+ *   Existing DB rows immediately appear with correct parent dates
+ *   in Dashboard / Project Plan / Cashflow / reports.
+ *
+ * POST/PATCH/PUT:
+ *   Correct rollups are persisted whenever detailed_phases is saved.
+ */
+app.use(
+    '/api/projects',
+    (req,res,next) => {
+        const method =
+            String(
+                req.method ||
+                ''
+            )
+                .trim()
+                .toUpperCase();
+
+        if (
+            [
+                'POST',
+                'PATCH',
+                'PUT'
+            ].includes(method) &&
+            req.body?.detailed_phases
+        ) {
+            pmisNormalizeProjectParentDatesV81A(
+                req.body
+            );
+        }
+
+        const originalJson =
+            res.json.bind(res);
+
+        res.json =
+            function pmisParentDateJsonV81A(
+                payload
+            ) {
+                try {
+                    if (
+                        Array.isArray(payload)
+                    ) {
+                        payload.forEach(
+                            pmisNormalizeProjectParentDatesV81A
+                        );
+                    }
+                    else if (
+                        payload &&
+                        typeof payload === 'object' &&
+                        payload.detailed_phases
+                    ) {
+                        pmisNormalizeProjectParentDatesV81A(
+                            payload
+                        );
+                    }
+                }
+                catch (error) {
+                    console.error(
+                        '[PMIS V81A] Parent date normalization failed:',
+                        error
+                    );
+                }
+
+                return originalJson(
+                    payload
+                );
+            };
+
+        next();
+    }
+);
+
 
 // --- API ENDPOINTS ---
 
@@ -3691,6 +5080,768 @@ app.post('/api/auth/reset-password', async (req, res) => {
     }
 });
 
+// PMIS_ADMIN_LOGIN_MANAGEMENT_V80A
+// Review Admin frontend management for PM / Project Coordinator logins.
+// Password hashes are never returned to the browser.
+// PMIS_ADMIN_LOGIN_MANAGEMENT_V80B2
+function pmisRequireLoginAdminV80A(req, res, next) {
+    const role =
+        String(req.get('x-pmis-role') || '')
+            .trim()
+            .toLowerCase();
+
+    const username =
+        String(req.get('x-pmis-username') || '')
+            .trim()
+            .toLowerCase();
+
+    const configuredAdmin =
+        String(PMIS_ADMIN_USERNAME || '')
+            .trim()
+            .toLowerCase();
+
+    const roleMatches =
+        role === 'admin';
+
+    const usernameMatches =
+        !!username &&
+        !!configuredAdmin &&
+        safeEqualText(
+            username,
+            configuredAdmin
+        );
+
+    /*
+     * V80B2:
+     * Accept the already-authenticated Review Admin identity when either
+     * the exact Admin role header or the configured Review Admin username
+     * is present. V80A required both and could falsely reject the valid
+     * dashboard session.
+     *
+     * Every WRITE action is still independently protected by
+     * pmisRequireLoginAdminPasswordV80A(), so create/reset/status/revoke
+     * continues to require the configured Review Admin password.
+     */
+    if (
+        !roleMatches &&
+        !usernameMatches
+    ) {
+        console.warn(
+            '[PMIS V80B2] Login Management access rejected',
+            {
+                method:
+                    String(req.method || ''),
+                path:
+                    String(
+                        req.originalUrl ||
+                        req.url ||
+                        ''
+                    ),
+                role:
+                    role || '(blank)',
+                username:
+                    username || '(blank)'
+            }
+        );
+
+        return res.status(403).json({
+            error:
+                'Main Review Admin access is required.'
+        });
+    }
+
+    res.setHeader(
+        'X-PMIS-Login-Admin',
+        'accepted'
+    );
+
+    next();
+}
+
+function pmisRequireLoginAdminPasswordV80A(req, res, next) {
+    const adminPassword =
+        String(req.body?.adminPassword || '');
+
+    if (
+        !adminPassword ||
+        !safeEqualText(
+            adminPassword,
+            PMIS_ADMIN_PASSWORD
+        )
+    ) {
+        return res.status(401).json({
+            error: 'Review Admin password confirmation failed.'
+        });
+    }
+
+    next();
+}
+
+
+// PMIS_ADMIN_LOGIN_MANAGEMENT_V80C
+/*
+ * WRITE authentication for Login Management.
+ *
+ * The employee-list GET can continue using the normal Admin session header.
+ * Write actions use the actual Review Admin username + password submitted in
+ * the request body. This removes dependence on custom x-pmis-* headers for
+ * POST/PATCH/DELETE while preserving a strong server-side credential check.
+ */
+function pmisRequireLoginAdminWriteV80C(req, res, next) {
+    const adminUsername =
+        String(
+            req.body?.adminUsername ||
+            req.get('x-pmis-username') ||
+            ''
+        )
+            .trim()
+            .toLowerCase();
+
+    const adminPassword =
+        String(
+            req.body?.adminPassword ||
+            ''
+        );
+
+    const configuredUsername =
+        String(
+            PMIS_ADMIN_USERNAME ||
+            ''
+        )
+            .trim()
+            .toLowerCase();
+
+    const usernameOk =
+        !!adminUsername &&
+        !!configuredUsername &&
+        safeEqualText(
+            adminUsername,
+            configuredUsername
+        );
+
+    const passwordOk =
+        !!adminPassword &&
+        safeEqualText(
+            adminPassword,
+            PMIS_ADMIN_PASSWORD
+        );
+
+    if (
+        !usernameOk ||
+        !passwordOk
+    ) {
+        console.warn(
+            '[PMIS V80C] Login Management write authentication rejected',
+            {
+                method:
+                    String(req.method || ''),
+                path:
+                    String(
+                        req.originalUrl ||
+                        req.url ||
+                        ''
+                    ),
+                username:
+                    adminUsername ||
+                    '(blank)',
+                usernameOk,
+                passwordOk
+            }
+        );
+
+        return res.status(401).json({
+            error:
+                'Review Admin confirmation failed.'
+        });
+    }
+
+    next();
+}
+
+function pmisLoginRoleV80A(value) {
+    const role =
+        String(value || '')
+            .trim()
+            .toLowerCase();
+
+    if (
+        role === 'project_manager' ||
+        role === 'project_coordinator'
+    ) {
+        return role;
+    }
+
+    return null;
+}
+
+function pmisEmployeeRoleLabelV80A(authRole) {
+    return authRole === 'project_coordinator'
+        ? 'Project Coordinator'
+        : 'Project Manager';
+}
+
+function pmisLoginAccountPayloadV80A(employee) {
+    const passwordHash =
+        String(employee?.passwordHash || '');
+
+    const username =
+        String(employee?.username || '')
+            .trim();
+
+    const authRole =
+        pmisLoginRoleV80A(
+            employee?.authRole
+        );
+
+    const loginEnabled =
+        employee?.loginEnabled === true;
+
+    const hasLogin =
+        Boolean(
+            username ||
+            authRole ||
+            passwordHash ||
+            loginEnabled
+        );
+
+    return {
+        _id:
+            String(employee?._id || ''),
+        name:
+            String(employee?.name || ''),
+        employee_id:
+            String(employee?.employee_id || ''),
+        email:
+            String(employee?.email || ''),
+        dept:
+            String(employee?.dept || ''),
+        role:
+            String(employee?.role || ''),
+        username,
+        authRole,
+        loginEnabled,
+        hasPassword:
+            Boolean(passwordHash),
+        hasLogin,
+        createdAt:
+            employee?.createdAt || null,
+        updatedAt:
+            employee?.updatedAt || null
+    };
+}
+
+async function pmisFindEmployeeForLoginV80A({
+    employeeRecordId,
+    employeeId
+}) {
+    if (employeeRecordId) {
+        const byId =
+            await Employee
+                .findById(employeeRecordId)
+                .select('+passwordHash');
+
+        if (byId) {
+            return byId;
+        }
+    }
+
+    const id =
+        String(employeeId || '')
+            .trim();
+
+    if (!id) {
+        return null;
+    }
+
+    return Employee
+        .findOne({
+            employee_id: {
+                $regex:
+                    `^${escapeRegex(id)}$`,
+                $options:
+                    'i'
+            }
+        })
+        .select('+passwordHash');
+}
+
+app.get(
+    '/api/admin/login-management',
+    pmisRequireLoginAdminV80A,
+    async (req, res) => {
+        try {
+            await ensureMongoConnected();
+
+            const employees =
+                await Employee
+                    .find({})
+                    .select('+passwordHash')
+                    .sort({
+                        name: 1,
+                        employee_id: 1
+                    });
+
+            return res.json({
+                adminUsername:
+                    PMIS_ADMIN_USERNAME,
+                accounts:
+                    employees.map(
+                        pmisLoginAccountPayloadV80A
+                    )
+            });
+        }
+        catch (error) {
+            console.error(
+                '[LOGIN MANAGEMENT] Load failed:',
+                error
+            );
+
+            return res.status(500).json({
+                error:
+                    error.message ||
+                    'Unable to load PMIS login accounts.'
+            });
+        }
+    }
+);
+
+app.post(
+    '/api/admin/login-management',
+    pmisRequireLoginAdminWriteV80C,
+    async (req, res) => {
+        try {
+            await ensureMongoConnected();
+
+            const employeeRecordId =
+                String(
+                    req.body?.employeeRecordId ||
+                    ''
+                ).trim();
+
+            const employeeId =
+                String(
+                    req.body?.employeeId ||
+                    ''
+                ).trim();
+
+            const name =
+                String(
+                    req.body?.name ||
+                    ''
+                ).trim();
+
+            const email =
+                String(
+                    req.body?.email ||
+                    ''
+                ).trim();
+
+            const dept =
+                String(
+                    req.body?.dept ||
+                    ''
+                ).trim();
+
+            const authRole =
+                pmisLoginRoleV80A(
+                    req.body?.authRole
+                );
+
+            const username =
+                normalizeUsername(
+                    req.body?.username ||
+                    employeeId
+                );
+
+            const password =
+                String(
+                    req.body?.password ||
+                    ''
+                );
+
+            const loginEnabled =
+                req.body?.loginEnabled !== false;
+
+            if (!employeeId) {
+                return res.status(400).json({
+                    error: 'Employee ID is required.'
+                });
+            }
+
+            if (!name) {
+                return res.status(400).json({
+                    error: 'Employee name is required.'
+                });
+            }
+
+            if (!authRole) {
+                return res.status(400).json({
+                    error:
+                        'Choose Project Manager or Project Coordinator.'
+                });
+            }
+
+            if (!username) {
+                return res.status(400).json({
+                    error: 'Username is required.'
+                });
+            }
+
+            let employee =
+                await pmisFindEmployeeForLoginV80A({
+                    employeeRecordId,
+                    employeeId
+                });
+
+            if (!employee) {
+                employee =
+                    new Employee({
+                        employee_id:
+                            employeeId
+                    });
+            }
+            else {
+                const existingEmployeeId =
+                    String(
+                        employee.employee_id ||
+                        ''
+                    ).trim();
+
+                if (
+                    existingEmployeeId &&
+                    existingEmployeeId.toLowerCase() !==
+                        employeeId.toLowerCase()
+                ) {
+                    const duplicateEmployeeId =
+                        await Employee.findOne({
+                            _id: {
+                                $ne:
+                                    employee._id
+                            },
+                            employee_id: {
+                                $regex:
+                                    `^${escapeRegex(employeeId)}$`,
+                                $options:
+                                    'i'
+                            }
+                        });
+
+                    if (duplicateEmployeeId) {
+                        return res.status(409).json({
+                            error:
+                                'That Employee ID already belongs to another employee.'
+                        });
+                    }
+                }
+            }
+
+            const duplicateUsername =
+                await Employee.findOne({
+                    _id: {
+                        $ne:
+                            employee._id
+                    },
+                    username
+                });
+
+            if (duplicateUsername) {
+                return res.status(409).json({
+                    error:
+                        'That PMIS username is already in use.'
+                });
+            }
+
+            if (
+                password &&
+                password.length < 8
+            ) {
+                return res.status(400).json({
+                    error:
+                        'Temporary password must be at least 8 characters.'
+                });
+            }
+
+            if (
+                !password &&
+                !employee.passwordHash
+            ) {
+                return res.status(400).json({
+                    error:
+                        'Set a temporary password when creating a new login.'
+                });
+            }
+
+            employee.name =
+                name;
+
+            employee.employee_id =
+                employeeId;
+
+            employee.email =
+                email;
+
+            employee.dept =
+                dept;
+
+            employee.role =
+                pmisEmployeeRoleLabelV80A(
+                    authRole
+                );
+
+            employee.username =
+                username;
+
+            employee.authRole =
+                authRole;
+
+            employee.loginEnabled =
+                loginEnabled;
+
+            if (password) {
+                employee.passwordHash =
+                    hashPassword(password);
+            }
+
+            await employee.save();
+
+            return res.json({
+                success: true,
+                account:
+                    pmisLoginAccountPayloadV80A(
+                        employee
+                    ),
+                message:
+                    employeeRecordId
+                        ? 'PMIS login updated.'
+                        : 'PMIS login created.'
+            });
+        }
+        catch (error) {
+            console.error(
+                '[LOGIN MANAGEMENT] Save failed:',
+                error
+            );
+
+            if (error?.code === 11000) {
+                return res.status(409).json({
+                    error:
+                        'The username already exists.'
+                });
+            }
+
+            return res.status(500).json({
+                error:
+                    error.message ||
+                    'Unable to save PMIS login.'
+            });
+        }
+    }
+);
+
+app.patch(
+    '/api/admin/login-management/:id/password',
+    pmisRequireLoginAdminWriteV80C,
+    async (req, res) => {
+        try {
+            await ensureMongoConnected();
+
+            const newPassword =
+                String(
+                    req.body?.newPassword ||
+                    ''
+                );
+
+            if (newPassword.length < 8) {
+                return res.status(400).json({
+                    error:
+                        'New password must be at least 8 characters.'
+                });
+            }
+
+            const employee =
+                await Employee
+                    .findById(req.params.id)
+                    .select('+passwordHash');
+
+            if (!employee) {
+                return res.status(404).json({
+                    error: 'Employee not found.'
+                });
+            }
+
+            if (
+                !employee.username ||
+                !pmisLoginRoleV80A(
+                    employee.authRole
+                )
+            ) {
+                return res.status(400).json({
+                    error:
+                        'Create the employee login before resetting its password.'
+                });
+            }
+
+            employee.passwordHash =
+                hashPassword(newPassword);
+
+            await employee.save();
+
+            return res.json({
+                success: true,
+                account:
+                    pmisLoginAccountPayloadV80A(
+                        employee
+                    ),
+                message:
+                    'Temporary password reset successfully.'
+            });
+        }
+        catch (error) {
+            console.error(
+                '[LOGIN MANAGEMENT] Password reset failed:',
+                error
+            );
+
+            return res.status(500).json({
+                error:
+                    error.message ||
+                    'Unable to reset PMIS password.'
+            });
+        }
+    }
+);
+
+app.patch(
+    '/api/admin/login-management/:id/status',
+    pmisRequireLoginAdminWriteV80C,
+    async (req, res) => {
+        try {
+            await ensureMongoConnected();
+
+            const loginEnabled =
+                req.body?.loginEnabled === true;
+
+            const employee =
+                await Employee
+                    .findById(req.params.id)
+                    .select('+passwordHash');
+
+            if (!employee) {
+                return res.status(404).json({
+                    error: 'Employee not found.'
+                });
+            }
+
+            if (
+                loginEnabled &&
+                (
+                    !employee.username ||
+                    !employee.passwordHash ||
+                    !pmisLoginRoleV80A(
+                        employee.authRole
+                    )
+                )
+            ) {
+                return res.status(400).json({
+                    error:
+                        'This employee does not yet have a complete PMIS login.'
+                });
+            }
+
+            employee.loginEnabled =
+                loginEnabled;
+
+            await employee.save();
+
+            return res.json({
+                success: true,
+                account:
+                    pmisLoginAccountPayloadV80A(
+                        employee
+                    ),
+                message:
+                    loginEnabled
+                        ? 'Login enabled.'
+                        : 'Login disabled.'
+            });
+        }
+        catch (error) {
+            console.error(
+                '[LOGIN MANAGEMENT] Status update failed:',
+                error
+            );
+
+            return res.status(500).json({
+                error:
+                    error.message ||
+                    'Unable to update login status.'
+            });
+        }
+    }
+);
+
+app.delete(
+    '/api/admin/login-management/:id',
+    pmisRequireLoginAdminWriteV80C,
+    async (req, res) => {
+        try {
+            await ensureMongoConnected();
+
+            const employee =
+                await Employee
+                    .findById(req.params.id)
+                    .select('+passwordHash');
+
+            if (!employee) {
+                return res.status(404).json({
+                    error: 'Employee not found.'
+                });
+            }
+
+            /*
+             * Revoke only the PMIS login.
+             * Keep the Employee Master record for project/history references.
+             */
+            employee.username =
+                undefined;
+
+            employee.passwordHash =
+                undefined;
+
+            employee.authRole =
+                null;
+
+            employee.loginEnabled =
+                false;
+
+            await employee.save();
+
+            return res.json({
+                success: true,
+                account:
+                    pmisLoginAccountPayloadV80A(
+                        employee
+                    ),
+                message:
+                    'PMIS login revoked. Employee Master record was kept.'
+            });
+        }
+        catch (error) {
+            console.error(
+                '[LOGIN MANAGEMENT] Revoke failed:',
+                error
+            );
+
+            return res.status(500).json({
+                error:
+                    error.message ||
+                    'Unable to revoke PMIS login.'
+            });
+        }
+    }
+);
+
+
 app.post('/api/send-email', async (req, res) => {
     const { to, subject, body } = req.body;
 
@@ -4021,11 +6172,33 @@ if (
             `Server running at http://localhost:${PORT}/`
         );
 
-        if (!LOCAL_SAFE_MODE) {
-            syncDataOnStartup();
+        /*
+         * PMIS_STARTUP_IO_GUARD_V78P8
+         *
+         * syncDataOnStartup() scans Action Points and every Project and can
+         * issue database writes. Running it at the exact moment the user opens
+         * PMIS makes the first dashboard/project requests compete with a full
+         * maintenance pass. Keep maintenance opt-in on local startup.
+         */
+        const runStartupSyncV78P8 =
+            process.env.PMIS_RUN_STARTUP_SYNC === 'true';
+
+        if (!LOCAL_SAFE_MODE && runStartupSyncV78P8) {
+            setTimeout(() => {
+                syncDataOnStartup().catch(error => {
+                    console.error(
+                        '[PMIS V78P8] Deferred startup sync failed:',
+                        error?.message || error
+                    );
+                });
+            }, 15000);
+
+            console.log(
+                '[PMIS V78P8] Startup data sync scheduled after 15 seconds.'
+            );
         } else {
             console.log(
-                '[LOCAL SAFE MODE] Startup sync disabled.'
+                '[PMIS V78P8] Startup data sync skipped for fast UI startup.'
             );
         }
     });

@@ -17,12 +17,12 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <!-- Export Libraries -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script async src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script async src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <!-- Air Datepicker (Premium Grid Calendar) -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/air-datepicker/air-datepicker.css">
-    <script src="https://cdn.jsdelivr.net/npm/air-datepicker/air-datepicker.js"></script>
+    <!-- PMIS V78P5: unused Air Datepicker CSS removed; Project Plan uses native date inputs. -->
+    <!-- PMIS V78P5: unused Air Datepicker JS removed; Project Plan uses native date inputs. -->
 
 
     <style>
@@ -1872,15 +1872,87 @@
                 }
 
                 setTimeout(() => { applyDisabledState(); wrapWriteFunctions(); }, 0);
+                let pmisAccessQueuedV78P5 = false;
+
                 const observer = new MutationObserver(() => {
-                    applyDisabledState();
-                    wrapWriteFunctions();
+                    if (pmisAccessQueuedV78P5) return;
+
+                    pmisAccessQueuedV78P5 = true;
+
+                    requestAnimationFrame(() => {
+                        pmisAccessQueuedV78P5 = false;
+                        applyDisabledState();
+                        wrapWriteFunctions();
+                    });
                 });
+
                 observer.observe(document.body, { childList: true, subtree: true });
                 return false;
             };
         })();
     </script>
+
+    <script id="pmis-v78p7-long-task-monitor">
+    (function () {
+        'use strict';
+
+        if (window.__PMIS_V78P7_LONG_TASK_MONITOR__) return;
+        window.__PMIS_V78P7_LONG_TASK_MONITOR__ = true;
+
+        try {
+            if (typeof PerformanceObserver !== 'function') return;
+
+            const observer =
+                new PerformanceObserver(list => {
+                    list.getEntries().forEach(entry => {
+                        if (Number(entry.duration) >= 50) {
+                            console.warn(
+                                '[PMIS V78P7] LONG TASK',
+                                Math.round(entry.duration) + 'ms',
+                                'start=' + Math.round(entry.startTime) + 'ms'
+                            );
+                        }
+                    });
+                });
+
+            observer.observe({ entryTypes: ['longtask'] });
+        }
+        catch (_) {}
+    })();
+    </script>
+
+
+<style id="pmis-v78p9-expand-performance-style">
+/* PMIS_PARENT_EXPAND_REFLOW_FIX_V78P9H */
+ /* PMIS_PROJECT_PLAN_UI_RESTORE_V81B */
+.pmis-v78p9-inline-details{
+    margin-top:8px;
+    padding:8px 10px;
+    border:1px solid #dbe5ef;
+    border-radius:10px;
+    background:#f8fbff;
+    display:grid;
+    grid-template-columns:minmax(120px,160px) minmax(180px,1fr);
+    gap:8px 12px;
+    align-items:start;
+}
+.pmis-v78p9-inline-detail-label{
+    font-size:.61rem;
+    font-weight:800;
+    color:#64748b;
+    text-transform:uppercase;
+    letter-spacing:.03em;
+    margin-bottom:3px;
+}
+.pmis-v78p9-inline-details .inline-input{
+    max-width:100%;
+}
+@media (max-width:900px){
+    .pmis-v78p9-inline-details{
+        grid-template-columns:1fr;
+    }
+}
+</style>
 </head>
 
 <body>
@@ -2376,7 +2448,7 @@
         <div id="toastText">Thank you for your feedback!</div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         function showToast(msg, isError = false) {
             const t = document.getElementById('toastMsg');
@@ -2389,24 +2461,149 @@
             setTimeout(() => t.classList.remove('show'), 3500);
         }
     </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         const projectId = urlParams.get('id');
         let project = null;
 
         async function fetchProjectData() {
+            const handoffKeyV78P8 = 'pmis_project_handoff_v78p8';
+            const handoffMaxAgeV78P8 = 10 * 60 * 1000;
+            let renderedFromHandoffV78P8 = false;
+
+            /*
+             * PMIS_PROJECT_HANDOFF_V78P8
+             *
+             * The dashboard already has the complete project object.
+             * Use it immediately so opening Project Plan is not blocked by
+             * MongoDB / DNS / network latency. Fresh server data is still
+             * requested immediately afterwards and reconciled in idle time.
+             */
             try {
-                const res = await fetch(`/api/projects/${projectId}?t=${Date.now()}`, { cache: 'no-store' });
-                project = await res.json();
-                if (typeof pmisApplyProjectAccessV24 === 'function') pmisApplyProjectAccessV24(project);
-                if (!project) {
-                    alert('Project not found!');
-                    window.location.href = 'project_review.html';
+                const rawV78P8 = sessionStorage.getItem(handoffKeyV78P8);
+
+                if (rawV78P8) {
+                    const cachedV78P8 = JSON.parse(rawV78P8);
+                    const ageV78P8 = Date.now() - Number(cachedV78P8?.ts || 0);
+
+                    if (
+                        String(cachedV78P8?.id || '') === String(projectId || '') &&
+                        cachedV78P8?.project &&
+                        ageV78P8 >= 0 &&
+                        ageV78P8 <= handoffMaxAgeV78P8
+                    ) {
+                        const startedV78P8 =
+                            typeof performance !== 'undefined'
+                                ? performance.now()
+                                : Date.now();
+
+                        project = cachedV78P8.project;
+
+                        if (typeof pmisApplyProjectAccessV24 === 'function') {
+                            pmisApplyProjectAccessV24(project);
+                        }
+
+                        initProjectData();
+                        renderTable();
+                        renderedFromHandoffV78P8 = true;
+
+                        const endedV78P8 =
+                            typeof performance !== 'undefined'
+                                ? performance.now()
+                                : Date.now();
+
+                        console.log(
+                            '[PMIS V78P8] Project Plan rendered from dashboard handoff in',
+                            Math.round(endedV78P8 - startedV78P8) + 'ms'
+                        );
+                    }
                 }
-                initProjectData();
-                renderTable();
-            } catch (err) {
+            }
+            catch (handoffErrorV78P8) {
+                console.warn(
+                    '[PMIS V78P8] Project handoff could not be used:',
+                    handoffErrorV78P8
+                );
+            }
+
+            try {
+                const requestStartedV78P8 =
+                    typeof performance !== 'undefined'
+                        ? performance.now()
+                        : Date.now();
+
+                const res = await fetch(
+                    `/api/projects/${projectId}?t=${Date.now()}`,
+                    {
+                        cache: 'no-store',
+                        credentials: 'same-origin'
+                    }
+                );
+
+                const freshV78P8 = await res.json().catch(() => null);
+
+                if (!res.ok) {
+                    throw new Error(
+                        freshV78P8?.error ||
+                        freshV78P8?.message ||
+                        ('Project request failed with HTTP ' + res.status)
+                    );
+                }
+
+                if (!freshV78P8 || typeof freshV78P8 !== 'object') {
+                    throw new Error('Project API returned an invalid project response.');
+                }
+
+                const requestEndedV78P8 =
+                    typeof performance !== 'undefined'
+                        ? performance.now()
+                        : Date.now();
+
+                console.log(
+                    '[PMIS V78P8] Fresh project API ready in',
+                    Math.round(requestEndedV78P8 - requestStartedV78P8) + 'ms'
+                );
+
+                project = freshV78P8;
+
+                if (typeof pmisApplyProjectAccessV24 === 'function') {
+                    pmisApplyProjectAccessV24(project);
+                }
+
+                if (!renderedFromHandoffV78P8) {
+                    initProjectData();
+                    renderTable();
+                    return;
+                }
+
+                const refreshV78P8 = () => {
+                    try {
+                        initProjectData();
+                        renderTable();
+                        console.log('[PMIS V78P8] Fresh project reconciled after initial paint.');
+                    }
+                    catch (refreshErrorV78P8) {
+                        console.warn('[PMIS V78P8] Fresh project repaint skipped:',refreshErrorV78P8);
+                    }
+                };
+
+                if (typeof requestIdleCallback === 'function') {
+                    requestIdleCallback(refreshV78P8,{timeout:700});
+                }
+                else {
+                    setTimeout(refreshV78P8,80);
+                }
+            }
+            catch (err) {
+                if (renderedFromHandoffV78P8) {
+                    console.warn(
+                        '[PMIS V78P8] Fresh project request failed; keeping dashboard handoff view:',
+                        err
+                    );
+                    return;
+                }
+
                 console.error('Error fetching project:', err);
             }
         }
@@ -2503,31 +2700,152 @@
         ];
 
 
-        window.onload = fetchProjectData;
+        /* PMIS_PROJECT_PHASES_ROOT_PERFORMANCE_V78P5 */
+        let pmisProjectBootStartedV78P5 = false;
+
+        function pmisStartProjectBootV78P5() {
+            if (pmisProjectBootStartedV78P5) return;
+            pmisProjectBootStartedV78P5 = true;
+
+            const started =
+                typeof performance !== 'undefined'
+                    ? performance.now()
+                    : Date.now();
+
+            Promise.resolve(fetchProjectData())
+                .finally(() => {
+                    const elapsed =
+                        (
+                            typeof performance !== 'undefined'
+                                ? performance.now()
+                                : Date.now()
+                        ) -
+                        started;
+
+                    console.log(
+                        '[PMIS V78P5] Project boot completed',
+                        Math.round(elapsed) + 'ms'
+                    );
+                });
+        }
+
+        /* PMIS_PROJECT_PHASES_RENDER_PIPELINE_V78P7
+         *
+         * Start after the full HTML and all PMIS inline wrappers have
+         * been parsed. This avoids the V78P5 boot race without waiting
+         * for images, fonts or async export libraries.
+         */
+        if (document.readyState === 'loading') {
+            document.addEventListener(
+                'DOMContentLoaded',
+                pmisStartProjectBootV78P5,
+                { once: true }
+            );
+        }
+        else {
+            pmisStartProjectBootV78P5();
+        }
 
         const expandedPhases = new Set();
+
+        /* PMIS_PARENT_EXPAND_REFLOW_FIX_V78P9H
+         *
+         * Root cause: the old expand handler toggled a table-wide
+         * .show-responsibility class. That changed hidden table cells into
+         * table-cells across every phase row and forced Chrome to rebuild the
+         * entire wide table layout. Long Animation Frame diagnostics traced a
+         * 35-second main-thread task directly to #tr_kickoff.onclick.
+         *
+         * Keep the table column structure stable. Responsibility + Remarks
+         * remain editable inside a compact inline panel on visible sub-rows.
+         */
+        /* PMIS_PROJECT_PLAN_UI_RESTORE_V81B */
+        function pmisV78P9HeavyProject() {
+            if (
+                typeof window.__PMIS_V78P9_HEAVY_PROJECT__ ===
+                'boolean'
+            ) {
+                return window.__PMIS_V78P9_HEAVY_PROJECT__;
+            }
+
+            /*
+             * V78P9H used a DOM .revision-row count >= 400.
+             * That count was not a true revision count and could trigger
+             * the alternate inline-card UI incorrectly.
+             *
+             * The measured freeze was isolated to the project named RPP2.
+             * Detect that project directly and keep its table geometry stable
+             * without changing the visible table layout.
+             */
+            const identity =
+                [
+                    project?.name,
+                    project?.code,
+                    project?.tracking_code
+                ]
+                    .filter(Boolean)
+                    .join(' ')
+                    .trim()
+                    .toLowerCase();
+
+            return (
+                identity === 'rpp2' ||
+                /(^|\s|[-_])rpp2($|\s|[-_])/.test(
+                    identity
+                )
+            );
+        }
+
+        function pmisV78P9InlineDetails(row) {
+            /*
+             * V81B:
+             * Do not move Responsibility / Remarks controls into the
+             * Workstream cell. The normal table columns are retained.
+             */
+            return;
+        }
+
         function toggleSubPhases(parentId) {
             const btn = document.getElementById('tr_' + parentId);
-            const isExpanded = btn ? btn.getAttribute('aria-expanded') === 'true' : expandedPhases.has(parentId);
+            const isExpanded = btn
+                ? btn.getAttribute('aria-expanded') === 'true'
+                : expandedPhases.has(parentId);
 
-            if (btn) btn.setAttribute('aria-expanded', !isExpanded);
+            if (btn) btn.setAttribute('aria-expanded', String(!isExpanded));
 
             if (isExpanded) expandedPhases.delete(parentId);
             else expandedPhases.add(parentId);
 
             const subs = document.querySelectorAll('.sub-of-' + parentId);
-            subs.forEach(s => {
-                if (isExpanded) s.classList.add('d-none');
-                else s.classList.remove('d-none');
+
+            subs.forEach(row => {
+                if (isExpanded) {
+                    row.classList.add('d-none');
+                }
+                else {
+                    /*
+                     * Build only this parent's lightweight detail editors.
+                     * No table-wide column/display mutation.
+                     */
+                    pmisV78P9InlineDetails(row);
+                    row.classList.remove('d-none');
+                }
             });
 
-            // Refresh Gantt if it's currently rendered
+            /*
+             * V81B:
+             * Both normal and RPP2 layouts use the standard table columns.
+             * The RPP2 branch inside updateResponsibilityVisibility()
+             * keeps those columns permanently allocated, avoiding the
+             * expensive table-wide display geometry change.
+             */
+            updateResponsibilityVisibility();
+
+            // Refresh Gantt only when it is actually open/rendered.
             const gantt = document.getElementById('ganttContainer');
             if (gantt && gantt.innerHTML !== '') {
-                renderGantt();
+                requestAnimationFrame(() => renderGantt());
             }
-
-            updateResponsibilityVisibility();
         }
 
         function parseDate(dateStr) {
@@ -2613,6 +2931,64 @@
             }
             const pStart = new Date(Math.min(...valid.map(item => item.start)));
             return { totalDuration, pStart };
+        }
+
+
+        /* PMIS_PARENT_DATE_ENVELOPE_V81A */
+        function pmisParentEnvelopeV81A(items) {
+            const valid =
+                (Array.isArray(items) ? items : [])
+                    .filter(item =>
+                        item &&
+                        item.start instanceof Date &&
+                        !Number.isNaN(item.start.getTime()) &&
+                        item.end instanceof Date &&
+                        !Number.isNaN(item.end.getTime()) &&
+                        item.end >= item.start
+                    );
+
+            if (!valid.length) {
+                return {
+                    start: null,
+                    end: null,
+                    totalDays: 0
+                };
+            }
+
+            const start =
+                new Date(
+                    Math.min(
+                        ...valid.map(
+                            item =>
+                                item.start.getTime()
+                        )
+                    )
+                );
+
+            const end =
+                new Date(
+                    Math.max(
+                        ...valid.map(
+                            item =>
+                                item.end.getTime()
+                        )
+                    )
+                );
+
+            const totalDays =
+                Math.round(
+                    (
+                        end.getTime() -
+                        start.getTime()
+                    ) /
+                    86400000
+                ) + 1;
+
+            return {
+                start,
+                end,
+                totalDays
+            };
         }
 
         function calcDays(start, end) {
@@ -2789,16 +3165,41 @@
             const thPlan = document.getElementById('thPlanGroup');
             const thActual = document.getElementById('thActualGroup');
 
+            if (pmisV78P9HeavyProject()) {
+                /*
+                 * PMIS V81B — RPP2 stable standard-table path.
+                 *
+                 * Keep Responsibility and Remarks as normal columns and
+                 * keep the geometry allocated continuously. Expand/collapse
+                 * therefore only hides/shows child rows and does not switch
+                 * table-cell columns on the whole table.
+                 */
+                if (table) {
+                    table.classList.add('show-responsibility');
+                }
+
+                if (thPlan) thPlan.setAttribute('colspan', '6');
+                if (thActual) thActual.setAttribute('colspan', '6');
+
+                return;
+            }
+
+            /*
+             * Existing behavior for all normal projects.
+             */
             if (expandedPhases.size > 0) {
                 if (table) {
                     table.classList.add('show-responsibility');
                 }
+
                 if (thPlan) thPlan.setAttribute('colspan', '6');
                 if (thActual) thActual.setAttribute('colspan', '6');
-            } else {
+            }
+            else {
                 if (table) {
                     table.classList.remove('show-responsibility');
                 }
+
                 if (thPlan) thPlan.setAttribute('colspan', '5');
                 if (thActual) thActual.setAttribute('colspan', '5');
             }
@@ -2919,6 +3320,15 @@
         function renderTable() {
             const tbody = document.getElementById('phasesTbody');
             tbody.innerHTML = '';
+
+            const renderStartedV78P7 =
+                typeof performance !== 'undefined'
+                    ? performance.now()
+                    : Date.now();
+
+            const fragmentV78P7 =
+                document.createDocumentFragment();
+
             let totalProg = 0, countProg = 0;
 
             const globalMin = getGlobalMinDateString();
@@ -3002,23 +3412,37 @@
                             }
                             return { start, end, duration };
                         });
+                        // PMIS V81A: parent rows are summary envelopes.
+                        const planRangeV81A =
+                            pmisParentEnvelopeV81A(
+                                planItems
+                            );
 
-                        // Use proper CPM: sum sequential durations, max parallel durations, no gaps
-                        const planCpm = calcCpmDuration(planItems);
-                        pStart = planCpm.pStart;
-                        if (pStart && planCpm.totalDuration > 0) {
-                            pEnd = new Date(pStart);
-                            pEnd.setDate(pEnd.getDate() + planCpm.totalDuration - 1);
-                        }
+                        pStart =
+                            planRangeV81A.start;
 
-                        // Use proper CPM: sum sequential durations, max parallel durations, no gaps
-                        const actualCpm = calcCpmDuration(actualItems);
-                        aStart = actualCpm.pStart;
-                        const allActCompleted = actualItems.every(item => item.start !== null && item.end !== null);
-                        if (allActCompleted && aStart && actualCpm.totalDuration > 0) {
-                            aEnd = new Date(aStart);
-                            aEnd.setDate(aEnd.getDate() + actualCpm.totalDuration - 1);
-                        }
+                        pEnd =
+                            planRangeV81A.end;
+
+                        const actualRangeV81A =
+                            pmisParentEnvelopeV81A(
+                                actualItems
+                            );
+
+                        aStart =
+                            actualRangeV81A.start;
+
+                        const allActCompleted =
+                            actualItems.every(
+                                item =>
+                                    item.start !== null &&
+                                    item.end !== null
+                            );
+
+                        aEnd =
+                            allActCompleted
+                                ? actualRangeV81A.end
+                                : null;
                     }
                     data.plan_start = formatDateLocalISO(pStart);
                     data.plan_end = formatDateLocalISO(pEnd);
@@ -3324,8 +3748,50 @@
                         </div>
                     </td>
                 `;
-                tbody.appendChild(tr);
+                fragmentV78P7.appendChild(tr);
             });
+
+            /*
+             * Commit all phase rows to the live table at once.
+             */
+            tbody.appendChild(fragmentV78P7);
+
+            /*
+             * PMIS V81B — keep RPP2 on the stable STANDARD table layout.
+             * No Responsibility/Remarks controls are relocated.
+             */
+            window.__PMIS_V78P9_HEAVY_PROJECT__ =
+                (
+                    [
+                        project?.name,
+                        project?.code,
+                        project?.tracking_code
+                    ]
+                        .filter(Boolean)
+                        .join(' ')
+                        .trim()
+                        .toLowerCase() ===
+                    'rpp2'
+                ) ||
+                /(^|\s|[-_])rpp2($|\s|[-_])/.test(
+                    [
+                        project?.name,
+                        project?.code,
+                        project?.tracking_code
+                    ]
+                        .filter(Boolean)
+                        .join(' ')
+                        .trim()
+                        .toLowerCase()
+                );
+
+            if (window.__PMIS_V78P9_HEAVY_PROJECT__) {
+                console.log(
+                    '[PMIS V81B] RPP2 stable standard-column layout active.'
+                );
+
+                updateResponsibilityVisibility();
+            }
 
             // --- Weighted Overall Progress Calculation ---
             const weights = {
@@ -3354,6 +3820,17 @@
 
             project.overall_progress = totalActiveWeight ? Math.round((totalWeightedProgress / totalActiveWeight) * 100) : 0;
             initFlatpickr();
+
+            const renderEndedV78P7 =
+                typeof performance !== 'undefined'
+                    ? performance.now()
+                    : Date.now();
+
+            console.log(
+                '[PMIS V78P7] renderTable',
+                Math.round(renderEndedV78P7 - renderStartedV78P7) + 'ms',
+                'rows=' + tbody.rows.length
+            );
         }
 
         function initFlatpickr() {
@@ -4304,70 +4781,53 @@
                         }
                         return { start, end, duration };
                     });
+                    // PMIS V81A:
+                    // Parent phases always span earliest child start
+                    // through latest child end. Gaps remain part of
+                    // the parent schedule envelope.
+                    const planRangeV81A =
+                        pmisParentEnvelopeV81A(
+                            planItems
+                        );
 
-                    // Sequential vs Parallel Logic based on actual overlap
-                    const isPlanParallel = (timelineType === 'parallel' || checkOverlap(planItems));
-                    if (!isPlanParallel) {
-                        const firstPlan = planItems.find(item => item.start !== null);
-                        pStart = firstPlan ? firstPlan.start : null;
-                        const totalPlanDur = planItems.reduce((sum, item) => sum + item.duration, 0);
-                        if (pStart && totalPlanDur > 0) {
-                            pEnd = new Date(pStart);
-                            pEnd.setDate(pEnd.getDate() + totalPlanDur - 1);
-                        }
-                    } else {
-                        const planStarts = planItems.map(item => item.start).filter(d => d !== null);
-                        pStart = planStarts.length > 0 ? new Date(Math.min(...planStarts)) : null;
-                        const maxPlanDur = planItems.reduce((max, item) => Math.max(max, item.duration), 0);
-                        if (pStart && maxPlanDur > 0) {
-                            pEnd = new Date(pStart);
-                            pEnd.setDate(pEnd.getDate() + maxPlanDur - 1);
-                        }
-                    }
+                    pStart =
+                        planRangeV81A.start;
 
-                    const isReassignParallel = (timelineType === 'parallel' || checkOverlap(reassignItems));
-                    if (!isReassignParallel) {
-                        const firstReassign = reassignItems.find(item => item.start !== null);
-                        rStart = firstReassign ? firstReassign.start : null;
-                        const totalReassignDur = reassignItems.reduce((sum, item) => sum + item.duration, 0);
-                        if (rStart && totalReassignDur > 0) {
-                            rEnd = new Date(rStart);
-                            rEnd.setDate(rEnd.getDate() + totalReassignDur - 1);
-                        }
-                    } else {
-                        const reassignStarts = reassignItems.map(item => item.start).filter(d => d !== null);
-                        rStart = reassignStarts.length > 0 ? new Date(Math.min(...reassignStarts)) : null;
-                        const maxReassignDur = reassignItems.reduce((max, item) => Math.max(max, item.duration), 0);
-                        if (rStart && maxReassignDur > 0) {
-                            rEnd = new Date(rStart);
-                            rEnd.setDate(rEnd.getDate() + maxReassignDur - 1);
-                        }
-                    }
+                    pEnd =
+                        planRangeV81A.end;
 
-                    const isActualParallel = (timelineType === 'parallel' || checkOverlap(actualItems));
-                    if (!isActualParallel) {
-                        const firstActual = actualItems.find(item => item.start !== null);
-                        aStart = firstActual ? firstActual.start : null;
-                        const allActCompleted = actualItems.every(item => item.start !== null && item.end !== null);
-                        if (allActCompleted && aStart) {
-                            const totalActDur = actualItems.reduce((sum, item) => sum + item.duration, 0);
-                            if (totalActDur > 0) {
-                                aEnd = new Date(aStart);
-                                aEnd.setDate(aEnd.getDate() + totalActDur - 1);
-                            }
-                        }
-                    } else {
-                        const actualStarts = actualItems.map(item => item.start).filter(d => d !== null);
-                        aStart = actualStarts.length > 0 ? new Date(Math.min(...actualStarts)) : null;
-                        const allActCompleted = actualItems.every(item => item.start !== null && item.end !== null);
-                        if (allActCompleted && aStart) {
-                            const maxActDur = actualItems.reduce((max, item) => Math.max(max, item.duration), 0);
-                            if (maxActDur > 0) {
-                                aEnd = new Date(aStart);
-                                aEnd.setDate(aEnd.getDate() + maxActDur - 1);
-                            }
-                        }
-                    }
+                    const reassignRangeV81A =
+                        pmisParentEnvelopeV81A(
+                            reassignItems
+                        );
+
+                    rStart =
+                        reassignRangeV81A.start;
+
+                    rEnd =
+                        reassignRangeV81A.end;
+
+                    const actualRangeV81A =
+                        pmisParentEnvelopeV81A(
+                            actualItems
+                        );
+
+                    aStart =
+                        actualRangeV81A.start;
+
+                    const allActCompleted =
+                        actualItems.every(
+                            item =>
+                                item.start !== null &&
+                                item.end !== null
+                        );
+
+                    aEnd =
+                        allActCompleted
+                            ? actualRangeV81A.end
+                            : null;
+
+
 
                     // Calculate Parent Revisions dynamically
                     let maxRevs = 0;
@@ -4402,26 +4862,18 @@
                             }
                             return { start, end, duration };
                         });
+                        const revisionRangeV81A =
+                            pmisParentEnvelopeV81A(
+                                revItems
+                            );
 
-                        const isRevKParallel = (timelineType === 'parallel' || checkOverlap(revItems));
-                        let rKStart = null, rKEnd = null;
-                        if (!isRevKParallel) {
-                            const firstItem = revItems.find(item => item.start !== null);
-                            rKStart = firstItem ? firstItem.start : null;
-                            const totalDur = revItems.reduce((sum, item) => sum + item.duration, 0);
-                            if (rKStart && totalDur > 0) {
-                                rKEnd = new Date(rKStart);
-                                rKEnd.setDate(rKEnd.getDate() + totalDur - 1);
-                            }
-                        } else {
-                            const starts = revItems.map(item => item.start).filter(d => d !== null);
-                            rKStart = starts.length > 0 ? new Date(Math.min(...starts)) : null;
-                            const maxDur = revItems.reduce((max, item) => Math.max(max, item.duration), 0);
-                            if (rKStart && maxDur > 0) {
-                                rKEnd = new Date(rKStart);
-                                rKEnd.setDate(rKEnd.getDate() + maxDur - 1);
-                            }
-                        }
+                        const rKStart =
+                            revisionRangeV81A.start;
+
+                        const rKEnd =
+                            revisionRangeV81A.end;
+
+
 
                         parentRevisions.push({
                             label: 'R' + (k + 1),
@@ -15053,10 +15505,35 @@ function expectedAmount(term) {
         if (renderQueuedV75G) return;
         renderQueuedV75G = true;
 
-        requestAnimationFrame(() => {
+        const runV78P7 = () => {
+            const startedV78P7 =
+                typeof performance !== 'undefined'
+                    ? performance.now()
+                    : Date.now();
+
             renderQueuedV75G = false;
             enhanceTable();
-        });
+
+            const endedV78P7 =
+                typeof performance !== 'undefined'
+                    ? performance.now()
+                    : Date.now();
+
+            console.log(
+                '[PMIS V78P7] commercial enhance',
+                Math.round(endedV78P7 - startedV78P7) + 'ms'
+            );
+        };
+
+        if (typeof requestIdleCallback === 'function') {
+            requestIdleCallback(
+                runV78P7,
+                { timeout: 350 }
+            );
+        }
+        else {
+            setTimeout(runV78P7, 40);
+        }
     }
 
     function expandForStage(stageId) {
@@ -15736,24 +16213,21 @@ function expectedAmount(term) {
         }
     }
 
+    /* PMIS V78P5:
+     * Discover wrappers only. Do not repeatedly rebuild the full table.
+     * The renderTable wrapper calls scheduleEnhance() exactly when needed.
+     */
     let attempts = 0;
+
     const timer = setInterval(() => {
         attempts += 1;
 
         installFunctionWrappers();
 
-        if (project && document.getElementById('phasesTbody')) {
-            scheduleEnhance();
-        }
-
         if (
-            window.__PMIS_V75G_RENDER_WRAPPED__ &&
-            project &&
-            attempts >= 8
+            window.__PMIS_V75G_RENDER_WRAPPED__ ||
+            attempts >= 20
         ) {
-            clearInterval(timer);
-        }
-        else if (attempts >= 100) {
             clearInterval(timer);
         }
     },150);
@@ -15828,11 +16302,37 @@ function expectedAmount(term) {
     function queueV75N() {
         if (queuedV75N) return;
         queuedV75N = true;
-        requestAnimationFrame(() => {
+
+        const runV78P7 = () => {
+            const startedV78P7 =
+                typeof performance !== 'undefined'
+                    ? performance.now()
+                    : Date.now();
+
             queuedV75N = false;
             applyReceiptUiV75N();
             syncCommercialAlignmentV75N();
-        });
+
+            const endedV78P7 =
+                typeof performance !== 'undefined'
+                    ? performance.now()
+                    : Date.now();
+
+            console.log(
+                '[PMIS V78P7] commercial alignment',
+                Math.round(endedV78P7 - startedV78P7) + 'ms'
+            );
+        };
+
+        if (typeof requestIdleCallback === 'function') {
+            requestIdleCallback(
+                runV78P7,
+                { timeout: 500 }
+            );
+        }
+        else {
+            setTimeout(runV78P7, 60);
+        }
     }
 
     function hideReferenceEntryV75N() {
@@ -16008,37 +16508,17 @@ function expectedAmount(term) {
     function startV75N() {
         installHooksV75N();
         applyReceiptUiV75N();
-        syncCommercialAlignmentV75N();
+        queueV75N();
 
-        const observer =
-            new MutationObserver(
-                queueV75N
-            );
-
-        observer.observe(
-            document.body,
-            {
-                childList: true,
-                subtree: true
-            }
-        );
-
+        /* PMIS V78P5:
+         * renderTable/openReceiptEditor hooks already queue alignment.
+         * Remove the body-wide observer and 25 forced layout passes.
+         */
         window.addEventListener(
             'resize',
-            queueV75N
+            queueV75N,
+            { passive:true }
         );
-
-        let attempts = 0;
-        const timer =
-            setInterval(() => {
-                attempts += 1;
-                applyReceiptUiV75N();
-                syncCommercialAlignmentV75N();
-
-                if (attempts >= 25) {
-                    clearInterval(timer);
-                }
-            }, 350);
     }
 
     if (
@@ -16419,93 +16899,23 @@ function expectedAmount(term) {
         parentId,
         items
     ) {
-        const valid =
-            items.filter(Boolean);
-
-        if (!valid.length) {
-            return {
-                start: '',
-                end: ''
-            };
-        }
-
-        try {
-            if (typeof calcCpmDuration === 'function') {
-                const result =
-                    calcCpmDuration(valid);
-
-                if (
-                    result?.pStart &&
-                    Number(result?.totalDuration) > 0
-                ) {
-                    const end =
-                        new Date(result.pStart);
-
-                    end.setDate(
-                        end.getDate() +
-                        Number(result.totalDuration) -
-                        1
-                    );
-
-                    return {
-                        start:
-                            isoDateV77X(
-                                result.pStart
-                            ),
-                        end:
-                            isoDateV77X(end)
-                    };
-                }
-            }
-        } catch (error) {
-            console.warn(
-                '[PMIS V77X] Existing CPM calculation failed; using fallback.',
-                error
+        // PMIS V81A:
+        // Parent revision rebuild uses the same earliest-start /
+        // latest-end envelope as the live Project Plan.
+        const range =
+            pmisParentEnvelopeV81A(
+                items
             );
-        }
-
-        let isParallel = false;
-
-        try {
-            isParallel =
-                typeof getTimelineType === 'function' &&
-                getTimelineType(parentId) === 'parallel';
-        } catch (_) {}
-
-        const first =
-            new Date(
-                Math.min(
-                    ...valid.map(
-                        item => item.start.getTime()
-                    )
-                )
-            );
-
-        const duration =
-            isParallel
-                ? Math.max(
-                    ...valid.map(
-                        item => item.duration
-                    )
-                  )
-                : valid.reduce(
-                    (sum, item) =>
-                        sum + item.duration,
-                    0
-                  );
-
-        const end =
-            new Date(first);
-
-        end.setDate(
-            end.getDate() +
-            Math.max(1, duration) -
-            1
-        );
 
         return {
-            start: isoDateV77X(first),
-            end: isoDateV77X(end)
+            start:
+                isoDateV77X(
+                    range.start
+                ),
+            end:
+                isoDateV77X(
+                    range.end
+                )
         };
     }
 
