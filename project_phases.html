@@ -2805,47 +2805,74 @@
             return;
         }
 
+        // PMIS_GANTT_INVALID_DATE_ROOT_FIX_V81D2
         function toggleSubPhases(parentId) {
-            const btn = document.getElementById('tr_' + parentId);
-            const isExpanded = btn
-                ? btn.getAttribute('aria-expanded') === 'true'
-                : expandedPhases.has(parentId);
+            const btn =
+                document.getElementById(
+                    'tr_' + parentId
+                );
 
-            if (btn) btn.setAttribute('aria-expanded', String(!isExpanded));
+            const isExpanded =
+                btn
+                    ? btn.getAttribute(
+                        'aria-expanded'
+                      ) === 'true'
+                    : expandedPhases.has(
+                        parentId
+                      );
 
-            if (isExpanded) expandedPhases.delete(parentId);
-            else expandedPhases.add(parentId);
+            if (btn) {
+                btn.setAttribute(
+                    'aria-expanded',
+                    !isExpanded
+                );
+            }
 
-            const subs = document.querySelectorAll('.sub-of-' + parentId);
+            if (isExpanded) {
+                expandedPhases.delete(
+                    parentId
+                );
+            }
+            else {
+                expandedPhases.add(
+                    parentId
+                );
+            }
+
+            const subs =
+                document.querySelectorAll(
+                    '.sub-of-' + parentId
+                );
 
             subs.forEach(row => {
-                if (isExpanded) {
-                    row.classList.add('d-none');
-                }
-                else {
-                    /*
-                     * Build only this parent's lightweight detail editors.
-                     * No table-wide column/display mutation.
-                     */
-                    pmisV78P9InlineDetails(row);
-                    row.classList.remove('d-none');
-                }
+                row.classList.toggle(
+                    'd-none',
+                    isExpanded
+                );
             });
 
             /*
-             * V81B:
-             * Both normal and RPP2 layouts use the standard table columns.
-             * The RPP2 branch inside updateResponsibilityVisibility()
-             * keeps those columns permanently allocated, avoiding the
-             * expensive table-wide display geometry change.
+             * ROOT FIX:
+             * Never rebuild a hidden Gantt just because its container contains
+             * placeholder HTML. Refresh only while the Gantt modal is visible.
              */
-            updateResponsibilityVisibility();
+            const ganttModal =
+                document.getElementById(
+                    'ganttModal'
+                );
 
-            // Refresh Gantt only when it is actually open/rendered.
-            const gantt = document.getElementById('ganttContainer');
-            if (gantt && gantt.innerHTML !== '') {
-                requestAnimationFrame(() => renderGantt());
+            if (
+                ganttModal &&
+                ganttModal.classList.contains(
+                    'show'
+                )
+            ) {
+                requestAnimationFrame(
+                    () => renderGantt()
+                );
             }
+
+            updateResponsibilityVisibility();
         }
 
         function parseDate(dateStr) {
@@ -3566,11 +3593,11 @@
 
 
                 const planStartInput = !isPlanLocked && !isParent && !isExcluded ?
-                    `<div class="revision-stack"><div class="revision-row"><input type="date" class="inline-date pmis-native-date-v75j ${hasRevisions ? 'old-date-strike' : ''}" data-phase-id="${ph.id}" data-field="plan_start" value="${data.plan_start || ''}" ${planMinAttrV77R} onchange="saveInlineField('${ph.id}', 'plan_start', this.value, this)" onkeydown="if(event.key==='Enter') syncProject(this)"></div>${originalRowSpacer}${nextStartDisplay}</div>` :
+                    `<div class="revision-stack"><div class="revision-row"><input type="date" class="inline-date pmis-native-date-v75j ${hasRevisions ? 'old-date-strike' : ''}" data-phase-id="${ph.id}" data-field="plan_start" value="${data.plan_start || ''}" ${planMinAttrV77R} onfocus="pmisDateBeginV81H(this)" oninput="pmisDateDraftV81H(this)" onchange="pmisDateDraftV81H(this)" onblur="pmisDateCommitV81H(this)" onkeydown="pmisDateKeyV81H(event,this)"></div>${originalRowSpacer}${nextStartDisplay}</div>` :
                     `<div class="revision-stack"><div class="revision-row"><div><div class="inline-date d-flex align-items-center justify-content-center assigned-date ${hasRevisions ? 'old-date-strike' : ''}" style="cursor:default; background: ${data.plan_start ? '#edf2f7' : '#fff'}; border-color: ${data.plan_start ? '#cbd5e1' : '#e2e8f0'};">${formatDate(data.plan_start)}</div></div></div>${originalRowSpacer}${nextStartDisplay}</div>`;
 
                 const planEndInput = !isPlanLocked && !isParent && !isExcluded ?
-                    `<div class="revision-stack"><div class="revision-row"><input type="date" class="inline-date pmis-native-date-v75j ${hasRevisions ? 'old-date-strike' : ''}" data-phase-id="${ph.id}" data-field="plan_end" value="${data.plan_end || ''}" ${planMinAttrV77R} onchange="saveInlineField('${ph.id}', 'plan_end', this.value, this)" onkeydown="if(event.key==='Enter') syncProject(this)"></div>${originalRowSpacer}${nextEndDisplay}</div>` :
+                    `<div class="revision-stack"><div class="revision-row"><input type="date" class="inline-date pmis-native-date-v75j ${hasRevisions ? 'old-date-strike' : ''}" data-phase-id="${ph.id}" data-field="plan_end" value="${data.plan_end || ''}" ${planMinAttrV77R} onfocus="pmisDateBeginV81H(this)" oninput="pmisDateDraftV81H(this)" onchange="pmisDateDraftV81H(this)" onblur="pmisDateCommitV81H(this)" onkeydown="pmisDateKeyV81H(event,this)"></div>${originalRowSpacer}${nextEndDisplay}</div>` :
                     `<div class="revision-stack"><div class="revision-row"><div><div class="inline-date d-flex align-items-center justify-content-center assigned-date ${hasRevisions ? 'old-date-strike' : ''}" style="cursor:default; background: ${data.plan_end ? '#edf2f7' : '#fff'}; border-color: ${data.plan_end ? '#cbd5e1' : '#e2e8f0'};">${formatDate(data.plan_end)}</div></div></div>${originalRowSpacer}${nextEndDisplay}</div>`;
 
                 const respValue = data.responsibility || '';
@@ -3591,7 +3618,7 @@
 
                 const actualStartInput = isParent ?
                     `<div class="inline-date inline-date-actual d-flex align-items-center justify-content-center assigned-date" style="cursor:default; color:var(--teal-accent);">${formatDate(data.actual_start)}</div>` :
-                    `<input type="date" class="inline-date inline-date-actual pmis-native-date-v75j" data-phase-id="${ph.id}" data-field="actual_start" value="${data.actual_start || ''}" ${minAttr} onchange="saveInlineField('${ph.id}', 'actual_start', this.value, this)" onkeydown="if(event.key==='Enter') syncProject(this)" ${actualDisV77I}>`;
+                    `<input type="date" class="inline-date inline-date-actual pmis-native-date-v75j" data-phase-id="${ph.id}" data-field="actual_start" value="${data.actual_start || ''}" ${minAttr} onfocus="pmisDateBeginV81H(this)" oninput="pmisDateDraftV81H(this)" onchange="pmisDateDraftV81H(this)" onblur="pmisDateCommitV81H(this)" onkeydown="pmisDateKeyV81H(event,this)" ${actualDisV77I}>`;
 
                 const totalDays = calcDays(data.plan_start, data.plan_end);
 
@@ -3650,7 +3677,7 @@
 
                 const actualEndInput = isParent ?
                     `<div><div class="inline-date inline-date-actual d-flex align-items-center justify-content-center assigned-date" style="cursor:default; color:#0f766e;">${formatDate(data.actual_end)}</div></div>` :
-                    `<div><input type="date" class="inline-date inline-date-actual pmis-native-date-v75j" data-phase-id="${ph.id}" data-field="actual_end" value="${data.actual_end || ''}" ${minAttr} onchange="saveInlineField('${ph.id}', 'actual_end', this.value, this)" onkeydown="if(event.key==='Enter') syncProject(this)" ${actualDisV77I}></div>`;
+                    `<div><input type="date" class="inline-date inline-date-actual pmis-native-date-v75j" data-phase-id="${ph.id}" data-field="actual_end" value="${data.actual_end || ''}" ${minAttr} onfocus="pmisDateBeginV81H(this)" oninput="pmisDateDraftV81H(this)" onchange="pmisDateDraftV81H(this)" onblur="pmisDateCommitV81H(this)" onkeydown="pmisDateKeyV81H(event,this)" ${actualDisV77I}></div>`;
 
                 // Delay calculation based on Estimated End vs Actual End
                 const delayInfo = calcDelayStatus(calculatedEndISO, data.actual_end);
@@ -3988,14 +4015,108 @@
         }
 
         function pmisNormalizePhaseDate(value) {
-            const raw = String(value || '').trim();
-            if (!raw || raw === 'Select Date' || raw === '—') return '';
-            const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
-            if (iso) return iso[1] + '-' + iso[2] + '-' + iso[3];
-            const display = raw.match(/^(\d{2})[\/-](\d{2})[\/-](\d{4})$/);
-            if (display) return display[3] + '-' + display[2] + '-' + display[1];
-            const date = parseDate(raw);
-            return date ? formatDateLocalISO(date) : '';
+            const raw =
+                String(
+                    value || ''
+                )
+                    .trim();
+
+            if (
+                !raw ||
+                raw === 'Select Date' ||
+                raw === 'â€”' ||
+                raw === '—'
+            ) {
+                return '';
+            }
+
+            let normalized = '';
+
+            const iso =
+                raw.match(
+                    /^(\d{4})-(\d{2})-(\d{2})/
+                );
+
+            if (iso) {
+                normalized =
+                    iso[1] +
+                    '-' +
+                    iso[2] +
+                    '-' +
+                    iso[3];
+            }
+            else {
+                const display =
+                    raw.match(
+                        /^(\d{2})[\/-](\d{2})[\/-](\d{4})$/
+                    );
+
+                if (display) {
+                    normalized =
+                        display[3] +
+                        '-' +
+                        display[2] +
+                        '-' +
+                        display[1];
+                }
+                else {
+                    const parsed =
+                        parseDate(raw);
+
+                    normalized =
+                        parsed
+                            ? formatDateLocalISO(
+                                parsed
+                              )
+                            : '';
+                }
+            }
+
+            const parts =
+                normalized.match(
+                    /^(\d{4})-(\d{2})-(\d{2})$/
+                );
+
+            if (!parts) {
+                return '';
+            }
+
+            const year =
+                Number(parts[1]);
+
+            const month =
+                Number(parts[2]);
+
+            const day =
+                Number(parts[3]);
+
+            /*
+             * Danprel PMIS project dates are contemporary business dates.
+             * This explicitly rejects the proven corruption 0002-09-10.
+             */
+            if (
+                year < 2000 ||
+                year > 2100
+            ) {
+                return '';
+            }
+
+            const check =
+                new Date(
+                    year,
+                    month - 1,
+                    day
+                );
+
+            if (
+                check.getFullYear() !== year ||
+                check.getMonth() !== month - 1 ||
+                check.getDate() !== day
+            ) {
+                return '';
+            }
+
+            return normalized;
         }
 
         function pmisSetDateInput(input, value) {
@@ -4049,14 +4170,62 @@
             const payload = pmisProjectPatchSnapshot();
 
             const executeSave = async () => {
-                const response = await fetch('/api/projects/' + encodeURIComponent(projectId), {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
-                    cache: 'no-store',
-                    body: JSON.stringify(payload)
-                });
+                
+                // PMIS_PROJECT_WRITE_REAUTH_V81K2
+                const pmisWriteProjectOnceV81K2 =
+                    async function () {
+                        return await fetch(
+                            '/api/projects/' +
+                            encodeURIComponent(
+                                projectId
+                            ),
+                            {
+                                method:'PATCH',
+                                headers:{
+                                    'Content-Type':
+                                        'application/json',
+                                    'Cache-Control':
+                                        'no-cache'
+                                },
+                                cache:'no-store',
+                                body:
+                                    JSON.stringify(
+                                        payload
+                                    )
+                            }
+                        );
+                    };
 
-                const savedProject = await response.json().catch(() => ({}));
+                let response =
+                    await pmisWriteProjectOnceV81K2();
+
+                /*
+                 * The signed PMIS access token expires after 12 hours.
+                 * The page can still look logged in even though writes are now
+                 * rejected with 401. Re-authenticate in place and retry this
+                 * exact already-captured payload ONCE.
+                 */
+                if (
+                    response.status === 401 &&
+                    typeof window
+                        .pmisEnsureWriteSessionV81K2 ===
+                        'function'
+                ) {
+                    const renewed =
+                        await window
+                            .pmisEnsureWriteSessionV81K2();
+
+                    if (!renewed) {
+                        throw new Error(
+                            'Session expired. Save was cancelled.'
+                        );
+                    }
+
+                    response =
+                        await pmisWriteProjectOnceV81K2();
+                }
+
+const savedProject = await response.json().catch(() => ({}));
                 if (!response.ok) {
                     throw new Error(savedProject.error || savedProject.message || 'Server error');
                 }
@@ -4496,7 +4665,7 @@
             new bootstrap.Modal(document.getElementById('ganttModal')).show();
         }
 
-        function renderGantt(targetId = 'ganttContainer', forceAll = false, hideActual = false) {
+        function renderGanttUnsafeV81D2(targetId = 'ganttContainer', forceAll = false, hideActual = false) {
             const container = document.getElementById(targetId);
             if (!container) return;
             container.innerHTML = '';
@@ -4693,6 +4862,287 @@
                 row.appendChild(timelineCell);
                 container.appendChild(row);
             });
+        }
+
+
+        function pmisScheduleDateRefsV81D2() {
+            const refs = [];
+
+            Object.entries(
+                project?.detailed_phases ||
+                {}
+            ).forEach(
+                ([phaseId,data]) => {
+                    if (
+                        !data ||
+                        typeof data !==
+                            'object'
+                    ) {
+                        return;
+                    }
+
+                    [
+                        'plan_start',
+                        'plan_end',
+                        'actual_start',
+                        'actual_end',
+                        'reassign_start',
+                        'reassign_end'
+                    ].forEach(field => {
+                        refs.push({
+                            phaseId,
+                            field,
+                            owner:data,
+                            key:field,
+                            value:data[field]
+                        });
+                    });
+
+                    (
+                        Array.isArray(
+                            data.revisions
+                        )
+                            ? data.revisions
+                            : []
+                    ).forEach(
+                        (revision,index) => {
+                            ['start','end']
+                                .forEach(field => {
+                                    refs.push({
+                                        phaseId,
+                                        field:
+                                            'revision R' +
+                                            (index + 1) +
+                                            ' ' +
+                                            field,
+                                        owner:revision,
+                                        key:field,
+                                        value:
+                                            revision?.[field]
+                                    });
+                                });
+                        }
+                    );
+                }
+            );
+
+            return refs;
+        }
+
+        function pmisGanttSanitizedRunV81D2(
+            callback
+        ) {
+            const refs =
+                pmisScheduleDateRefsV81D2();
+
+            const restore = [];
+
+            const valid = [];
+
+            refs.forEach(ref => {
+                if (
+                    ref.value === null ||
+                    ref.value === undefined ||
+                    String(
+                        ref.value
+                    ).trim() === ''
+                ) {
+                    return;
+                }
+
+                const normalized =
+                    pmisNormalizePhaseDate(
+                        ref.value
+                    );
+
+                if (!normalized) {
+                    restore.push({
+                        owner:ref.owner,
+                        key:ref.key,
+                        value:ref.value
+                    });
+
+                    ref.owner[ref.key] =
+                        '';
+
+                    console.error(
+                        '[PMIS V81D2] Invalid schedule date ignored by Gantt:',
+                        ref.phaseId +
+                        '.' +
+                        ref.field,
+                        '=',
+                        ref.value
+                    );
+
+                    return;
+                }
+
+                const date =
+                    new Date(
+                        normalized +
+                        'T00:00:00'
+                    );
+
+                valid.push({
+                    ...ref,
+                    normalized,
+                    time:
+                        date.getTime()
+                });
+            });
+
+            /*
+             * Second fail-safe:
+             * A PMIS machine project should never require a Gantt wider than
+             * ten years. If valid-looking dates still span more than ten years,
+             * keep the dense majority window and mask remote outliers while
+             * rendering.
+             */
+            if (valid.length > 1) {
+                const sorted =
+                    valid
+                        .map(item => item.time)
+                        .sort(
+                            (a,b) => a - b
+                        );
+
+                const min =
+                    sorted[0];
+
+                const max =
+                    sorted[
+                        sorted.length - 1
+                    ];
+
+                const tenYearsMs =
+                    10 *
+                    366 *
+                    24 *
+                    60 *
+                    60 *
+                    1000;
+
+                if (
+                    max - min >
+                    tenYearsMs
+                ) {
+                    const median =
+                        sorted[
+                            Math.floor(
+                                sorted.length / 2
+                            )
+                        ];
+
+                    const fiveYearsMs =
+                        5 *
+                        366 *
+                        24 *
+                        60 *
+                        60 *
+                        1000;
+
+                    valid.forEach(ref => {
+                        if (
+                            Math.abs(
+                                ref.time -
+                                median
+                            ) <=
+                            fiveYearsMs
+                        ) {
+                            return;
+                        }
+
+                        if (
+                            ref.owner[
+                                ref.key
+                            ] === ''
+                        ) {
+                            return;
+                        }
+
+                        restore.push({
+                            owner:ref.owner,
+                            key:ref.key,
+                            value:
+                                ref.owner[
+                                    ref.key
+                                ]
+                        });
+
+                        ref.owner[ref.key] =
+                            '';
+
+                        console.error(
+                            '[PMIS V81D2] Gantt outlier date ignored:',
+                            ref.phaseId +
+                            '.' +
+                            ref.field,
+                            '=',
+                            ref.value
+                        );
+                    });
+                }
+            }
+
+            try {
+                return callback();
+            }
+            finally {
+                restore
+                    .reverse()
+                    .forEach(item => {
+                        item.owner[
+                            item.key
+                        ] =
+                            item.value;
+                    });
+            }
+        }
+
+        function renderGantt(
+            targetId = 'ganttContainer',
+            forceAll = false,
+            hideActual = false
+        ) {
+            return pmisGanttSanitizedRunV81D2(
+                () =>
+                    renderGanttUnsafeV81D2(
+                        targetId,
+                        forceAll,
+                        hideActual
+                    )
+            );
+        }
+
+        function pmisAuditProjectDatesV81D2() {
+            const problems =
+                pmisScheduleDateRefsV81D2()
+                    .filter(ref =>
+                        ref.value &&
+                        !pmisNormalizePhaseDate(
+                            ref.value
+                        )
+                    )
+                    .map(ref => ({
+                        phase:
+                            ref.phaseId,
+                        field:
+                            ref.field,
+                        value:
+                            ref.value
+                    }));
+
+            if (problems.length) {
+                console.error(
+                    '[PMIS V81D2] Invalid project schedule dates detected.'
+                );
+
+                console.table(
+                    problems
+                );
+            }
+
+            return problems;
         }
 
         function formatDatePlain(date) {
@@ -17695,6 +18145,1750 @@ function expectedAmount(term) {
 })();
 
 </script>
+
+
+<style id="pmis-project-plan-stable-geometry-v81c-style">
+/* PMIS_PROJECT_PLAN_STABLE_GEOMETRY_V81C */
+
+/*
+ * Keep the two optional information columns structurally present.
+ * Visibility does not change table column geometry, unlike display:none.
+ */
+.table-wrap table .responsibility-col,
+.table-wrap table .remarks-col {
+    display: table-cell !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
+/*
+ * Reveal their content only while at least one parent phase is expanded.
+ * The columns themselves were already allocated, so this is paint-only.
+ */
+.table-wrap table.show-responsibility .responsibility-col,
+.table-wrap table.show-responsibility .remarks-col {
+    display: table-cell !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+}
+
+/*
+ * Disabled cells retain their existing read-only treatment.
+ */
+.table-wrap table .row-disabled .responsibility-col,
+.table-wrap table .row-disabled .remarks-col {
+    pointer-events: none !important;
+}
+</style>
+
+<script id="pmis-project-plan-stable-geometry-v81c-script">
+/* PMIS_PROJECT_PLAN_STABLE_GEOMETRY_V81C */
+(function () {
+    'use strict';
+
+    if (
+        window.__PMIS_PROJECT_PLAN_STABLE_GEOMETRY_V81C__
+    ) {
+        return;
+    }
+
+    window.__PMIS_PROJECT_PLAN_STABLE_GEOMETRY_V81C__ =
+        true;
+
+    /*
+     * Remove project-name-specific performance behavior.
+     * Performance must depend on the rendering model, not on a project name.
+     */
+    try {
+        pmisV78P9HeavyProject =
+            function () {
+                return false;
+            };
+    }
+    catch (_) {}
+
+    try {
+        window.pmisV78P9HeavyProject =
+            function () {
+                return false;
+            };
+    }
+    catch (_) {}
+
+    function stableVisibilityV81C() {
+        const table =
+            document.querySelector(
+                '.table-wrap table'
+            );
+
+        const thPlan =
+            document.getElementById(
+                'thPlanGroup'
+            );
+
+        const thActual =
+            document.getElementById(
+                'thActualGroup'
+            );
+
+        /*
+         * Column count NEVER changes anymore.
+         */
+        if (thPlan) {
+            thPlan.setAttribute(
+                'colspan',
+                '6'
+            );
+        }
+
+        if (thActual) {
+            thActual.setAttribute(
+                'colspan',
+                '6'
+            );
+        }
+
+        if (!table) {
+            return;
+        }
+
+        const expanded =
+            typeof expandedPhases !==
+                'undefined' &&
+            expandedPhases &&
+            expandedPhases.size > 0;
+
+        table.classList.toggle(
+            'show-responsibility',
+            !!expanded
+        );
+    }
+
+    /*
+     * Replace the old geometry-changing implementation.
+     */
+    try {
+        updateResponsibilityVisibility =
+            stableVisibilityV81C;
+    }
+    catch (_) {}
+
+    window.updateResponsibilityVisibility =
+        stableVisibilityV81C;
+
+    /*
+     * Apply after all existing PMIS code has parsed.
+     */
+    function installV81C() {
+        stableVisibilityV81C();
+
+        const table =
+            document.querySelector(
+                '.table-wrap table'
+            );
+
+        if (table) {
+            table.dataset.pmisStableGeometryV81c =
+                'true';
+        }
+
+        console.log(
+            '[PMIS V81C] Stable Project Plan table geometry active.'
+        );
+    }
+
+    if (
+        document.readyState ===
+        'loading'
+    ) {
+        document.addEventListener(
+            'DOMContentLoaded',
+            installV81C,
+            {
+                once:true
+            }
+        );
+    }
+    else {
+        installV81C();
+    }
+})();
+</script>
+
+
+<script id="pmis-v81d2-date-audit">
+/* PMIS_GANTT_INVALID_DATE_ROOT_FIX_V81D2 */
+(function () {
+    'use strict';
+
+    let attempts = 0;
+
+    const timer =
+        window.setInterval(
+            function () {
+                attempts += 1;
+
+                if (
+                    typeof project !==
+                        'undefined' &&
+                    project &&
+                    typeof pmisAuditProjectDatesV81D2 ===
+                        'function'
+                ) {
+                    const problems =
+                        pmisAuditProjectDatesV81D2();
+
+                    window.__PMIS_V81D2_INVALID_DATES__ =
+                        problems;
+
+                    window.clearInterval(
+                        timer
+                    );
+
+                    console.log(
+                        '[PMIS V81D2] Root fix active.',
+                        {
+                            invalidDates:
+                                problems.length
+                        }
+                    );
+
+                    return;
+                }
+
+                if (
+                    attempts >= 40
+                ) {
+                    window.clearInterval(
+                        timer
+                    );
+                }
+            },
+            150
+        );
+})();
+</script>
+
+
+<style id="pmis-v81e-responsibility-remarks-visible">
+/* PMIS_RESPONSIBILITY_REMARKS_ALWAYS_VISIBLE_V81E */
+
+/*
+ * Responsibility + Remarks are permanent Project Plan columns.
+ * Do not tie their visibility to expandedPhases.
+ */
+.table-wrap table .responsibility-col,
+.table-wrap table .remarks-col,
+.table-wrap table.show-responsibility .responsibility-col,
+.table-wrap table.show-responsibility .remarks-col {
+    display: table-cell !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/*
+ * Normal editable cells remain interactive.
+ */
+.table-wrap table .responsibility-col,
+.table-wrap table .remarks-col {
+    pointer-events: auto !important;
+}
+
+/*
+ * Preserve existing read-only/disabled rows.
+ */
+.table-wrap table .row-disabled .responsibility-col,
+.table-wrap table .row-disabled .remarks-col {
+    pointer-events: none !important;
+}
+</style>
+
+<script id="pmis-v81e-responsibility-remarks-visible-script">
+/* PMIS_RESPONSIBILITY_REMARKS_ALWAYS_VISIBLE_V81E */
+(function () {
+    'use strict';
+
+    if (
+        window.__PMIS_RESPONSIBILITY_REMARKS_ALWAYS_VISIBLE_V81E__
+    ) {
+        return;
+    }
+
+    window.__PMIS_RESPONSIBILITY_REMARKS_ALWAYS_VISIBLE_V81E__ =
+        true;
+
+    function keepColumnsVisibleV81E() {
+        const table =
+            document.querySelector(
+                '.table-wrap table'
+            );
+
+        const thPlan =
+            document.getElementById(
+                'thPlanGroup'
+            );
+
+        const thActual =
+            document.getElementById(
+                'thActualGroup'
+            );
+
+        /*
+         * Fixed column geometry retained from V81C.
+         */
+        if (thPlan) {
+            thPlan.setAttribute(
+                'colspan',
+                '6'
+            );
+        }
+
+        if (thActual) {
+            thActual.setAttribute(
+                'colspan',
+                '6'
+            );
+        }
+
+        if (table) {
+            table.classList.add(
+                'show-responsibility'
+            );
+        }
+    }
+
+    /*
+     * Replace the V81C visibility toggle with an always-visible,
+     * still-stable geometry function.
+     */
+    try {
+        updateResponsibilityVisibility =
+            keepColumnsVisibleV81E;
+    }
+    catch (_) {}
+
+    window.updateResponsibilityVisibility =
+        keepColumnsVisibleV81E;
+
+    function installV81E() {
+        keepColumnsVisibleV81E();
+
+        console.log(
+            '[PMIS V81E] Responsibility and Remarks columns fixed visible.'
+        );
+    }
+
+    if (
+        document.readyState ===
+        'loading'
+    ) {
+        document.addEventListener(
+            'DOMContentLoaded',
+            installV81E,
+            {
+                once:true
+            }
+        );
+    }
+    else {
+        installV81E();
+    }
+})();
+</script>
+
+
+
+<style id="pmis-v81f-expand-only-columns">
+/* PMIS_RESPONSIBILITY_REMARKS_EXPAND_ONLY_V81F */
+
+/* Collapsed state: remove the optional columns completely. */
+.table-wrap table:not(.show-responsibility) .responsibility-col,
+.table-wrap table:not(.show-responsibility) .remarks-col {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
+/* Expanded state: show Responsibility + Remarks normally. */
+.table-wrap table.show-responsibility .responsibility-col,
+.table-wrap table.show-responsibility .remarks-col {
+    display: table-cell !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
+
+/* Preserve read-only rows. */
+.table-wrap table.show-responsibility .row-disabled .responsibility-col,
+.table-wrap table.show-responsibility .row-disabled .remarks-col {
+    pointer-events: none !important;
+}
+</style>
+
+<script id="pmis-v81f-expand-only-columns-script">
+/* PMIS_RESPONSIBILITY_REMARKS_EXPAND_ONLY_V81F */
+(function () {
+    'use strict';
+
+    if (
+        window.__PMIS_RESPONSIBILITY_REMARKS_EXPAND_ONLY_V81F__
+    ) {
+        return;
+    }
+
+    window.__PMIS_RESPONSIBILITY_REMARKS_EXPAND_ONLY_V81F__ =
+        true;
+
+    function conditionalColumnsV81F() {
+        const table =
+            document.querySelector(
+                '.table-wrap table'
+            );
+
+        const thPlan =
+            document.getElementById(
+                'thPlanGroup'
+            );
+
+        const thActual =
+            document.getElementById(
+                'thActualGroup'
+            );
+
+        const expanded =
+            typeof expandedPhases !==
+                'undefined' &&
+            expandedPhases &&
+            expandedPhases.size > 0;
+
+        if (table) {
+            table.classList.toggle(
+                'show-responsibility',
+                !!expanded
+            );
+        }
+
+        /*
+         * Match the exact old/original layout shown in the user's video:
+         * collapsed = 5 columns per group
+         * expanded  = 6 columns per group
+         */
+        if (thPlan) {
+            thPlan.setAttribute(
+                'colspan',
+                expanded
+                    ? '6'
+                    : '5'
+            );
+        }
+
+        if (thActual) {
+            thActual.setAttribute(
+                'colspan',
+                expanded
+                    ? '6'
+                    : '5'
+            );
+        }
+    }
+
+    /*
+     * Override only the optional-column visibility behaviour.
+     * V81D2 toggleSubPhases / Gantt root fix stays untouched.
+     */
+    try {
+        updateResponsibilityVisibility =
+            conditionalColumnsV81F;
+    }
+    catch (_) {}
+
+    window.updateResponsibilityVisibility =
+        conditionalColumnsV81F;
+
+    function installV81F() {
+        conditionalColumnsV81F();
+
+        console.log(
+            '[PMIS V81F] Responsibility / Remarks set to expand-only.'
+        );
+    }
+
+    if (
+        document.readyState ===
+        'loading'
+    ) {
+        document.addEventListener(
+            'DOMContentLoaded',
+            installV81F,
+            {
+                once:true
+            }
+        );
+    }
+    else {
+        installV81F();
+    }
+})();
+</script>
+
+
+<script id="pmis-v81h-inline-date-deferred-save">
+/* PMIS_INLINE_DATE_DEFERRED_SAVE_V81H */
+(function () {
+    'use strict';
+
+    if (window.__PMIS_INLINE_DATE_DEFERRED_SAVE_V81H__) return;
+    window.__PMIS_INLINE_DATE_DEFERRED_SAVE_V81H__ = true;
+
+    const DATE_FIELDS_V81H =
+        new Set(['plan_start','plan_end','actual_start','actual_end']);
+
+    function isDateInputV81H(el) {
+        return (
+            el instanceof HTMLInputElement &&
+            el.type === 'date' &&
+            !!el.dataset?.phaseId &&
+            DATE_FIELDS_V81H.has(String(el.dataset.field || ''))
+        );
+    }
+
+    function storedValueV81H(el) {
+        const phaseId = el.dataset.phaseId;
+        const field = el.dataset.field;
+        return project?.detailed_phases?.[phaseId]?.[field] || '';
+    }
+
+    window.pmisDateBeginV81H = function (el) {
+        if (!isDateInputV81H(el)) return;
+
+        el.dataset.pmisDateOriginalV81h = storedValueV81H(el);
+        el.dataset.pmisDateDirtyV81h = 'false';
+    };
+
+    window.pmisDateDraftV81H = function (el) {
+        if (!isDateInputV81H(el)) return;
+
+        // Draft only. Do NOT touch project, rerender, or save.
+        el.dataset.pmisDateDirtyV81h = 'true';
+    };
+
+    function normalizeCompleteV81H(value) {
+        const raw = String(value || '').trim();
+        if (!raw) return '';
+
+        return typeof pmisNormalizePhaseDate === 'function'
+            ? (pmisNormalizePhaseDate(raw) || '')
+            : raw;
+    }
+
+    window.pmisDateCommitV81H = function (el, options = {}) {
+        if (!isDateInputV81H(el)) return false;
+
+        if (el.dataset.pmisDateCommittingV81h === 'true') return false;
+
+        const dirty = el.dataset.pmisDateDirtyV81h === 'true';
+        if (!dirty) return false;
+
+        const original =
+            el.dataset.pmisDateOriginalV81h !== undefined
+                ? el.dataset.pmisDateOriginalV81h
+                : storedValueV81H(el);
+
+        const complete = normalizeCompleteV81H(el.value);
+
+        // Native type=date can be empty while the user is mid-entry.
+        // Never convert a partial date into a clear/save.
+        if (!complete) {
+            el.value = original || '';
+            el.dataset.pmisDateDirtyV81h = 'false';
+
+            if (options.fromEnter) {
+                if (typeof showToast === 'function') {
+                    showToast('Complete the full date before saving.', true);
+                }
+                setTimeout(() => el.focus(), 0);
+            }
+            return false;
+        }
+
+        const originalNormalized = normalizeCompleteV81H(original);
+
+        if (complete === originalNormalized) {
+            el.dataset.pmisDateDirtyV81h = 'false';
+            return false;
+        }
+
+        el.dataset.pmisDateCommittingV81h = 'true';
+
+        // The existing save pipeline is invoked only after editing is finished.
+        saveInlineField(
+            el.dataset.phaseId,
+            el.dataset.field,
+            complete,
+            el
+        );
+
+        return true;
+    };
+
+    window.pmisDateKeyV81H = function (event, el) {
+        if (!isDateInputV81H(el)) return;
+
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            event.stopPropagation();
+            pmisDateCommitV81H(el, { fromEnter:true });
+            return;
+        }
+
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const original =
+                el.dataset.pmisDateOriginalV81h !== undefined
+                    ? el.dataset.pmisDateOriginalV81h
+                    : storedValueV81H(el);
+
+            el.value = original || '';
+            el.dataset.pmisDateDirtyV81h = 'false';
+            el.blur();
+        }
+    };
+
+    console.log(
+        '[PMIS V81H] Old inline date UI restored with deferred save.'
+    );
+})();
+</script>
+
+
+<style id="pmis-v81i-compact-baseline-toggle-style">
+/* PMIS_COMPACT_BASELINE_TOGGLE_V81I */
+
+#pmisBaselineAdminControlsV81I {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 5px;
+}
+
+#pmisBaselineAdminControlsV81I .pmis-v81i-row {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+#pmisBaselineToggleV81I {
+    height: 36px;
+    min-width: 156px;
+    padding: 0 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,.30);
+    font-size: .69rem;
+    font-weight: 900;
+    letter-spacing: .45px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    box-shadow: none;
+    transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+}
+
+#pmisBaselineToggleV81I:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.04);
+}
+
+#pmisBaselineToggleV81I.pmis-v81i-locked {
+    background: #f59e0b;
+    color: #ffffff;
+    border-color: #f59e0b;
+}
+
+#pmisBaselineToggleV81I.pmis-v81i-unlocked {
+    background: #14b8a6;
+    color: #ffffff;
+    border-color: #14b8a6;
+}
+
+#pmisBaselineAdminControlsV81I .pmis-v81i-revisions {
+    height: 36px;
+    padding: 0 14px;
+    border-radius: 999px;
+    border: 1px solid #d7e2ec;
+    background: #ffffff;
+    color: #0b2b4a;
+    font-size: .69rem;
+    font-weight: 900;
+    letter-spacing: .25px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+}
+
+#pmisBaselineAdminControlsV81I .pmis-v81i-note {
+    color: rgba(255,255,255,.82);
+    font-size: .59rem;
+    font-weight: 800;
+    letter-spacing: .9px;
+    text-transform: uppercase;
+}
+</style>
+
+<script id="pmis-v81i-compact-baseline-toggle-script">
+/* PMIS_COMPACT_BASELINE_TOGGLE_V81I */
+(function () {
+    'use strict';
+
+    if (window.__PMIS_COMPACT_BASELINE_TOGGLE_V81I__) {
+        return;
+    }
+
+    window.__PMIS_COMPACT_BASELINE_TOGGLE_V81I__ = true;
+
+    function isReviewAdminV81I() {
+        const role = String(
+            localStorage.getItem('danprel_role') ||
+            localStorage.getItem('danprel_auth_role') ||
+            ''
+        ).trim().toLowerCase();
+
+        const username = String(
+            localStorage.getItem('danprel_username') ||
+            ''
+        ).trim().toLowerCase();
+
+        return (
+            role === 'admin' &&
+            username === 'review@danprel'
+        );
+    }
+
+    function revisionCountV81I() {
+        let count = 0;
+
+        Object.values(
+            project?.detailed_phases || {}
+        ).forEach(data => {
+            if (Array.isArray(data?.revisions)) {
+                count += data.revisions.length;
+            }
+        });
+
+        return count;
+    }
+
+    window.pmisToggleBaselineV81I = async function () {
+        if (!isReviewAdminV81I()) {
+            alert(
+                'Only review@danprel can lock or unlock the baseline.'
+            );
+            return;
+        }
+
+        const locked =
+            String(project?.plan_status || '')
+                .trim()
+                .toLowerCase() === 'submitted';
+
+        if (locked) {
+            if (
+                typeof window.pmisReviewUnlockBaselineV77X ===
+                'function'
+            ) {
+                await window.pmisReviewUnlockBaselineV77X();
+            }
+
+            return;
+        }
+
+        const okay = confirm(
+            'Lock this baseline now?\n\n' +
+            'Plan dates will become read-only and any later changes will be handled as revisions.'
+        );
+
+        if (!okay) {
+            return;
+        }
+
+        try {
+            await setPlanStatus('submitted');
+
+            if (typeof showToast === 'function') {
+                showToast(
+                    'Baseline locked by review@danprel.',
+                    false
+                );
+            }
+        }
+        catch (error) {
+            console.error(
+                '[PMIS V81I] Baseline lock failed:',
+                error
+            );
+
+            alert(
+                'Baseline lock failed. Please refresh and try again.'
+            );
+        }
+    };
+
+    const previousRenderPlanHeaderV81I =
+        window.renderPlanHeader;
+
+    if (
+        typeof previousRenderPlanHeaderV81I !==
+        'function'
+    ) {
+        return;
+    }
+
+    window.renderPlanHeader = function () {
+        const result =
+            previousRenderPlanHeaderV81I.apply(
+                this,
+                arguments
+            );
+
+        if (
+            !isReviewAdminV81I() ||
+            !project
+        ) {
+            return result;
+        }
+
+        const container =
+            document.getElementById(
+                'planHeaderActions'
+            );
+
+        if (!container) {
+            return result;
+        }
+
+        /*
+         * Remove the giant status badge / SAVE-SUBMIT pair /
+         * separate orange UNLOCK control generated by older layers.
+         */
+        container.innerHTML = '';
+
+        const locked =
+            String(project?.plan_status || '')
+                .trim()
+                .toLowerCase() === 'submitted';
+
+        const wrap =
+            document.createElement('div');
+
+        wrap.id =
+            'pmisBaselineAdminControlsV81I';
+
+        const row =
+            document.createElement('div');
+
+        row.className =
+            'pmis-v81i-row';
+
+        const toggle =
+            document.createElement('button');
+
+        toggle.type =
+            'button';
+
+        toggle.id =
+            'pmisBaselineToggleV81I';
+
+        toggle.className =
+            locked
+                ? 'pmis-v81i-locked'
+                : 'pmis-v81i-unlocked';
+
+        toggle.title =
+            locked
+                ? 'Click to unlock baseline'
+                : 'Click to lock baseline';
+
+        const toggleIcon =
+            document.createElement('i');
+
+        toggleIcon.className =
+            locked
+                ? 'bi bi-lock-fill'
+                : 'bi bi-unlock-fill';
+
+        const toggleText =
+            document.createElement('span');
+
+        toggleText.textContent =
+            locked
+                ? 'BASELINE LOCKED'
+                : 'BASELINE UNLOCKED';
+
+        toggle.append(
+            toggleIcon,
+            toggleText
+        );
+
+        toggle.addEventListener(
+            'click',
+            () => window.pmisToggleBaselineV81I()
+        );
+
+        row.appendChild(toggle);
+
+        if (revisionCountV81I() > 0) {
+            const revisions =
+                document.createElement('button');
+
+            revisions.type =
+                'button';
+
+            revisions.className =
+                'pmis-v81i-revisions';
+
+            revisions.title =
+                'Manage approved revised dates';
+
+            const revisionIcon =
+                document.createElement('i');
+
+            revisionIcon.className =
+                'bi bi-calendar-x-fill';
+
+            const revisionText =
+                document.createElement('span');
+
+            revisionText.textContent =
+                'MANAGE REVISED DATES';
+
+            revisions.append(
+                revisionIcon,
+                revisionText
+            );
+
+            revisions.addEventListener(
+                'click',
+                () => {
+                    if (
+                        typeof window
+                            .pmisManageApprovedRevisionsV77X ===
+                        'function'
+                    ) {
+                        window
+                            .pmisManageApprovedRevisionsV77X();
+                    }
+                }
+            );
+
+            row.appendChild(
+                revisions
+            );
+        }
+
+        const note =
+            document.createElement('div');
+
+        note.className =
+            'pmis-v81i-note';
+
+        note.textContent =
+            'review@danprel administration';
+
+        wrap.append(
+            row,
+            note
+        );
+
+        container.appendChild(
+            wrap
+        );
+
+        return result;
+    };
+
+    window.setTimeout(
+        () => {
+            try {
+                if (
+                    isReviewAdminV81I() &&
+                    project &&
+                    typeof renderPlanHeader === 'function'
+                ) {
+                    renderPlanHeader();
+                }
+            }
+            catch (error) {
+                console.warn(
+                    '[PMIS V81I] Initial compact baseline render skipped:',
+                    error
+                );
+            }
+        },
+        120
+    );
+
+    console.log(
+        '[PMIS V81I] Compact baseline lock toggle active.'
+    );
+})();
+</script>
+
+<script id="pmis-v81j-inline-date-clear-fix">
+/* PMIS_INLINE_DATE_CLEAR_FIX_V81J */
+(function () {
+    'use strict';
+
+    if (window.__PMIS_INLINE_DATE_CLEAR_FIX_V81J__) {
+        return;
+    }
+
+    window.__PMIS_INLINE_DATE_CLEAR_FIX_V81J__ = true;
+
+    const DATE_FIELDS_V81J =
+        new Set([
+            'plan_start',
+            'plan_end',
+            'actual_start',
+            'actual_end'
+        ]);
+
+    function isDateInputV81J(el) {
+        return (
+            el instanceof HTMLInputElement &&
+            el.type === 'date' &&
+            !!el.dataset?.phaseId &&
+            DATE_FIELDS_V81J.has(
+                String(el.dataset.field || '')
+            )
+        );
+    }
+
+    function storedValueV81J(el) {
+        const phaseId =
+            el.dataset.phaseId;
+
+        const field =
+            el.dataset.field;
+
+        return (
+            project
+                ?.detailed_phases
+                ?.[phaseId]
+                ?.[field] ||
+            ''
+        );
+    }
+
+    function normalizeV81J(value) {
+        const raw =
+            String(value || '')
+                .trim();
+
+        if (!raw) {
+            return '';
+        }
+
+        if (
+            typeof pmisNormalizePhaseDate ===
+            'function'
+        ) {
+            return (
+                pmisNormalizePhaseDate(raw) ||
+                ''
+            );
+        }
+
+        return raw;
+    }
+
+    window.pmisDateBeginV81H =
+        function (el) {
+            if (!isDateInputV81J(el)) {
+                return;
+            }
+
+            el.dataset.pmisDateOriginalV81h =
+                storedValueV81J(el);
+
+            el.dataset.pmisDateDirtyV81h =
+                'false';
+
+            el.dataset.pmisDateClearIntentV81j =
+                'false';
+
+            el.dataset.pmisDateCommittingV81h =
+                'false';
+        };
+
+    window.pmisDateDraftV81H =
+        function (el) {
+            if (!isDateInputV81J(el)) {
+                return;
+            }
+
+            el.dataset.pmisDateDirtyV81h =
+                'true';
+
+            /*
+             * If a complete date exists again, the user was editing/replacing
+             * the old value rather than clearing it.
+             */
+            if (
+                normalizeV81J(
+                    el.value
+                )
+            ) {
+                el.dataset.pmisDateClearIntentV81j =
+                    'false';
+            }
+        };
+
+    window.pmisDateCommitV81H =
+        function (
+            el,
+            options = {}
+        ) {
+            if (!isDateInputV81J(el)) {
+                return false;
+            }
+
+            if (
+                el.dataset.pmisDateCommittingV81h ===
+                    'true'
+            ) {
+                return false;
+            }
+
+            const dirty =
+                el.dataset.pmisDateDirtyV81h ===
+                    'true';
+
+            if (!dirty) {
+                return false;
+            }
+
+            const original =
+                el.dataset.pmisDateOriginalV81h !==
+                    undefined
+                    ? el.dataset.pmisDateOriginalV81h
+                    : storedValueV81J(el);
+
+            const raw =
+                String(el.value || '')
+                    .trim();
+
+            const complete =
+                normalizeV81J(raw);
+
+            const explicitClear =
+                raw === '' &&
+                el.dataset.pmisDateClearIntentV81j ===
+                    'true';
+
+            /*
+             * NEW V81J:
+             * An explicitly deleted date is a valid edit.
+             * Save an empty value once, instead of restoring the old date.
+             */
+            if (explicitClear) {
+                const phaseId =
+                    el.dataset.phaseId;
+
+                const field =
+                    el.dataset.field;
+
+                el.dataset.pmisDateCommittingV81h =
+                    'true';
+
+                el.dataset.pmisDateDirtyV81h =
+                    'false';
+
+                saveInlineField(
+                    phaseId,
+                    field,
+                    '',
+                    el
+                );
+
+                return true;
+            }
+
+            /*
+             * Empty WITHOUT a deliberate Delete/Backspace action is still
+             * treated as an incomplete native-date edit and is not saved.
+             */
+            if (!complete) {
+                el.value =
+                    original || '';
+
+                el.dataset.pmisDateDirtyV81h =
+                    'false';
+
+                el.dataset.pmisDateClearIntentV81j =
+                    'false';
+
+                if (options.fromEnter) {
+                    if (
+                        typeof showToast ===
+                            'function'
+                    ) {
+                        showToast(
+                            'Complete the full date before saving.',
+                            true
+                        );
+                    }
+
+                    window.setTimeout(
+                        () => el.focus(),
+                        0
+                    );
+                }
+
+                return false;
+            }
+
+            const originalNormalized =
+                normalizeV81J(original);
+
+            if (
+                complete ===
+                originalNormalized
+            ) {
+                el.dataset.pmisDateDirtyV81h =
+                    'false';
+
+                el.dataset.pmisDateClearIntentV81j =
+                    'false';
+
+                return false;
+            }
+
+            const phaseId =
+                el.dataset.phaseId;
+
+            const field =
+                el.dataset.field;
+
+            el.dataset.pmisDateCommittingV81h =
+                'true';
+
+            saveInlineField(
+                phaseId,
+                field,
+                complete,
+                el
+            );
+
+            return true;
+        };
+
+    window.pmisDateKeyV81H =
+        function (
+            event,
+            el
+        ) {
+            if (!isDateInputV81J(el)) {
+                return;
+            }
+
+            if (
+                event.key === 'Delete' ||
+                event.key === 'Backspace'
+            ) {
+                /*
+                 * Arm a clear operation. If the user types/selects a complete
+                 * replacement date afterward, pmisDateDraftV81H cancels this.
+                 */
+                el.dataset.pmisDateClearIntentV81j =
+                    'true';
+
+                el.dataset.pmisDateDirtyV81h =
+                    'true';
+
+                return;
+            }
+
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                event.stopPropagation();
+
+                pmisDateCommitV81H(
+                    el,
+                    {
+                        fromEnter:true
+                    }
+                );
+
+                return;
+            }
+
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                event.stopPropagation();
+
+                const original =
+                    el.dataset.pmisDateOriginalV81h !==
+                        undefined
+                        ? el.dataset.pmisDateOriginalV81h
+                        : storedValueV81J(el);
+
+                el.value =
+                    original || '';
+
+                el.dataset.pmisDateDirtyV81h =
+                    'false';
+
+                el.dataset.pmisDateClearIntentV81j =
+                    'false';
+
+                el.blur();
+            }
+        };
+
+    console.log(
+        '[PMIS V81J] Inline date delete/clear fix active.'
+    );
+})();
+</script>
+
+
+<style id="pmis-v81k2-session-reauth-style">
+/* PMIS_PROJECT_WRITE_REAUTH_V81K2 */
+
+#pmisWriteReauthModalV81K2 .modal-content {
+    border: 0;
+    border-radius: 18px;
+    overflow: hidden;
+}
+
+#pmisWriteReauthModalV81K2 .modal-header {
+    background: #0b3559;
+    color: #fff;
+}
+
+#pmisWriteReauthModalV81K2 .pmis-v81k2-note {
+    color: #64748b;
+    font-size: .86rem;
+}
+</style>
+
+<div
+    class="modal fade"
+    id="pmisWriteReauthModalV81K2"
+    tabindex="-1"
+    aria-hidden="true"
+    data-bs-backdrop="static"
+    data-bs-keyboard="false"
+>
+    <div class="modal-dialog modal-dialog-centered" style="max-width:420px;">
+        <div class="modal-content shadow-lg">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title mb-1">
+                        <i class="bi bi-shield-lock-fill me-2"></i>
+                        Session expired
+                    </h5>
+
+                    <div style="font-size:.80rem;opacity:.82;">
+                        Sign in again to finish saving this change.
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-body p-4">
+                <label class="form-label fw-bold">
+                    Username
+                </label>
+
+                <input
+                    id="pmisWriteReauthUsernameV81K2"
+                    class="form-control mb-3"
+                    autocomplete="username"
+                    readonly
+                >
+
+                <label class="form-label fw-bold">
+                    Password
+                </label>
+
+                <input
+                    id="pmisWriteReauthPasswordV81K2"
+                    type="password"
+                    class="form-control"
+                    autocomplete="current-password"
+                    placeholder="Enter your PMIS password"
+                >
+
+                <div
+                    id="pmisWriteReauthErrorV81K2"
+                    class="text-danger fw-bold mt-2"
+                    style="display:none;font-size:.84rem;"
+                ></div>
+
+                <div class="pmis-v81k2-note mt-3">
+                    Your date change is kept locally. After successful sign-in,
+                    PMIS retries the same save automatically.
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button
+                    type="button"
+                    class="btn btn-outline-secondary"
+                    id="pmisWriteReauthCancelV81K2"
+                >
+                    Cancel
+                </button>
+
+                <button
+                    type="button"
+                    class="btn btn-primary"
+                    id="pmisWriteReauthSubmitV81K2"
+                >
+                    <i class="bi bi-box-arrow-in-right me-1"></i>
+                    Sign in & Retry
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script id="pmis-v81k2-session-reauth-script">
+/* PMIS_PROJECT_WRITE_REAUTH_V81K2 */
+(function () {
+    'use strict';
+
+    if (
+        window.__PMIS_PROJECT_WRITE_REAUTH_V81K2__
+    ) {
+        return;
+    }
+
+    window.__PMIS_PROJECT_WRITE_REAUTH_V81K2__ =
+        true;
+
+    let pendingV81K2 = null;
+    let resolveV81K2 = null;
+
+    function modalV81K2() {
+        const el =
+            document.getElementById(
+                'pmisWriteReauthModalV81K2'
+            );
+
+        if (
+            !el ||
+            !window.bootstrap?.Modal
+        ) {
+            return null;
+        }
+
+        return bootstrap.Modal
+            .getOrCreateInstance(
+                el
+            );
+    }
+
+    function saveSessionV81K2(
+        result,
+        fallbackUsername
+    ) {
+        localStorage.setItem(
+            'danprel_auth',
+            'true'
+        );
+
+        localStorage.setItem(
+            'danprel_role',
+            result?.role ||
+            'pm'
+        );
+
+        localStorage.setItem(
+            'danprel_auth_role',
+            result?.authRole ||
+            result?.role ||
+            'pm'
+        );
+
+        localStorage.setItem(
+            'danprel_username',
+            result?.username ||
+            fallbackUsername ||
+            ''
+        );
+
+        localStorage.setItem(
+            'danprel_employee_id',
+            result?.employeeId ||
+            ''
+        );
+
+        localStorage.setItem(
+            'danprel_display_name',
+            result?.displayName ||
+            result?.username ||
+            fallbackUsername ||
+            ''
+        );
+
+        localStorage.setItem(
+            'danprel_designation',
+            result?.designation ||
+            ''
+        );
+
+        localStorage.setItem(
+            'danprel_access_token',
+            result?.accessToken ||
+            ''
+        );
+    }
+
+    function finishV81K2(ok) {
+        modalV81K2()?.hide();
+
+        const password =
+            document.getElementById(
+                'pmisWriteReauthPasswordV81K2'
+            );
+
+        if (password) {
+            password.value =
+                '';
+        }
+
+        if (resolveV81K2) {
+            resolveV81K2(
+                !!ok
+            );
+        }
+
+        pendingV81K2 =
+            null;
+
+        resolveV81K2 =
+            null;
+    }
+
+    window.pmisEnsureWriteSessionV81K2 =
+        async function () {
+            if (pendingV81K2) {
+                return pendingV81K2;
+            }
+
+            pendingV81K2 =
+                new Promise(resolve => {
+                    resolveV81K2 =
+                        resolve;
+                });
+
+            const username =
+                String(
+                    localStorage.getItem(
+                        'danprel_username'
+                    ) ||
+                    ''
+                ).trim();
+
+            const usernameInput =
+                document.getElementById(
+                    'pmisWriteReauthUsernameV81K2'
+                );
+
+            const passwordInput =
+                document.getElementById(
+                    'pmisWriteReauthPasswordV81K2'
+                );
+
+            const error =
+                document.getElementById(
+                    'pmisWriteReauthErrorV81K2'
+                );
+
+            if (usernameInput) {
+                usernameInput.value =
+                    username;
+            }
+
+            if (error) {
+                error.textContent =
+                    '';
+
+                error.style.display =
+                    'none';
+            }
+
+            modalV81K2()?.show();
+
+            window.setTimeout(
+                () =>
+                    passwordInput?.focus(),
+                180
+            );
+
+            return pendingV81K2;
+        };
+
+    async function submitV81K2() {
+        const username =
+            String(
+                document.getElementById(
+                    'pmisWriteReauthUsernameV81K2'
+                )?.value ||
+                localStorage.getItem(
+                    'danprel_username'
+                ) ||
+                ''
+            ).trim();
+
+        const password =
+            document.getElementById(
+                'pmisWriteReauthPasswordV81K2'
+            )?.value ||
+            '';
+
+        const error =
+            document.getElementById(
+                'pmisWriteReauthErrorV81K2'
+            );
+
+        const button =
+            document.getElementById(
+                'pmisWriteReauthSubmitV81K2'
+            );
+
+        if (
+            !username ||
+            !password
+        ) {
+            if (error) {
+                error.textContent =
+                    'Enter your PMIS password.';
+
+                error.style.display =
+                    'block';
+            }
+
+            return;
+        }
+
+        if (button) {
+            button.disabled =
+                true;
+        }
+
+        try {
+            const response =
+                await fetch(
+                    '/api/auth/login',
+                    {
+                        method:'POST',
+                        headers:{
+                            'Content-Type':
+                                'application/json'
+                        },
+                        body:
+                            JSON.stringify({
+                                username,
+                                password
+                            })
+                    }
+                );
+
+            const result =
+                await response
+                    .json()
+                    .catch(
+                        () => ({})
+                    );
+
+            if (
+                !response.ok ||
+                !result?.success ||
+                !result?.accessToken
+            ) {
+                throw new Error(
+                    result?.error ||
+                    'Unable to sign in.'
+                );
+            }
+
+            saveSessionV81K2(
+                result,
+                username
+            );
+
+            finishV81K2(
+                true
+            );
+        }
+        catch (errorValue) {
+            if (error) {
+                error.textContent =
+                    errorValue?.message ||
+                    'Unable to sign in.';
+
+                error.style.display =
+                    'block';
+            }
+        }
+        finally {
+            if (button) {
+                button.disabled =
+                    false;
+            }
+        }
+    }
+
+    document
+        .getElementById(
+            'pmisWriteReauthSubmitV81K2'
+        )
+        ?.addEventListener(
+            'click',
+            submitV81K2
+        );
+
+    document
+        .getElementById(
+            'pmisWriteReauthPasswordV81K2'
+        )
+        ?.addEventListener(
+            'keydown',
+            event => {
+                if (
+                    event.key ===
+                    'Enter'
+                ) {
+                    event.preventDefault();
+                    submitV81K2();
+                }
+            }
+        );
+
+    document
+        .getElementById(
+            'pmisWriteReauthCancelV81K2'
+        )
+        ?.addEventListener(
+            'click',
+            () =>
+                finishV81K2(
+                    false
+                )
+        );
+
+    console.log(
+        '[PMIS V81K2] Project write re-authentication active.'
+    );
+})();
+</script>
+
 </body>
 
 </html>
